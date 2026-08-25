@@ -1,1 +1,153 @@
-这里是HTML注入示例，你可以在这个文件中添加自定义的HTML内容
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    .badge-footer {
+        display: flex;
+        flex-direction: column;
+        padding: 10px 0;
+        font-size: 14px;
+        color: var(--primary);
+    }
+
+    .animal-img {
+        display: flex;
+        justify-content: center;
+    }
+
+    .badge-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .social-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: center;
+        justify-content: center;
+        margin-top: 8px;
+    }
+
+    .social-row a {
+        color: var(--primary);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 20px;
+        transition: opacity 0.2s;
+    }
+
+    .social-row a:hover {
+        opacity: 0.7;
+    }
+
+    .footer-info {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+        font-size: 13px;
+        color: var(--primary);
+        line-height: 1.8;
+    }
+
+    .footer-info a {
+        color: var(--primary);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .footer-info a:hover {
+        color: #409eff;
+    }
+</style>
+
+<div class="badge-footer">
+    <!-- ① 页脚插画 -->
+    <div class="animal-img">
+        <img alt="animals" src="/assets/images/header.webp">
+    </div>
+
+    <!-- ② 技术徽章 -->
+
+
+
+    <!-- ③ 社交链接 -->
+    <div class="social-row">
+        <a target="_blank" href="https://muyudada.dpdns.org" title="博客">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+            <span style="font-size:14px">博客</span>
+        </a>
+        <a target="_blank" href="https://cloud.muyudada.dpdns.org" title="网盘">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                    d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" />
+            </svg>
+            <span style="font-size:14px">网盘</span>
+        </a>
+        <a target="_blank" href="https://note.muyudada.dpdns.org" title="随笔">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                    d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+            </svg>
+            <span style="font-size:14px">随笔</span>
+        </a>
+        <a target="_blank" href="https://doc.muyudada.dpdns.org" title="文档">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                    d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z" />
+            </svg>
+            <span style="font-size:14px">文档</span>
+        </a>
+    </div>
+
+    <!-- ④ 备案信息 + 运行时长 -->
+    <div class="footer-info">
+        <span id="runtime">⌛小破站正在加载...</span>
+    </div>
+    <div class="footer-info">
+        <a target="_blank" href="https://beian.miit.gov.cn/">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            苏ICP备2022020192号-1
+        </a>
+        <a target="_blank" href="https://beian.mps.gov.cn/web/beian/32021302003009">
+            <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor">
+                <path
+                    d="M778.24 163.84c-76.8-40.96-165.888-61.44-269.312-61.44s-192.512 20.48-269.312 61.44h-133.12l23.552 337.92c8.192 113.664 67.584 217.088 162.816 280.576l215.04 144.384 215.04-144.384c96.256-63.488 155.648-166.912 163.84-280.576l23.552-337.92H778.24z m47.104 333.824c-7.168 94.208-56.32 181.248-135.168 233.472l-181.248 120.832L327.68 731.136c-78.848-53.248-129.024-139.264-135.168-233.472L173.056 225.28h136.192v-26.624c58.368-23.552 124.928-34.816 199.68-34.816s141.312 12.288 199.68 34.816V225.28H844.8l-19.456 272.384z" />
+            </svg>
+            苏公网安备32021302003009号
+        </a>
+    </div>
+</div>
+
+<!-- ⑤ 运行时长脚本 -->
+<script is:inline="">
+    if (typeof window.__siteStartTime === 'undefined') {
+        window.__siteStartTime = "2026-08-24 00:00:00";
+        function startRuntime() {
+            var el = document.getElementById('runtime');
+            if (!el) return;
+            function update() {
+                var diff = Date.now() - new Date(window.__siteStartTime).getTime();
+                var d = Math.floor(diff / 86400000);
+                var h = Math.floor((diff % 86400000) / 3600000);
+                var m = Math.floor((diff % 3600000) / 60000);
+                var s = Math.floor((diff % 60000) / 1000);
+                el.innerHTML = '⌛小破站已运行 <span style="color:#FFA500">' + d + '</span>天 <span style="color:#1DBF97">' + h + '</span>时 <span style="color:#8A2BE2">' + m + '</span>分 <span style="color:#007EC6">' + s + '</span>秒';
+            }
+            update();
+            setInterval(update, 1000);
+        }
+        startRuntime();
+    }
+</script>
