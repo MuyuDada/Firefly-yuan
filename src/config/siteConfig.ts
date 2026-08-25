@@ -43,7 +43,7 @@ export const siteConfig: SiteConfig = {
 	title: "MuyuDada",
 
 	// 站点副标题
-	subtitle: "Demo site",
+	subtitle: "的小窝",
 
 	// 站点 URL
 	site_url: "https://firefly.cuteleaf.cn",
