@@ -103,6 +103,12 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 	// 右侧边栏组件配置列表
 	rightComponents: [
 		{
+            type: "timeGreeting",
+            enable: true,
+            position: "top",
+            showOnPostPage: false,
+        },
+		{
 			// 组件类型：最新动态组件
 			type: "dynamic",
 			// 是否启用该组件
