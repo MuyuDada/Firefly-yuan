@@ -148,6 +148,12 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 			},
 		},
 		{
+        type: "schedule",
+        enable: true,
+        position: "sticky",
+        showOnPostPage: false,
+        },
+		{
 			// 组件类型：站点统计组件
 			type: "stats",
 			// 是否启用该组件

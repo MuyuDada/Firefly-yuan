@@ -82,12 +82,30 @@ const dynamicCollection: ContentCollection<DynamicData> = defineCollection({
 	}),
 });
 
+const ziyuanCollection = defineCollection({
+	loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/ziyuan" }),
+	schema: z.object({
+		title: z.string().optional().default(""),
+		quotes: z
+			.array(
+				z.object({
+					text: z.string(),
+					author: z.string().optional().default(""),
+				})
+			)
+			.optional()
+			.default([]),
+	}),
+});
+
 export const collections: {
 	dynamic: typeof dynamicCollection;
 	posts: typeof postsCollection;
 	spec: typeof specCollection;
+	ziyuan: typeof ziyuanCollection;
 } = {
 	dynamic: dynamicCollection,
 	posts: postsCollection,
 	spec: specCollection,
+	ziyuan: ziyuanCollection,
 };
