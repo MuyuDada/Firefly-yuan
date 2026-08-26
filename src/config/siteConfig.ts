@@ -46,7 +46,7 @@ export const siteConfig: SiteConfig = {
 	subtitle: "的小窝",
 
 	// 站点 URL
-	site_url: "https://firefly.cuteleaf.cn",
+	site_url: "https://muyudada.dpdns.org/",
 
 	// 站点描述
 	description:

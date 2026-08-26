@@ -1,0 +1,793 @@
+---
+import { Icon } from "astro-icon/components";
+import WidgetLayout from "@/components/common/WidgetLayout.astro";
+
+interface Props {
+	class?: string;
+	style?: string;
+	city?: string;
+	adcode?: string;
+	extended?: boolean;
+}
+
+const { class: className, style, city, adcode, extended = true } = Astro.props;
+
+// 缓存键名
+const CACHE_KEY = "weather_data_cache";
+const CACHE_DURATION = 30 * 60 * 1000; // 30分钟缓存
+
+const COLLAPSED_HEIGHT = "9rem";
+---
+
+<WidgetLayout name="天气预报" id="weather-widget" isCollapsed={true} collapsedHeight={COLLAPSED_HEIGHT} class={className} style={style}>
+	<div class="weather-container" data-weather-init>
+		<!-- 加载状态 -->
+		<div class="weather-loading" data-weather-loading>
+			<div class="loading-spinner"></div>
+			<span class="loading-text">加载中...</span>
+		</div>
+
+		<!-- 错误状态 -->
+		<div class="weather-error weather-hidden" data-weather-error>
+			<Icon name="material-symbols:error-outline" class="error-icon" />
+			<span class="error-text" data-error-message>加载失败</span>
+			<button class="retry-btn" data-retry-btn>
+				<Icon name="material-symbols:refresh" />
+				重试
+			</button>
+		</div>
+
+		<!-- 天气数据 -->
+		<div class="weather-content weather-hidden" data-weather-content>
+			<!-- 头部：城市和天气图标 -->
+			<div class="weather-header">
+				<div class="location-info">
+					<Icon name="material-symbols:location-on" class="location-icon" />
+					<span class="city-name text-neutral-900 dark:text-neutral-100" data-city></span>
+					<span class="district text-neutral-600 dark:text-neutral-100" data-district></span>
+				</div>
+				<div class="weather-icon-wrapper" data-weather-icon-wrapper>
+					<Icon name="material-symbols:wb-sunny" class="weather-icon" data-weather-icon />
+				</div>
+			</div>
+
+			<!-- 温度显示 -->
+			<div class="temperature-section">
+				<span class="temperature" data-temperature>--</span>
+				<span class="temperature-unit">°</span>
+				<span class="weather-desc dark:text-neutral-100" data-weather>1</span>
+			</div>
+
+			<!-- 最高/最低温度 -->
+			<div class="temperature-range" data-temperature-range>
+				<span class="temp-max">高温 <span data-temp-max>--</span>°C</span>
+				<span class="temp-divider">/</span>
+				<span class="temp-min">低温 <span data-temp-min>--</span>°C</span>
+			</div>
+
+			<!-- 扩展信息（当 extended=true 时显示） -->
+			<div class="weather-extended" data-weather-extended>
+				<!-- 第一行：风力和能见度 -->
+				<div class="extended-item">
+					<Icon name="material-symbols:air" class="extended-icon icon-wind" />
+					<div class="extended-content">
+						<span class="extended-label dark:text-neutral-100">风力</span>
+						<span class="extended-value dark:text-neutral-100" data-wind>--</span>
+					</div>
+				</div>
+				<div class="extended-item">
+					<Icon name="material-symbols:visibility" class="extended-icon icon-visibility" />
+					<div class="extended-content">
+						<span class="extended-label dark:text-neutral-100">能见度</span>
+						<span class="extended-value dark:text-neutral-100" data-visibility>--km</span>
+					</div>
+				</div>
+				<!-- 第二行：体温度和湿度 -->
+				<div class="extended-item">
+					<Icon name="material-symbols:thermostat" class="extended-icon icon-feels-like" />
+					<div class="extended-content">
+						<span class="extended-label dark:text-neutral-100">体感温度</span>
+						<span class="extended-value dark:text-neutral-100" data-feels-like>--°C</span>
+					</div>
+				</div>
+				<div class="extended-item">
+					<Icon name="material-symbols:humidity-high" class="extended-icon icon-humidity" />
+					<div class="extended-content">
+						<span class="extended-label dark:text-neutral-100">湿度</span>
+						<span class="extended-value dark:text-neutral-100" data-humidity>--%</span>
+					</div>
+				</div>
+				<!-- 第三行：气压和空气质量 -->
+				<div class="extended-item">
+					<Icon name="material-symbols:compress" class="extended-icon icon-pressure" />
+					<div class="extended-content">
+						<span class="extended-label dark:text-neutral-100">气压</span>
+						<span class="extended-value dark:text-neutral-100" data-pressure>--hPa</span>
+					</div>
+				</div>
+				<!-- 空气质量 -->
+				<div class="extended-item aqi-item" data-aqi-section>
+					<Icon name="material-symbols:eco" class="extended-icon icon-aqi" />
+					<div class="extended-content">
+						<span class="extended-label dark:text-neutral-100">空气质量</span>
+						<span class="extended-value dark:text-neutral-100">
+							<span class="aqi-value" data-aqi>--</span>
+							<span class="aqi-tag" data-aqi-category>--</span>
+						</span>
+					</div>
+				</div>
+				<!-- 第四行：云量和紫外线 -->
+				<div class="extended-item">
+					<Icon name="material-symbols:cloud" class="extended-icon icon-cloud" />
+					<div class="extended-content">
+						<span class="extended-label dark:text-neutral-100">云量</span>
+						<span class="extended-value dark:text-neutral-100" data-cloud>--%</span>
+					</div>
+				</div>
+				<div class="extended-item">
+					<Icon name="material-symbols:sunny" class="extended-icon icon-uv" />
+					<div class="extended-content">
+						<span class="extended-label dark:text-neutral-100">紫外线</span>
+						<span class="extended-value dark:text-neutral-100" data-uv>--</span>
+					</div>
+				</div>
+				<!-- 第五行：降水量和降水概率 -->
+				<div class="extended-item">
+					<Icon name="material-symbols:rainy" class="extended-icon icon-precipitation" />
+					<div class="extended-content">
+						<span class="extended-label dark:text-neutral-100">降水量</span>
+						<span class="extended-value dark:text-neutral-100" data-precipitation>--mm</span>
+					</div>
+				</div>
+				<div class="extended-item">
+					<Icon name="material-symbols:water-drop" class="extended-icon icon-pop" />
+					<div class="extended-content">
+						<span class="extended-label dark:text-neutral-100">降水概率</span>
+						<span class="extended-value dark:text-neutral-100" data-pop>--%</span>
+					</div>
+				</div>
+				<!-- 第六行：日出和日落 -->
+				<div class="extended-item">
+					<Icon name="material-symbols:wb-sunny" class="extended-icon icon-sunrise" />
+					<div class="extended-content">
+						<span class="extended-label dark:text-neutral-100">日出</span>
+						<span class="extended-value dark:text-neutral-100" data-sunrise>--:--</span>
+					</div>
+				</div>
+				<div class="extended-item">
+					<Icon name="material-symbols:sunny" class="extended-icon icon-sunset" />
+					<div class="extended-content">
+						<span class="extended-label dark:text-neutral-100">日落</span>
+						<span class="extended-value dark:text-neutral-100" data-sunset>--:--</span>
+					</div>
+				</div>
+				<!-- 污染物详情 -->
+				<div class="extended-item pollutants-item full-width" data-pollutants-section>
+					<Icon name="material-symbols:science" class="extended-icon icon-pollutants" />
+					<div class="extended-content pollutants-content">
+						<span class="extended-label text-neutral-900 dark:text-neutral-100">污染物浓度</span>
+						<div class="pollutants-grid">
+							<span class="pollutant text-neutral-900 dark:text-neutral-100">PM2.5: <span data-pm25>--</span></span>
+							<span class="pollutant text-neutral-900 dark:text-neutral-100">PM10: <span data-pm10>--</span></span>
+							<span class="pollutant text-neutral-900 dark:text-neutral-100">O₃: <span data-o3>--</span></span>
+							<span class="pollutant text-neutral-900 dark:text-neutral-100">NO₂: <span data-no2>--</span></span>
+							<span class="pollutant text-neutral-900 dark:text-neutral-100">SO₂: <span data-so2>--</span></span>
+							<span class="pollutant text-neutral-900 dark:text-neutral-100">CO: <span data-co>--</span></span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- 更新时间 -->
+			<div class="update-time">
+				<Icon name="material-symbols:schedule" class="time-icon dark:text-neutral-100" />
+				<span data-report-time class="time-text dark:text-neutral-100"></span>
+			</div>
+		</div>
+	</div>
+</WidgetLayout>
+
+<style>
+	@reference "tailwindcss";
+
+	.weather-container {
+		width: 100%;
+	}
+
+	/* 隐藏状态 */
+	.weather-hidden {
+		display: none !important;
+	}
+
+	/* 加载状态 */
+	.weather-loading {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 2rem;
+		gap: 0.75rem;
+	}
+
+	.loading-spinner {
+		width: 2rem;
+		height: 2rem;
+		border: 2px solid var(--primary);
+		border-top-color: var(--primary);
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	.loading-text {
+		font-size: 0.875rem;
+		color: var(--primary);
+	}
+
+	/* 错误状态 */
+	.weather-error {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 1.5rem;
+		gap: 0.5rem;
+		text-align: center;
+	}
+
+	.error-icon {
+		font-size: 2rem;
+		color: #ef4444;
+	}
+
+	.error-text {
+		font-size: 0.875rem;
+		color: var(--primary);
+	}
+
+	.retry-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.375rem 0.75rem;
+		margin-top: 0.5rem;
+		font-size: 0.75rem;
+		color: var(--primary);
+		background: transparent;
+		border: 1px solid var(--primary);
+		border-radius: 0.375rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.retry-btn:hover {
+		background: var(--primary);
+		color: white;
+	}
+
+	/* 天气内容 */
+	.weather-content {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		animation: fadeIn 0.5s ease;
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.weather-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+	}
+
+	.location-info {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		flex-wrap: wrap;
+	}
+
+	.location-icon {
+		font-size: 1rem;
+		color: var(--primary);
+	}
+
+	.city-name,
+	.district {
+		font-weight: 600;
+		font-size: 1rem;
+	}
+
+	.weather-icon-wrapper {
+		flex-shrink: 0;
+	}
+
+	.weather-icon {
+		font-size: 3rem;
+		color: var(--primary);
+		animation: float 3s ease-in-out infinite;
+	}
+
+	@keyframes float {
+		0%,
+		100% {
+			transform: translateY(0);
+		}
+		50% {
+			transform: translateY(-4px);
+		}
+	}
+
+	.temperature-section {
+		display: flex;
+		align-items: baseline;
+		gap: 0.25rem;
+	}
+
+	.temperature {
+		font-size: 2.5rem;
+		font-weight: 700;
+		line-height: 1;
+	}
+
+	.temperature-unit {
+		font-size: 1rem;
+		position: relative;
+		top: -1rem;
+		margin-left: 0.125rem;
+		color: #999;
+	}
+
+	.weather-desc {
+		margin-left: 0.5rem;
+		font-size: 1.5rem;
+	}
+
+	.temperature-range {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+	}
+
+	.temp-max {
+		color: #ef4444;
+	}
+
+	.temp-min {
+		color: #3b82f6;
+	}
+
+	.temp-divider {
+		color: var(--primary);
+	}
+
+	.update-time {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.25rem;
+		font-size: 0.75rem;
+		}
+
+	.time-icon {
+		font-size: 0.875rem;
+	}
+
+	/* 扩展信息 */
+	.weather-extended {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 0.5rem;
+		padding-top: 1rem;
+		border-top: 1px dashed var(--primary);
+		justify-items: center;
+	}
+
+	.extended-item {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem;
+		border-radius: 0.5rem;
+		transition: transform 0.2s ease, box-shadow 0.2s ease;
+	}
+
+	.extended-item:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	}
+
+	.extended-icon {
+		font-size: 1.25rem;
+		color: var(--primary);
+	}
+
+	/* 不同图标颜色 */
+	.icon-feels-like {
+		color: #f97316;
+	}
+
+	.icon-visibility {
+		color: #3b82f6;
+	}
+
+	.icon-pressure {
+		color: #8b5cf6;
+	}
+
+	.icon-uv {
+		color: #eab308;
+	}
+
+	.icon-precipitation {
+		color: #06b6d4;
+	}
+
+	.icon-cloud {
+		color: #64748b;
+	}
+
+	.icon-aqi {
+		color: #22c55e;
+	}
+
+	.icon-pollutants {
+		color: #ef4444;
+	}
+
+	.icon-sunrise {
+		color: #fbbf24;
+	}
+
+	.icon-sunset {
+		color: #fb923c;
+	}
+
+	.icon-pop {
+		color: #0ea5e9;
+	}
+
+	.extended-content {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.extended-label {
+		font-size: 0.625rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.extended-value {
+		font-size: 0.875rem;
+		font-weight: 500;
+	}
+
+	/* 全宽条目 */
+	.extended-item.full-width {
+		grid-column: 1 / -1;
+	}
+
+	/* 空气质量 */
+	.aqi-value {
+		font-weight: 600;
+	}
+
+	.aqi-tag {
+		font-size: 0.625rem;
+		padding: 0.125rem 0.375rem;
+		border-radius: 0.25rem;
+		margin-left: 0.25rem;
+	}
+
+	.aqi-good {
+		background: #22c55e;
+		color: white;
+	}
+
+	.aqi-moderate {
+		background: #eab308;
+		color: #1f2937;
+	}
+
+	.aqi-bad {
+		background: #ef4444;
+		color: white;
+	}
+
+	.aqi-level {
+		font-size: 0.75rem;
+		margin-left: 0.25rem;
+	}
+
+	/* 污染物网格 */
+	.pollutants-content {
+		width: 100%;
+	}
+
+	.pollutants-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 0.25rem;
+		margin-top: 0.25rem;
+	}
+
+	.pollutant {
+		font-size: 0.75rem;
+	}
+
+	/* 响应式调整 */
+	@media (max-width: 320px) {
+		.weather-extended {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	/* 响应式适配 */
+	@media (max-width: 380px) {
+		.weather-icon {
+			font-size: 2.5rem;
+		}
+
+		.temperature {
+			font-size: 2rem;
+		}
+
+		.pollutants-grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+
+	/* 桌面端：折叠高度加大，避免温度范围被裁切 */
+	@media (min-width: 768px) {
+		:global(#weather-widget.collapsed) {
+			height: 10rem;
+		}
+	}
+
+	/* 深色模式优化 */
+	:global(html.dark) .extended-item:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+	}
+
+	:global(html.dark) .weather-icon {
+		color: var(--primary);
+	}
+
+	:global(html.dark) .temperature {
+		color: #fff;
+	}
+</style>
+
+<script is:inline define:vars={{ city, adcode, CACHE_KEY, CACHE_DURATION, extended }}>
+	(function () {
+		const API_URL = "https://uapis.cn/api/v1/misc/weather?";
+
+		// 缓存管理
+		const cacheManager = {
+			set: function (key, data) {
+				try {
+					localStorage.setItem(key, JSON.stringify({
+						data,
+						timestamp: Date.now()
+					}));
+				} catch {
+					// 忽略存储错误
+				}
+			}
+		};
+
+		// 获取天气数据 - 支持 IP 自动定位
+		async function fetchWeather() {
+			const params = new URLSearchParams();
+			if (adcode) {
+				params.set("adcode", adcode);
+			} else if (city) {
+				params.set("city", city);
+			}
+			// 如果都没传，不传任何参数，让接口自动根据 IP 定位
+			if (extended) {
+				params.set("extended", "true");
+			}
+			// 添加 forecast=true 获取最高/最低温度
+			params.set("forecast", "true");
+
+			const url = API_URL + params.toString();
+			const response = await fetch(url);
+
+			if (!response.ok) {
+				throw new Error(`请求失败: ${response.status}`);
+			}
+
+			const data = await response.json();
+			
+			// 只有指定了城市或adcode时才缓存，IP自动定位不缓存
+			// 因为IP可能会变化（切换网络、VPN等）
+			if (adcode || city) {
+				const cacheKey = adcode ? `adcode_${adcode}` : `city_${city}`;
+				cacheManager.set(CACHE_KEY + cacheKey, data);
+			}
+			
+			return data;
+		}
+
+		// 天气图标映射
+		const weatherIcons = {
+			"100": "material-symbols:wb-sunny",
+			"101": "material-symbols:cloudy",
+			"102": "material-symbols:cloudy",
+			"103": "material-symbols:partly-cloudy-day",
+			"104": "material-symbols:cloudy",
+			"200": "material-symbols:air",
+			"201": "material-symbols:water-drop",
+			"202": "material-symbols:thunderstorm",
+			"203": "material-symbols:rainy",
+			"204": "material-symbols:ac-unit",
+			"205": "material-symbols:rainy",
+			"206": "material-symbols:thunderstorm",
+			"207": "material-symbols:snowing",
+			"208": "material-symbols:rainy",
+			"209": "material-symbols:rainy",
+			"210": "material-symbols:thunderstorm"
+		};
+
+		function getWeatherIcon(weatherIcon) {
+			return weatherIcons[weatherIcon] || "material-symbols:wb-sunny";
+		}
+
+		// 更新UI
+		function updateUI(container, data, error = null) {
+			const loading = container.querySelector("[data-weather-loading]");
+			const errorEl = container.querySelector("[data-weather-error]");
+			const content = container.querySelector("[data-weather-content]");
+			const errorMsg = container.querySelector("[data-error-message]");
+
+			// 隐藏加载状态
+			loading.classList.add("weather-hidden");
+
+			if (error) {
+				// 如果有错误，显示错误信息，但不隐藏已有的内容
+				errorEl.classList.remove("weather-hidden");
+				if (errorMsg) errorMsg.textContent = error;
+				// 保留服务端渲染的内容（如果有的话）
+				return;
+			}
+
+			if (!data) {
+				// 如果没有数据也没有错误，不做任何操作
+				return;
+			}
+
+			// 隐藏错误状态
+			errorEl.classList.add("weather-hidden");
+
+			// 更新数据
+			const setData = (selector, value) => {
+				const el = container.querySelector(selector);
+				if (el) el.textContent = value || "--";
+			};
+
+			setData("[data-city]", data.city);
+			setData("[data-district]", data.district);
+			setData("[data-temperature]", data.temperature);
+			setData("[data-weather]", data.weather);
+			setData("[data-wind]", `${data.wind_direction} ${data.wind_power}`);
+			setData("[data-humidity]", `${data.humidity}%`);
+			setData("[data-report-time]", data.report_time);
+
+			// 更新最高/最低温度
+			setData("[data-temp-max]", data.temp_max != null ? String(data.temp_max) : "--");
+			setData("[data-temp-min]", data.temp_min != null ? String(data.temp_min) : "--");
+
+			// 更新天气图标
+			const iconEl = container.querySelector("[data-weather-icon]");
+			if (iconEl) {
+				iconEl.setAttribute("name", getWeatherIcon(data.weather_icon));
+			}
+
+			// 更新扩展数据
+			const extendedSection = container.querySelector("[data-weather-extended]");
+			if (extendedSection) {
+				// 从 forecast 数组中获取日出日落时间
+				const todayForecast = data.forecast && data.forecast.length > 0 ? data.forecast[0] : null;
+				
+				setData("[data-feels-like]", data.feels_like != null ? `${data.feels_like}°C` : "--°C");
+				setData("[data-visibility]", data.visibility != null ? `${data.visibility}km` : "--km");
+				setData("[data-pressure]", data.pressure != null ? `${data.pressure}hPa` : "--hPa");
+				setData("[data-uv]", data.uv != null ? String(data.uv) : "--");
+				setData("[data-precipitation]", data.precipitation != null ? `${data.precipitation}mm` : "--mm");
+				setData("[data-cloud]", data.cloud != null ? `${data.cloud}%` : "--%");
+				setData("[data-sunrise]", todayForecast?.sunrise || "--:--");
+				setData("[data-sunset]", todayForecast?.sunset || "--:--");
+				// 降水概率（从 forecast 获取）
+				setData("[data-pop]", todayForecast?.pop != null ? `${todayForecast.pop}%` : "--%");
+				
+				// 空气质量
+				const aqiEl = container.querySelector("[data-aqi]");
+				const aqiCategoryEl = container.querySelector("[data-aqi-category]");
+				if (data.aqi != null) {
+					if (aqiEl) aqiEl.textContent = String(data.aqi);
+					if (aqiCategoryEl) {
+						aqiCategoryEl.textContent = data.aqi_category || "--";
+						// 根据空气质量等级添加样式
+						aqiCategoryEl.className = "aqi-tag";
+						if (data.aqi_level === 1) aqiCategoryEl.classList.add("aqi-good");
+						else if (data.aqi_level === 2) aqiCategoryEl.classList.add("aqi-moderate");
+						else if (data.aqi_level >= 3) aqiCategoryEl.classList.add("aqi-bad");
+					}
+				} else {
+					if (aqiEl) aqiEl.textContent = "--";
+					if (aqiCategoryEl) aqiCategoryEl.textContent = "--";
+				}
+
+				// 污染物浓度
+				const pollutants = data.air_pollutants || {};
+				setData("[data-pm25]", pollutants.pm25 != null ? `${pollutants.pm25}` : "--");
+				setData("[data-pm10]", pollutants.pm10 != null ? `${pollutants.pm10}` : "--");
+				setData("[data-o3]", pollutants.o3 != null ? `${pollutants.o3}` : "--");
+				setData("[data-no2]", pollutants.no2 != null ? `${pollutants.no2}` : "--");
+				setData("[data-so2]", pollutants.so2 != null ? `${pollutants.so2}` : "--");
+				setData("[data-co]", pollutants.co != null ? `${pollutants.co}` : "--");
+			}
+
+			// 显示内容
+			content.classList.remove("weather-hidden");
+		}
+
+		// 初始化组件
+		function initWidget(container) {
+			const retryBtn = container.querySelector("[data-retry-btn]");
+			const content = container.querySelector("[data-weather-content]");
+			const loading = container.querySelector("[data-weather-loading]");
+			const errorEl = container.querySelector("[data-weather-error]");
+
+			async function loadWeather() {
+				// 显示加载状态，隐藏其他状态
+				loading.classList.remove("weather-hidden");
+				errorEl.classList.add("weather-hidden");
+				content.classList.add("weather-hidden");
+
+				try {
+					const data = await fetchWeather();
+					updateUI(container, data);
+				} catch (e) {
+					updateUI(container, null, e.message || "获取天气信息失败");
+				}
+			}
+
+			// 重试按钮 - 清除缓存后重新加载
+			if (retryBtn) {
+				retryBtn.addEventListener("click", () => {
+					// 清除缓存，强制重新请求
+					const cacheKey = adcode ? `adcode_${adcode}` : (city ? `city_${city}` : 'ip_location');
+					localStorage.removeItem(CACHE_KEY + cacheKey);
+					loadWeather();
+				});
+			}
+
+			// 自动加载天气数据（基于用户浏览器IP定位）
+			loadWeather();
+		}
+
+		// 启动
+		document.querySelectorAll("[data-weather-init]").forEach(initWidget);
+	})();
+</script>
