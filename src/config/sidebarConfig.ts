@@ -79,6 +79,12 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
             showOnPostPage: false,
         },
 		{
+  		 	type: "relationship",
+  			enable: true,
+            position: "sticky",       // top | sticky
+            showOnPostPage: false,  // 文章详情页是否显示
+        },
+		{
 			// 组件类型：分类组件
 			type: "categories",
 			// 是否启用该组件
@@ -276,6 +282,11 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 			// 是否在文章详情页显示
 			showOnPostPage: true,
 		},
+		{
+            type: "relationship",
+            enable: true,
+            showOnPostPage: true,
+        },
 		{
 			// 组件类型：分类组件
 			type: "categories",
