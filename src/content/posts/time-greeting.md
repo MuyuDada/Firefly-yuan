@@ -1,10 +1,10 @@
 ---
 title: '为Firefly添加时段问候实时时钟组件'
 slug: 'time-greeting'
-published: 2026-08-28 13:09:20
-updated: 2026-08-28 19:30:00
+published: 2026-08-28
+updated: 2026-08-31
 description: '侧边栏实时时钟组件，根据时段自动切换问候语和背景图。'
-image: https://img.olinl.com/file/post-img/time-greeting/cover.webp
+image: https://muyuimg.cc.cd/file/blog/7HmVD2cI.webp
 category: Firefly
 tags: [Firefly, 博客, 二开, 小部件]
 draft: false
@@ -15,7 +15,7 @@ pinned: true
 
 ## 一、功能概览
 
-![时段问候组件](https://img.olinl.com/file/post-img/time-greeting/0001.webp)
+![时段问候组件](https://muyuimg.cc.cd/file/blog/7HmVD2cI.webp)
 
 主要能力：
 - 实时数字时钟，每分钟自动更新
