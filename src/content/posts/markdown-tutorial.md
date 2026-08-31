@@ -7,6 +7,7 @@ tags: [Markdown, 文章示例]
 category: 文章示例
 licenseName: "未授权"
 author: emn178
+image: api
 sourceLink: "https://github.com/emn178/markdown"
 slug: markdown-tutorial
 
