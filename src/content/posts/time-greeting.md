@@ -4,7 +4,7 @@ slug: 'time-greeting'
 published: 2026-08-28
 updated: 2026-08-31
 description: '侧边栏实时时钟组件，根据时段自动切换问候语和背景图。'
-image: https://muyuimg.cc.cd/file/blog/7HmVD2cI.webp
+image: api
 category: Firefly
 tags: [Firefly, 博客, 二开, 小部件]
 draft: false
