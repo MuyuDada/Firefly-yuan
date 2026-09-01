@@ -7,6 +7,8 @@ tags: [Markdown, Firefly, 博客, 主题, 模板]
 category: 文章示例
 image: ./images/firefly2.avif
 slug: firefly
+series: "Firefly 功能示例"
+seriesOrder: 4
 ---
 
 ## 🌟 项目概述

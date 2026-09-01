@@ -6,6 +6,8 @@ image: ../images/firefly1.avif
 tags: [Firefly, 布局, 博客, 指南]
 category: 博客指南
 slug: guide/firefly-layout-system
+series: "Firefly 功能示例"
+seriesOrder: 2
 ---
 
 ## 📖 概述

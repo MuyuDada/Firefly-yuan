@@ -7,6 +7,8 @@ tags: [Markdown, 博客, Mermaid, Firefly]
 category: 文章示例
 image: api
 slug: markdown-mermaid
+series: "Firefly 功能示例2"
+seriesOrder: 3
 ---
 ## Markdown 中 Mermaid 图表完整指南
 
