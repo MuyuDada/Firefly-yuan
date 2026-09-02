@@ -39,6 +39,7 @@ import { buildSiteGraph, toAbsoluteUrl } from "@/utils/schema-utils";
 import { url } from "@/utils/url-utils";
 
 import "@/styles/main.css";
+import "@/styles/mouse.css";
 import "@/styles/variables.styl";
 import "@rehype-callouts-theme";
 
@@ -448,6 +449,54 @@ const siteLogo = await getSiteLogo();
       },
     ]}
   >
+    <div id="custom-cursor" aria-hidden="true"></div>
+    <script is:inline>
+      (function () {
+        if (window.matchMedia("(pointer: coarse), (prefers-reduced-motion: reduce)").matches) return;
+        if (window.__fireflyCustomCursorInitialized) return;
+        window.__fireflyCustomCursorInitialized = true;
+
+        let frame = 0;
+        let x = 0;
+        let y = 0;
+        const interactiveSelector = [
+          "a",
+          "button",
+          "input[type='button']",
+          "input[type='submit']",
+          "input[type='reset']",
+          "select",
+          "label",
+          "[role='button']",
+          "[role='link']",
+          ".cursor-pointer",
+        ].join(",");
+
+        document.addEventListener("pointermove", (event) => {
+          const cursor = document.getElementById("custom-cursor");
+          if (!cursor) return;
+          x = event.clientX;
+          y = event.clientY;
+          if (!frame) {
+            frame = requestAnimationFrame(() => {
+              cursor.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+              frame = 0;
+            });
+          }
+          cursor.classList.add("is-visible");
+          const target = event.target;
+          cursor.classList.toggle(
+            "is-pointer",
+            Boolean(target instanceof Element && target.closest(interactiveSelector)),
+          );
+        });
+
+        document.addEventListener("pointerleave", () => {
+          const cursor = document.getElementById("custom-cursor");
+          if (cursor) cursor.classList.remove("is-visible");
+        });
+      })();
+    </script>
     <!-- 首帧前按运行时壁纸模式翻转卡片透明类（布局已由 data-wallpaper-mode 属性规则接管） -->
     <script is:inline>
       (function () {

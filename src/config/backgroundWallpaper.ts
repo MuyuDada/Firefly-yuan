@@ -64,12 +64,8 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 			titleSize: "4.5rem",
 			// 主页横幅副标题
 			subtitle: [
-				"Welcome to my personal blog!",
-				"Sharing my thoughts and experiences.",
-				"Exploring the world of technology.",
-				"Join me on this journey of discovery.",
-				"Let's learn and grow together.",
-				"Discovering new ideas and perspectives.",
+				"Welcome to my blog!",
+				"欢迎来到我的博客！",
 			],
 			// 主页横幅副标题字体大小
 			subtitleSize: "1.5rem",
@@ -104,7 +100,7 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 				{
 					name: "Sponsor",
 					icon: "material-symbols:favorite",
-					url: "https://blog.cuteleaf.cn/sponsor/",
+					url: "https://muyudada.dpdns.org/sponsor/",
 				},
 				{
 					name: "RSS",
