@@ -1,0 +1,26 @@
+---
+const hiddenTitle = "👀 看看你跑到哪里去了…";
+const returnTitle = "🐽 抓到你了哈哈哈~~";
+---
+
+<script is:inline define:vars={{ hiddenTitle, returnTitle }}>
+(function () {
+  let savedTitle = document.title;
+  let titleTimer = null;
+
+  function handleVisibilityChange() {
+    if (document.hidden) {
+      savedTitle = document.title;
+      document.title = hiddenTitle;
+      clearTimeout(titleTimer);
+    } else {
+      document.title = returnTitle;
+      titleTimer = setTimeout(function () {
+        document.title = savedTitle;
+      }, 2000);
+    }
+  }
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+})();
+</script>
