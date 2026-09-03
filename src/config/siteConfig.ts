@@ -43,7 +43,7 @@ export const siteConfig: SiteConfig = {
 	title: "MuyuDada",
 
 	// 站点副标题
-	subtitle: "人心中的成见是一座大山",
+	subtitle: "永远相信美好的事情即将发生!",
 
 	// 站点 URL
 	site_url: "https://muyudada.dpdns.org/",
@@ -112,7 +112,7 @@ export const siteConfig: SiteConfig = {
 			type: "image",
 			value: "assets/images/logo/firefly-light.png",
 			valueDark: "assets/images/logo/firefly-dark.png",
-			alt: "🍀",
+			alt: "🥝",
 		},
 		// 导航栏标题
 		title: "Muyu's Blog",
