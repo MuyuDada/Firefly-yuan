@@ -480,7 +480,7 @@ const siteLogo = await getSiteLogo();
           y = event.clientY;
           if (!frame) {
             frame = requestAnimationFrame(() => {
-              cursor.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+              cursor.style.transform = `translate(${x}px, ${y}px) translate(-2px, -2px)`;
               frame = 0;
             });
           }

@@ -22,7 +22,7 @@ body {
 	height: var(--custom-cursor-size);
 	pointer-events: none;
 	background: url("/mouse/default.cur") center / contain no-repeat;
-	transform: translate(-50%, -50%);
+	transform: translate(-2px, -2px);
 	opacity: 0;
 	transition: opacity 120ms ease;
 	will-change: transform;
