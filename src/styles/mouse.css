@@ -36,7 +36,8 @@ body {
 	background-image: url("/mouse/pointer.cur");
 }
 
-@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+@media (pointer: coarse),
+(prefers-reduced-motion: reduce) {
 	#custom-cursor {
 		display: none;
 	}
