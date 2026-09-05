@@ -75,8 +75,14 @@ const managerConfigStr = JSON.stringify({
         if (!lrc) return [];
         var lines = lrc.split('\n');
         var result = [];
+        var offsetMs = 0;
         var timeReg = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
         lines.forEach(function (line) {
+            var offsetMatch = line.match(/^\[offset:([+-]?\d+)\]/i);
+            if (offsetMatch) {
+                offsetMs = parseInt(offsetMatch[1], 10) || 0;
+                return;
+            }
             var matches = Array.from(line.matchAll(timeReg));
             if (matches.length > 0) {
                 var text = line.replace(timeReg, '').trim();
@@ -85,7 +91,7 @@ const managerConfigStr = JSON.stringify({
                         var m = parseInt(match[1]);
                         var s = parseInt(match[2]);
                         var ms = parseInt(match[3]);
-                        var time = m * 60 + s + ms / (match[3].length === 3 ? 1000 : 100);
+                        var time = Math.max(0, m * 60 + s + ms / (match[3].length === 3 ? 1000 : 100) + offsetMs / 1000);
                         result.push({ time: time, text: text });
                     });
                 }
@@ -206,6 +212,39 @@ const managerConfigStr = JSON.stringify({
     var currentTrackUrls = [];
     var currentTrackUrlIndex = 0;
     var errorSkipTimeout = null;
+    var lyricSyncFrame = 0;
+
+    function updateLyricIndex(currentTime) {
+        if (state.lyrics.length === 0) return;
+        var idx = -1;
+        for (var i = 0; i < state.lyrics.length; i++) {
+            if (currentTime >= state.lyrics[i].time) idx = i;
+            else break;
+        }
+        if (idx !== state.currentLrcIndex) {
+            state.currentLrcIndex = idx;
+            emit('fm:lrc-index', { index: idx });
+        }
+    }
+
+    function lyricSyncLoop() {
+        lyricSyncFrame = 0;
+        updateLyricIndex(audio.currentTime);
+        if (!audio.paused && !audio.ended) {
+            lyricSyncFrame = requestAnimationFrame(lyricSyncLoop);
+        }
+    }
+
+    function startLyricSync() {
+        if (!lyricSyncFrame) lyricSyncFrame = requestAnimationFrame(lyricSyncLoop);
+    }
+
+    function stopLyricSync() {
+        if (lyricSyncFrame) {
+            cancelAnimationFrame(lyricSyncFrame);
+            lyricSyncFrame = 0;
+        }
+    }
 
     function tryPlayCurrentTrackUrl(autoPlay, ver) {
         if (ver !== loadVersion) return;
@@ -365,21 +404,17 @@ const managerConfigStr = JSON.stringify({
             durationStr: formatTime(dur)
         });
 
-        // Lyrics sync
-        if (state.lyrics.length > 0) {
-            var idx = -1;
-            for (var i = 0; i < state.lyrics.length; i++) {
-                if (ct >= state.lyrics[i].time) idx = i;
-                else break;
-            }
-            if (idx !== state.currentLrcIndex) {
-                state.currentLrcIndex = idx;
-                emit('fm:lrc-index', { index: idx });
-            }
-        }
+        updateLyricIndex(ct);
+        startLyricSync();
     });
 
+    audio.addEventListener('playing', startLyricSync);
+    audio.addEventListener('seeking', function () {
+        updateLyricIndex(audio.currentTime);
+    });
+    audio.addEventListener('pause', stopLyricSync);
     audio.addEventListener('ended', function () {
+        stopLyricSync();
         playNext(true);
     });
 

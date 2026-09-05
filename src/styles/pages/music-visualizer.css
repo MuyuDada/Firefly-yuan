@@ -21,40 +21,13 @@ html:has(.music-visualizer-page) #top-row {
 	}
 }
 
-/* Layout.astro's navbar shell spans the viewport; keep it visible above the
- * full-screen visualizer instead of applying the constrained-page transform. */
-html:has(.music-visualizer-page) #top-row a,
-html:has(.music-visualizer-page) #top-row button,
-html:has(.music-visualizer-page) #top-row [role="button"] {
-	color: oklch(0.92 0 0);
-}
-
-/* 音乐页面背景为深色可视化，强制导航栏使用暗色风格（无论当前主题） */
-html:has(.music-visualizer-page) .navbar-seg {
-	background: color-mix(in oklch, oklch(0.12 0 0) 55%, transparent);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-html:has(.music-visualizer-page) .navbar-logo,
-html:has(.music-visualizer-page) .navbar-logo-text,
-html:has(.music-visualizer-page) .dropdown-trigger,
-html:has(.music-visualizer-page) .dropdown-container > a,
-html:has(.music-visualizer-page) .nav-tools-btn,
-html:has(.music-visualizer-page) #nav-menu-switch {
-	color: oklch(0.92 0 0);
-}
-
-html:has(.music-visualizer-page) .navbar-hover-highlight {
-	background-color: color-mix(in oklch, oklch(0.92 0 0) 12%, transparent);
-}
-
-html:has(.music-visualizer-page) .dropdown-content-wrapper {
-	background: color-mix(in oklch, oklch(0.12 0 0) 85%, transparent);
-}
-
-html:has(.music-visualizer-page) .dropdown-content-wrapper .dropdown-item,
-html:has(.music-visualizer-page) .dropdown-content-wrapper .dropdown-item span {
-	color: oklch(0.92 0 0);
+/* The visualizer is fixed, so keep the shared navbar above it and visible.
+ * Dynamic-navbar scrolling is intended for content pages, not this viewport. */
+html:has(.music-visualizer-page) #navbar-wrapper,
+html:has(.music-visualizer-page) #navbar-wrapper.navbar-hidden {
+	opacity: 1 !important;
+	transform: none !important;
+	translate: none !important;
 }
 
 html:has(.music-visualizer-page) #content-wrapper {
