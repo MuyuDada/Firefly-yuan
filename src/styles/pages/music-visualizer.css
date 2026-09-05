@@ -5,6 +5,7 @@
 	overflow: hidden;
 }
 
+html.music-page-active #top-row,
 html:has(.music-visualizer-page) #top-row {
 	position: fixed;
 	top: 0;
@@ -16,6 +17,7 @@ html:has(.music-visualizer-page) #top-row {
 }
 
 @layer utilities {
+	html.music-page-active #top-row,
 	html:has(.music-visualizer-page) #top-row {
 		z-index: 260 !important;
 	}
@@ -23,6 +25,8 @@ html:has(.music-visualizer-page) #top-row {
 
 /* The visualizer is fixed, so keep the shared navbar above it and visible.
  * Dynamic-navbar scrolling is intended for content pages, not this viewport. */
+html.music-page-active #navbar-wrapper,
+html.music-page-active #navbar-wrapper.navbar-hidden,
 html:has(.music-visualizer-page) #navbar-wrapper,
 html:has(.music-visualizer-page) #navbar-wrapper.navbar-hidden {
 	opacity: 1 !important;
@@ -30,23 +34,36 @@ html:has(.music-visualizer-page) #navbar-wrapper.navbar-hidden {
 	translate: none !important;
 }
 
+html.music-page-active #content-wrapper,
 html:has(.music-visualizer-page) #content-wrapper {
 	opacity: 1 !important;
 	transform: none !important;
 	animation: none !important;
 }
 
+html.music-page-active #swup-container,
 html:has(.music-visualizer-page) #swup-container {
 	min-height: 100vh !important;
 	padding: 0 !important;
 }
 
+html.music-page-active.is-leaving #swup-container.transition-swup-main,
+html.music-page-active.is-rendering #swup-container.transition-swup-main,
 html:has(.music-visualizer-page).is-leaving #swup-container.transition-swup-main,
 html:has(.music-visualizer-page).is-rendering #swup-container.transition-swup-main {
 	animation: none !important;
 	filter: none !important;
 	opacity: 1 !important;
 	transform: none !important;
+}
+
+/* Three.js owns the full viewport during this route; avoid animating a second
+ * full-page layer while Swup replaces the route content. */
+html.music-page-transition .transition-main,
+html.music-page-transition .transition-leaving,
+html.music-page-transition #swup-container {
+	transition: none !important;
+	animation: none !important;
 }
 
 html:has(.music-visualizer-page),

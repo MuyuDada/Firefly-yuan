@@ -57,6 +57,12 @@ function finishProgressBar(): void {
 	);
 }
 
+function syncMusicPageState(): boolean {
+	const isMusicPage = document.querySelector(".music-visualizer-page") !== null;
+	document.documentElement.classList.toggle("music-page-active", isMusicPage);
+	return isMusicPage;
+}
+
 /**
  * Swup 页面切换编排（从 Layout.astro 迁出）。
  * 注册 link:click / content:replace / visit:start / page:view / visit:end 钩子。
@@ -81,6 +87,16 @@ function registerSwupHooks(): void {
 				}
 			})();
 			const isSamePage = pathsEqual(targetPathname, window.location.pathname);
+			const isMusicTarget = pathsEqual(targetPathname, url("/music/"));
+			const isMusicCurrent = document.querySelector(".music-visualizer-page") !== null;
+			document.documentElement.classList.toggle(
+				"music-page-transition",
+				isMusicCurrent || isMusicTarget,
+			);
+			document.documentElement.classList.toggle(
+				"music-page-active",
+				isMusicTarget,
+			);
 			if (isSamePage) {
 				document.documentElement.classList.remove("is-page-transitioning");
 			}
@@ -102,6 +118,7 @@ function registerSwupHooks(): void {
 		},
 	);
 	window.swup.hooks.on("content:replace", () => {
+		syncMusicPageState();
 		initializeFloatingPanels();
 
 		// 侧边栏组件可见性由 page:view 统一更新（含 refreshSidebarStickyState 的
@@ -241,6 +258,7 @@ function registerSwupHooks(): void {
 		}
 	});
 	window.swup.hooks.on("page:view", () => {
+		syncMusicPageState();
 		// 更新网格列数和侧边栏组件可见性
 		updateMainGridCols();
 		updateSidebarComponentsVisibility();
@@ -320,6 +338,8 @@ function registerSwupHooks(): void {
 		}, 300);
 	});
 	window.swup.hooks.on("visit:end", (_visit: { to: { url: string } }) => {
+		syncMusicPageState();
+		document.documentElement.classList.remove("music-page-transition");
 		// Finish progress bar（WAAPI：快速填满后淡出）
 		finishProgressBar();
 
