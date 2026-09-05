@@ -49,4 +49,34 @@ export type MusicPlayerConfig = {
 			lrc?: string; // 歌词内容，支持 LRC 格式
 		}>;
 	};
+
+	visualizer?: {
+		background?: {
+			dark?: string;
+			light?: string;
+		};
+		camera?: {
+			position?: {
+				x?: number;
+				y?: number;
+				z?: number;
+			};
+		};
+		autoRotate?: boolean;
+		autoRotateSpeed?: number;
+		height?: Record<string, number>;
+		theme?: {
+			base1?: string;
+			base2?: string;
+			coolCore?: string;
+			coolEdge?: string;
+			warmCore?: string;
+			warmEdge?: string;
+			rippleColor?: string;
+			rippleCool?: string;
+			rippleWarm?: string;
+			fogColor?: string;
+			glowIntensity?: number;
+		};
+	};
 };

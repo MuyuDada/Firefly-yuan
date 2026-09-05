@@ -31,6 +31,8 @@ const pages = resolvePageToggles({
 	vndb: false,
 	// MyAnimeList页面开关
 	mal: false,
+	// 音乐可视化页面开关
+	music: true,
 
 	// ── 关于 (About) ──────────────────────────────────
 

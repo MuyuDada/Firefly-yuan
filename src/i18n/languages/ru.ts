@@ -69,6 +69,12 @@ export const ru: Translation = {
 	[Key.musicCover]: "Обложка",
 	[Key.musicNoCover]: "Нет обложки",
 	[Key.musicAudioPlayer]: "Аудиоплеер",
+	[Key.playModeList]: "Повтор списка",
+	[Key.playModeSingle]: "Повтор трека",
+	[Key.playModeShuffle]: "Случайный порядок",
+	[Key.musicVisualizer]: "Музыкальная визуализация",
+	[Key.musicVisualizer3D]: "3D-визуализация",
+	[Key.musicVisualizerDescription]: "Иммерсивная 3D-визуализация музыки",
 
 	// Объявление
 	[Key.announcement]: "Объявление",

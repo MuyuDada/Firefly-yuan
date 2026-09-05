@@ -69,6 +69,12 @@ export const ko: Translation = {
 	[Key.musicCover]: "커버",
 	[Key.musicNoCover]: "커버 이미지 없음",
 	[Key.musicAudioPlayer]: "오디오 플레이어",
+	[Key.playModeList]: "목록 반복",
+	[Key.playModeSingle]: "한 곡 반복",
+	[Key.playModeShuffle]: "셔플",
+	[Key.musicVisualizer]: "음악 시각화",
+	[Key.musicVisualizer3D]: "3D 시각화",
+	[Key.musicVisualizerDescription]: "몰입형 3D 음악 시각화 경험",
 
 	// Announcement
 	[Key.announcement]: "공지사항",

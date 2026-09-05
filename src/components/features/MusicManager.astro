@@ -96,6 +96,7 @@ const managerConfigStr = JSON.stringify({
 
     // ── Audio element (persistent, attached to body) ────────
     var audio = document.createElement('audio');
+    audio.id = 'firefly-music-audio';
     audio.crossOrigin = 'anonymous';
     audio.style.display = 'none';
     audio.preload = 'none'; // 阻止浏览器预加载和自动恢复播放

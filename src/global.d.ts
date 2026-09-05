@@ -54,6 +54,7 @@ declare global {
 				durationStr: string;
 				lyrics: Array<{ time: number; text: string }>;
 				currentLrcIndex: number;
+				lyricsStatus?: "loading" | "loaded" | "none" | "failed";
 				initialized: boolean;
 				error: string | null;
 				config: Record<string, unknown>;

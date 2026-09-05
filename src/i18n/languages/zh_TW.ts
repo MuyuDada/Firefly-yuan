@@ -69,6 +69,12 @@ export const zh_TW: Translation = {
 	[Key.musicCover]: "封面",
 	[Key.musicNoCover]: "暫無封面",
 	[Key.musicAudioPlayer]: "音頻播放器",
+	[Key.playModeList]: "列表循環",
+	[Key.playModeSingle]: "單曲循環",
+	[Key.playModeShuffle]: "隨機播放",
+	[Key.musicVisualizer]: "音樂視覺化",
+	[Key.musicVisualizer3D]: "3D視覺化",
+	[Key.musicVisualizerDescription]: "沉浸式 3D 音樂視覺化體驗",
 
 	// 公告欄
 	[Key.announcement]: "公告",

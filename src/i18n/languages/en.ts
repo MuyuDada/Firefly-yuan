@@ -69,6 +69,12 @@ export const en: Translation = {
 	[Key.musicCover]: "Cover",
 	[Key.musicNoCover]: "No cover available",
 	[Key.musicAudioPlayer]: "Audio Player",
+	[Key.playModeList]: "List loop",
+	[Key.playModeSingle]: "Single loop",
+	[Key.playModeShuffle]: "Shuffle",
+	[Key.musicVisualizer]: "Music visualizer",
+	[Key.musicVisualizer3D]: "3D visualizer",
+	[Key.musicVisualizerDescription]: "An immersive 3D music visualization experience",
 
 	// Announcement
 	[Key.announcement]: "Announcement",

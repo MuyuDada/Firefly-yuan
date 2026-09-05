@@ -69,6 +69,12 @@ export const ja: Translation = {
 	[Key.musicCover]: "カバー",
 	[Key.musicNoCover]: "カバーなし",
 	[Key.musicAudioPlayer]: "オーディオプレーヤー",
+	[Key.playModeList]: "リストループ",
+	[Key.playModeSingle]: "一曲ループ",
+	[Key.playModeShuffle]: "シャッフル",
+	[Key.musicVisualizer]: "音楽ビジュアライザー",
+	[Key.musicVisualizer3D]: "3Dビジュアライザー",
+	[Key.musicVisualizerDescription]: "没入型3D音楽ビジュアライザー",
 
 	// お知らせ
 	[Key.announcement]: "お知らせ",

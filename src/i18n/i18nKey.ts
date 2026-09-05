@@ -92,6 +92,12 @@ enum I18nKey {
 	musicCover = "musicCover",
 	musicNoCover = "musicNoCover",
 	musicAudioPlayer = "musicAudioPlayer",
+	playModeList = "playModeList",
+	playModeSingle = "playModeSingle",
+	playModeShuffle = "playModeShuffle",
+	musicVisualizer = "musicVisualizer",
+	musicVisualizer3D = "musicVisualizer3D",
+	musicVisualizerDescription = "musicVisualizerDescription",
 
 	themeColor = "themeColor",
 
