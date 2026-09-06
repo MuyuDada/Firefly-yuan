@@ -37,6 +37,10 @@ function audioCtxState() {
 	return audioAnalyzer.audioCtx?.state || "running";
 }
 
+function resumeAudioContext() {
+	void audioAnalyzer.resume();
+}
+
 onMount(() => {
 	const mgr = window.__fireflyMusic;
 	if (!mgr) {
@@ -55,14 +59,24 @@ onMount(() => {
 		connectAudio();
 	}
 
-	const handleFirstClick = () => {
-		audioAnalyzer.resume();
-		document.removeEventListener("click", handleFirstClick);
+	const handleAudioGesture = () => {
+		resumeAudioContext();
 	};
-	document.addEventListener("click", handleFirstClick);
+	const audio = document.getElementById("firefly-music-audio");
+	document.addEventListener("click", handleAudioGesture, { passive: true });
+	document.addEventListener("pointerdown", handleAudioGesture, {
+		passive: true,
+	});
+	document.addEventListener("touchstart", handleAudioGesture, {
+		passive: true,
+	});
+	audio?.addEventListener("playing", resumeAudioContext);
 
 	return () => {
-		document.removeEventListener("click", handleFirstClick);
+		document.removeEventListener("click", handleAudioGesture);
+		document.removeEventListener("pointerdown", handleAudioGesture);
+		document.removeEventListener("touchstart", handleAudioGesture);
+		audio?.removeEventListener("playing", resumeAudioContext);
 	};
 });
 

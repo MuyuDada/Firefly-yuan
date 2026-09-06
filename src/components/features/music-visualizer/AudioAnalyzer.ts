@@ -191,9 +191,9 @@ export class AudioAnalyzer {
 		return this.connected;
 	}
 
-	resume(): void {
+	async resume(): Promise<void> {
 		if (this.audioCtx?.state === "suspended") {
-			this.audioCtx.resume();
+			await this.audioCtx.resume();
 		}
 	}
 

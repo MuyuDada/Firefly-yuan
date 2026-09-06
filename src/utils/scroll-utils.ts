@@ -20,6 +20,9 @@ export function scrollFunction(): void {
 		return;
 	}
 
+	const isMusicPage =
+		document.documentElement.classList.contains("music-page-active") ||
+		document.querySelector(".music-visualizer-page") !== null;
 	const scrollTop = document.documentElement.scrollTop;
 	const bannerHeight = window.innerHeight * (BANNER_HEIGHT / 100);
 	const navbarElement = document.getElementById("navbar");
@@ -50,7 +53,12 @@ export function scrollFunction(): void {
 		});
 	}
 
-	if (navbarMode === "fixed" && navbar) {
+	if (isMusicPage && navbar) {
+		operations.push(() => {
+			navbar.classList.remove("navbar-hidden");
+			document.body.classList.remove("dynamic-navbar-hidden");
+		});
+	} else if (navbarMode === "fixed" && navbar) {
 		operations.push(() => {
 			navbar.classList.remove("navbar-hidden");
 		});

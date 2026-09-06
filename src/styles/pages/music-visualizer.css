@@ -1939,8 +1939,28 @@ html:has(.music-visualizer-page) .footer {
 }
 
 @media (max-width: 768px) {
+	html.music-page-active #top-row,
 	html:has(.music-visualizer-page) #top-row {
-		width: 100%;
+		position: fixed !important;
+		inset: 0 0 auto;
+		width: 100% !important;
+		height: 4.5rem !important;
+		max-width: none !important;
+		padding-inline: 0 !important;
+		z-index: 260 !important;
+		visibility: visible !important;
+		opacity: 1 !important;
+		transform: none !important;
+		translate: none !important;
+	}
+
+	html.music-page-active #navbar-wrapper,
+	html:has(.music-visualizer-page) #navbar-wrapper {
+		position: static !important;
+		visibility: visible !important;
+		opacity: 1 !important;
+		transform: none !important;
+		translate: none !important;
 	}
 
 	.music-visualizer__divider-meta {

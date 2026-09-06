@@ -1,10 +1,12 @@
 ---
 import MusicVisualizer from "@components/features/music-visualizer/MusicVisualizer.svelte";
 import HeaderTopRow from "@components/layout/HeaderTopRow.astro";
+import NavMenuPanel from "@components/layout/NavMenuPanel.astro";
 import Layout from "@layouts/Layout.astro";
 import { navbarMode, siteConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
+import { resolveNavMenuLinks } from "@/utils/nav-menu-utils";
 
 if (!siteConfig.pages.music) {
 	return Astro.redirect("/404/");
@@ -19,6 +21,7 @@ if (!siteConfig.pages.music) {
 		navbarMode={navbarMode}
 		navbarWidthFull={siteConfig.navbar.widthFull ?? false}
 	/>
+	<NavMenuPanel links={resolveNavMenuLinks()} />
 	<main id="swup-container" class="transition-swup-main">
 		<h1 class="sr-only">{`${i18n(I18nKey.music)} ${i18n(I18nKey.musicVisualizer3D)}`}</h1>
 		<div class="music-visualizer-page">
