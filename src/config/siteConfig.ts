@@ -42,7 +42,7 @@ const pages = resolvePageToggles({
 
 export const siteConfig: SiteConfig = {
 	// 站点标题
-	title: "MuyuDada",
+	title: "Muyuの小窝",
 
 	// 站点副标题
 	subtitle: "永远相信美好的事情即将发生!",
