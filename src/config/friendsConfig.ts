@@ -55,7 +55,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://chortle.asia/uploads/image/avater_1786082652615.jpg",
 		desc: "山水有相逢，来日皆可期",
 		siteurl: "https://chortle.asia",
-		tags: ["Framework"],
+		tags: ["Blog"],
 		weight: 4,
 		enabled: true,
 	},
