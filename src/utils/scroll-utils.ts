@@ -9,6 +9,7 @@ import { updateSidebarStickySpacing } from "@/utils/grid-layout-utils";
 
 const backToTopBtn = document.getElementById("back-to-top-btn");
 const navbar = document.getElementById("navbar-wrapper");
+const toc = document.getElementById("toc-wrapper");
 
 // 动态导航栏：记录上一次滚动位置，用于判断滚动方向（下滑隐藏 / 上滑显示）
 let lastScrollTop = 0;

@@ -54,6 +54,14 @@ type ProjectData = {
 	lang: string;
 };
 
+type ZiyuanData = {
+	title: string;
+	quotes: {
+		text: string;
+		author: string;
+	}[];
+};
+
 type ContentCollection<T> = CollectionConfig<
 	ZodType<T>,
 	ReturnType<typeof glob>
@@ -105,7 +113,7 @@ const dynamicCollection: ContentCollection<DynamicData> = defineCollection({
 	}),
 });
 
-const ziyuanCollection = defineCollection({
+const ziyuanCollection: ContentCollection<ZiyuanData> = defineCollection({
 	loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/ziyuan" }),
 	schema: z.object({
 		title: z.string().optional().default(""),

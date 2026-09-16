@@ -93,6 +93,12 @@
     // - 每次刷新都显示：直接 showWelcomeToast();
   }
 
+  declare global {
+    interface Window {
+      __closeWelcomeToast?: () => void;
+    }
+  }
+
   window.__closeWelcomeToast = closeWelcomeToast;
 
   if (document.readyState === "loading") {
