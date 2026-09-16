@@ -94,6 +94,18 @@ export const zh_TW: Translation = {
 	[Key.booknavDescription]: "收藏一些好用的網站，按分類整理",
 	[Key.searchBooknav]: "搜尋書籤...",
 	[Key.booknavEmpty]: "暫無書籤",
+
+	// 專案展示頁
+	[Key.projects]: "專案",
+	[Key.projectsDescription]: "這裡展示我開發過的專案",
+	[Key.projectDetails]: "查看詳情",
+	[Key.projectBack]: "返回專案列表",
+	[Key.projectEmpty]: "暫無專案",
+	[Key.projectSearch]: "搜尋專案",
+	[Key.projectStatusPlanning]: "規劃中",
+	[Key.projectStatusDeveloping]: "開發中",
+	[Key.projectStatusPublished]: "已發佈",
+	[Key.projectStatusArchived]: "已封存",
 	[Key.guestbook]: "留言",
 	[Key.guestbookDescription]: "歡迎在這裡留下你的足跡，分享你的想法和建議",
 	[Key.untitled]: "無標題",
@@ -184,7 +196,7 @@ export const zh_TW: Translation = {
 	[Key.bangumiCategoryReal]: "三次元",
 
 	// 番組數據更新
-	[Key.bangumiLastUpdated]: "數據更新於",
+	[Key.bangumiLastUpdated]: "資料更新日期",
 	[Key.bangumiUpdatedAt]: "構建時間",
 	[Key.bangumiDataStatic]: "靜態數據",
 
@@ -212,7 +224,7 @@ export const zh_TW: Translation = {
 	[Key.vndbNotConfigured]: "未配置 VNDB 用戶ID",
 	[Key.vndbNotConfiguredDesc]:
 		"請在 src/config/siteConfig.ts 中配置你的 VNDB 用戶ID",
-	[Key.vndbLastUpdated]: "數據更新於",
+	[Key.vndbLastUpdated]: "資料更新日期",
 	[Key.vndbVotes]: "票",
 	[Key.vndbLengthVeryShort]: "極短",
 	[Key.vndbLengthShort]: "短",
@@ -239,7 +251,7 @@ export const zh_TW: Translation = {
 	[Key.animeDateDesc]: "最新發布",
 	[Key.animeDateAsc]: "最早發布",
 	[Key.animeNoResults]: "沒有找到匹配的番劇",
-	[Key.animeLastUpdated]: "數據更新於",
+	[Key.animeLastUpdated]: "資料更新日期",
 	[Key.animeEpStatus]: "進度",
 	[Key.animeViewDetails]: "查看詳情",
 	[Key.animeBilibiliAvg]: "Bilibili 均分",
@@ -281,7 +293,7 @@ export const zh_TW: Translation = {
 	[Key.malNotConfigured]: "未配置 MyAnimeList 用戶資訊",
 	[Key.malNotConfiguredDesc]:
 		"請在 src/config/siteConfig.ts 中配置你的 MyAnimeList 用戶名和 Client ID（列表需為公開狀態）",
-	[Key.malLastUpdated]: "數據更新於",
+	[Key.malLastUpdated]: "資料更新日期",
 	[Key.malSeasonWinter]: "冬季",
 	[Key.malSeasonSpring]: "春季",
 	[Key.malSeasonSummer]: "夏季",
@@ -322,6 +334,14 @@ export const zh_TW: Translation = {
 	[Key.rssHowToUse]: "推薦使用 Feedly、Inoreader 或其他 RSS 閱讀器來訂閱本站。",
 	[Key.rssCopied]: "RSS 鏈接已複製到剪貼板！",
 	[Key.rssCopyFailed]: "複製失敗，請手動複製鏈接",
+
+	// Atom 頁面
+	[Key.atom]: "Atom 訂閱",
+	[Key.atomDescription]: "訂閱獲取最新更新",
+	[Key.atomSubtitle]: "透過 Atom 訂閱，第一時間獲取最新文章和動態",
+	[Key.atomLink]: "Atom 連結",
+	[Key.atomCopyToReader]: "複製連結到你的 Atom 閱讀器",
+	[Key.atomCopied]: "Atom 連結已複製到剪貼簿！",
 
 	//最後編輯時間卡片
 	[Key.lastModifiedPrefix]: "最後更新於 ",
@@ -364,6 +384,9 @@ export const zh_TW: Translation = {
 	[Key.wallpaperMode]: "壁紙模式",
 	[Key.wallpaperBannerMode]: "橫幅壁紙",
 	[Key.wallpaperFullscreenMode]: "全屏壁紙",
+	[Key.fullscreenLayout]: "全屏佈局",
+	[Key.fullscreenClassicLayout]: "經典模式",
+	[Key.fullscreenHeroLayout]: "Hero 模式",
 	[Key.wallpaperOverlayMode]: "覆蓋透明",
 	[Key.wallpaperNoneMode]: "純色背景",
 
@@ -487,6 +510,7 @@ export const zh_TW: Translation = {
 	[Key.galleryAlbums]: "本相簿",
 	[Key.galleryNoAlbums]: "暫無相簿",
 	[Key.galleryBackToAlbums]: "返回相簿列表",
+	[Key.galleryEnterAlbum]: "進入相簿",
 	[Key.searchAlbums]: "搜尋相簿...",
 
 	// 密碼保護
@@ -504,4 +528,11 @@ export const zh_TW: Translation = {
 	[Key.videoPrev]: "上一個影片",
 	[Key.videoNext]: "下一個影片",
 	[Key.videoLoadError]: "影片載入失敗",
+
+	// 沉浸閱讀
+	[Key.immersiveReading]: "沉浸閱讀",
+	[Key.enterImmersiveReading]: "進入沉浸閱讀",
+	[Key.exitImmersiveReading]: "退出沉浸閱讀",
+	[Key.tocExpand]: "展開目錄",
+	[Key.tocCollapse]: "摺疊目錄",
 };

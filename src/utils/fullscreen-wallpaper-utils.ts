@@ -8,6 +8,28 @@ const BLUR_QUANTIZE_STEP = 2; // px，模糊值量化步长，避免每帧都触
 let parallaxTicking = false;
 let cachedMaxBlur: number | null = null; // 缓存的 --overlay-blur 解析值（仅在加载/滑块变化时刷新）
 let lastWrittenBlur = ""; // 上次实际写入的 --fullscreen-blur，值未变则跳过写入
+// 标题视差记忆化：上次写入的 transform/opacity，值未变则跳过，避免滚动已越淡出区/顶部静止时每帧重写合成层属性
+let lastTitleTransform = "";
+let lastTitleOpacity = "";
+
+/** 仅当 transform/opacity 实际变化时才写入，减少对含标题文字的合成层的无谓逐帧更新 */
+function setTitleParallaxStyle(
+	overlay: HTMLElement,
+	transform: string,
+	opacity: string,
+): void {
+	if (transform === lastTitleTransform && opacity === lastTitleOpacity) return;
+	lastTitleTransform = transform;
+	lastTitleOpacity = opacity;
+	overlay.style.transform = transform;
+	overlay.style.opacity = opacity;
+}
+
+function isHeroFullscreenLayout(): boolean {
+	return (
+		document.documentElement.getAttribute("data-fullscreen-layout") === "hero"
+	);
+}
 
 export function updateFullscreenTitleParallax(): void {
 	const html = document.documentElement;
@@ -16,25 +38,27 @@ export function updateFullscreenTitleParallax(): void {
 	// 非全屏或页面过渡中：复位（让 transition-swup-fade 的 CSS 生效）
 	if (
 		html.getAttribute("data-wallpaper-mode") !== "fullscreen" ||
+		!isHeroFullscreenLayout() ||
 		html.classList.contains("is-animating") ||
 		html.classList.contains("is-changing")
 	) {
-		overlay.style.transform = "";
-		overlay.style.opacity = "";
+		setTitleParallaxStyle(overlay, "", "");
 		return;
 	}
 	// 仅首页使用 hero 标题；非首页与 overlay 一致（无标题覆盖层）
 	if (!pathsEqual(window.location.pathname, url("/"))) {
-		overlay.style.transform = "";
-		overlay.style.opacity = "";
+		setTitleParallaxStyle(overlay, "", "");
 		return;
 	}
 	const scrollY = window.pageYOffset || document.documentElement.scrollTop;
 	// 标题随滚动上移，同时透明度渐变到 0（渐变消失，不弹跳）
 	const fadeScroll = window.innerHeight * TITLE_FADE_RATIO;
 	const ratio = Math.min(scrollY / fadeScroll, 1);
-	overlay.style.transform = `translateY(${-scrollY}px)`;
-	overlay.style.opacity = String(1 - ratio);
+	setTitleParallaxStyle(
+		overlay,
+		`translateY(${-scrollY}px)`,
+		String(1 - ratio),
+	);
 }
 
 function requestFullscreenTitleParallax(): void {
@@ -58,7 +82,7 @@ export function syncFullscreenOverlays(): void {
 	);
 	overlays.forEach((el) => {
 		const element = el as HTMLElement;
-		if (mode === "fullscreen" && !isHome) {
+		if (mode === "fullscreen" && isHeroFullscreenLayout() && !isHome) {
 			element.style.setProperty("display", "none", "important");
 		} else {
 			element.style.removeProperty("display");
@@ -74,6 +98,10 @@ export function syncFullscreenBlur(): void {
 	const wrapper = document.getElementById("wallpaper-wrapper");
 	if (!wrapper) return;
 	if (html.getAttribute("data-wallpaper-mode") !== "fullscreen") {
+		setBlurIfChanged(wrapper, "0px");
+		return;
+	}
+	if (!isHeroFullscreenLayout()) {
 		setBlurIfChanged(wrapper, "0px");
 		return;
 	}
@@ -129,6 +157,11 @@ export function initFullscreenWallpaper(): void {
 	window.addEventListener("wallpaperModeChange", () => {
 		requestAnimationFrame(updateFullscreenTitleParallax);
 		syncFullscreenBlur();
+	});
+	window.addEventListener("fullscreenLayoutChange", () => {
+		requestAnimationFrame(updateFullscreenTitleParallax);
+		syncFullscreenBlur();
+		syncFullscreenOverlays();
 	});
 	window.addEventListener("wallpaperModeChange", syncFullscreenOverlays);
 	updateFullscreenTitleParallax(); // 初始加载（浏览器可能恢复滚动位置）

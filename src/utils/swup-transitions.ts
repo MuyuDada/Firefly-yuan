@@ -132,21 +132,6 @@ function registerSwupHooks(): void {
 			initIconLoader();
 		});
 
-		// 检查当前页面是否为文章页面（有TOC元素）
-		const tocWrapper = document.getElementById("toc-wrapper");
-		const isArticlePage = tocWrapper !== null;
-
-		// 只在文章页面重新初始化桌面端 TOC 组件
-		if (isArticlePage) {
-			const tocElement = document.querySelector("table-of-contents");
-			const tocInit = tocElement?.init;
-			if (tocElement && typeof tocInit === "function") {
-				setTimeout(() => {
-					tocInit();
-				}, 100);
-			}
-		}
-
 		// 重新初始化semifull模式的滚动检测
 		// （全屏模式跳过：导航栏状态由 updateNavbarTransparency 统一管理，
 		//   避免切换页面时 initSemifullScrollDetection 重置 scrolled 导致背景闪烁）
@@ -204,16 +189,15 @@ function registerSwupHooks(): void {
 				(isFullscreen || Math.abs(delta) <= window.innerHeight * 0.75)
 			) {
 				// 标准 FLIP：禁用过渡→设 invert transform→回流提交→启用过渡→移除 transform（触发合成动画）
-				contentPanel.style.willChange = "transform";
+				// 不再设置 will-change:transform——它把整个 .content-panel（含全页文字）预先且持续地提升为
+				// 独立合成层，软导航结束后的旧光栅贴图因该提示而保留，导致残留发糊（#615）。
+				// transform 过渡本身会在动画期间由浏览器自动提升到合成层（compositor 驱动，丝滑不减），
+				// 动画结束后自动降级并按普通路径重光栅，文字恢复清晰。
 				contentPanel.style.transition = "none";
 				contentPanel.style.transform = `translateY(${delta}px)`;
 				void contentPanel.offsetWidth;
 				contentPanel.style.transition = "";
 				contentPanel.style.transform = "";
-				window.setTimeout(
-					() => contentPanel.style.removeProperty("will-change"),
-					260,
-				);
 			}
 		}
 
@@ -244,18 +228,6 @@ function registerSwupHooks(): void {
 				postListContainer.style.transition = "none";
 			}
 		}
-
-		// increase the page height during page transition to prevent the scrolling animation from jumping
-		const heightExtend = document.getElementById("page-height-extend");
-		if (heightExtend) {
-			heightExtend.classList.remove("hidden");
-		}
-
-		// Hide the TOC while scrolling back to top
-		const toc = document.getElementById("toc-wrapper");
-		if (toc) {
-			toc.classList.add("toc-not-ready");
-		}
 	});
 	window.swup.hooks.on("page:view", () => {
 		syncMusicPageState();
@@ -263,11 +235,9 @@ function registerSwupHooks(): void {
 		updateMainGridCols();
 		updateSidebarComponentsVisibility();
 
-		// hide the temp high element when the transition is done
-		const heightExtend = document.getElementById("page-height-extend");
-		if (heightExtend) {
-			heightExtend.classList.remove("hidden");
-		}
+		// 过渡结束后再量一次，避免顶部组件未就绪时读到 offsetHeight=0 而误删 mb-4
+		// (sticky 与 top 组件之间间距只在 refreshSidebarStickyState 里恢复，延迟补偿一次更稳)
+		window.setTimeout(() => updateSidebarComponentsVisibility(), 300);
 
 		// 页面切换完成后，同步全屏模式的标题视差位移（Swup 已替换容器内容）
 		updateFullscreenTitleParallax();
@@ -344,17 +314,7 @@ function registerSwupHooks(): void {
 		finishProgressBar();
 
 		setTimeout(() => {
-			const heightExtend = document.getElementById("page-height-extend");
-			if (heightExtend) {
-				heightExtend.classList.add("hidden");
-			}
-
 			// Just make the transition looks better
-			const toc = document.getElementById("toc-wrapper");
-			if (toc) {
-				toc.classList.remove("toc-not-ready");
-			}
-
 			// 移除页面切换保护，恢复过渡动画
 			document.documentElement.classList.remove("is-page-transitioning");
 			scrollFunction();

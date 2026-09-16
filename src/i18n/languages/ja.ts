@@ -95,6 +95,18 @@ export const ja: Translation = {
 	[Key.booknavDescription]: "便利なサイトをカテゴリ別に集めました",
 	[Key.searchBooknav]: "ブックマークを検索...",
 	[Key.booknavEmpty]: "ブックマークがありません",
+
+	// プロジェクト展示ページ
+	[Key.projects]: "プロジェクト",
+	[Key.projectsDescription]: "私が開発したプロジェクトです",
+	[Key.projectDetails]: "詳細を見る",
+	[Key.projectBack]: "プロジェクト一覧へ戻る",
+	[Key.projectEmpty]: "プロジェクトはまだありません",
+	[Key.projectSearch]: "プロジェクトを検索",
+	[Key.projectStatusPlanning]: "計画中",
+	[Key.projectStatusDeveloping]: "開発中",
+	[Key.projectStatusPublished]: "公開済み",
+	[Key.projectStatusArchived]: "アーカイブ",
 	[Key.guestbook]: "ゲストブック",
 	[Key.guestbookDescription]:
 		"ここに足跡を残して、あなたの考えや提案を共有してください",
@@ -186,7 +198,7 @@ export const ja: Translation = {
 	[Key.bangumiCategoryReal]: "実写",
 
 	// バングミデータ更新
-	[Key.bangumiLastUpdated]: "データ更新",
+	[Key.bangumiLastUpdated]: "データ更新日",
 	[Key.bangumiUpdatedAt]: "ビルド時間",
 	[Key.bangumiDataStatic]: "静的データ",
 
@@ -214,7 +226,7 @@ export const ja: Translation = {
 	[Key.vndbNotConfigured]: "VNDB ユーザーIDが未設定です",
 	[Key.vndbNotConfiguredDesc]:
 		"src/config/siteConfig.ts で VNDB ユーザーIDを設定してください",
-	[Key.vndbLastUpdated]: "データ更新",
+	[Key.vndbLastUpdated]: "データ更新日",
 	[Key.vndbVotes]: "票",
 	[Key.vndbLengthVeryShort]: "非常に短い",
 	[Key.vndbLengthShort]: "短い",
@@ -241,7 +253,7 @@ export const ja: Translation = {
 	[Key.animeDateDesc]: "新しい順",
 	[Key.animeDateAsc]: "古い順",
 	[Key.animeNoResults]: "一致するアニメが見つかりません",
-	[Key.animeLastUpdated]: "データ更新",
+	[Key.animeLastUpdated]: "データ更新日",
 	[Key.animeEpStatus]: "進捗",
 	[Key.animeViewDetails]: "詳細を見る",
 	[Key.animeBilibiliAvg]: "Bilibili 平均",
@@ -283,7 +295,7 @@ export const ja: Translation = {
 	[Key.malNotConfigured]: "MyAnimeList が未設定です",
 	[Key.malNotConfiguredDesc]:
 		"src/config/siteConfig.ts で MyAnimeList のユーザー名と Client ID を設定してください（リストは公開にする必要があります）",
-	[Key.malLastUpdated]: "データ更新",
+	[Key.malLastUpdated]: "データ更新日",
 	[Key.malSeasonWinter]: "冬",
 	[Key.malSeasonSpring]: "春",
 	[Key.malSeasonSummer]: "夏",
@@ -328,6 +340,14 @@ export const ja: Translation = {
 	[Key.rssCopied]: "RSSリンクがクリップボードにコピーされました！",
 	[Key.rssCopyFailed]: "コピーに失敗しました。手動でリンクをコピーしてください",
 
+	// Atom ページ
+	[Key.atom]: "Atom フィード",
+	[Key.atomDescription]: "最新の更新を購読",
+	[Key.atomSubtitle]: "Atom で購読すると、最新の記事と更新をすぐに受け取れます",
+	[Key.atomLink]: "Atom リンク",
+	[Key.atomCopyToReader]: "Atom リーダーにリンクをコピー",
+	[Key.atomCopied]: "Atom リンクをクリップボードにコピーしました！",
+
 	// 最終更新時間カード
 	[Key.lastModifiedPrefix]: "最終更新日：",
 	[Key.lastModifiedOutdated]: "一部の内容が古くなっている可能性があります",
@@ -369,6 +389,9 @@ export const ja: Translation = {
 	[Key.wallpaperMode]: "壁紙モード",
 	[Key.wallpaperBannerMode]: "バナー壁紙",
 	[Key.wallpaperFullscreenMode]: "フルスクリーン壁紙",
+	[Key.fullscreenLayout]: "フルスクリーンレイアウト",
+	[Key.fullscreenClassicLayout]: "クラシック",
+	[Key.fullscreenHeroLayout]: "ヒーロー",
 	[Key.wallpaperOverlayMode]: "透明",
 	[Key.wallpaperNoneMode]: "単色背景",
 
@@ -493,6 +516,7 @@ export const ja: Translation = {
 	[Key.galleryAlbums]: "冊のアルバム",
 	[Key.galleryNoAlbums]: "アルバムがありません",
 	[Key.galleryBackToAlbums]: "アルバム一覧に戻る",
+	[Key.galleryEnterAlbum]: "アルバムを見る",
 	[Key.searchAlbums]: "アルバムを検索...",
 
 	// パスワード保護
@@ -512,4 +536,11 @@ export const ja: Translation = {
 	[Key.videoPrev]: "前の動画",
 	[Key.videoNext]: "次の動画",
 	[Key.videoLoadError]: "動画の読み込みに失敗しました",
+
+	// 没入型リーディング
+	[Key.immersiveReading]: "没入型リーディング",
+	[Key.enterImmersiveReading]: "没入型リーディングに入る",
+	[Key.exitImmersiveReading]: "没入型リーディングを終了する",
+	[Key.tocExpand]: "目錄を開く",
+	[Key.tocCollapse]: "目錄をたたむ",
 };

@@ -5,8 +5,6 @@
 @import './waves.css';
 @import './transition.css';
 @import './custom-scrollbar.css';
-@import './gallery.css';
-@import './media-grid.css';
 @import './tags.css';
 @import './display-settings.css';
 @import './categories.css';
@@ -434,11 +432,6 @@ html {
     .link-underline {
         @apply transition-colors duration-150 underline decoration-2 decoration-dashed decoration-(--link-underline)
         hover:decoration-(--link-hover) active:decoration-(--link-active) underline-offset-[0.25rem]
-    }
-
-    .toc-hide,
-    .toc-not-ready {
-        @apply opacity-0 pointer-events-none
     }
 
     /* #toc-inner-wrapper {

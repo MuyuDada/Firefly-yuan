@@ -7,6 +7,7 @@ import type {
 	WALLPAPER_NONE,
 	WALLPAPER_OVERLAY,
 } from "../constants/constants";
+import type { ImmersiveReadingConfig } from "./immersiveReadingConfig";
 import type { NsfwMode } from "./nsfw";
 
 export type LIGHT_DARK_MODE =
@@ -96,6 +97,7 @@ export type SiteConfig = {
 		bilibili: boolean; // 哔哩哔哩追番页面开关
 		dynamic: boolean; // 动态页面开关
 		music: boolean; // 音乐可视化页面开关
+		projects: boolean; // 项目展示页开关
 	};
 
 	// 分类导航栏开关
@@ -159,10 +161,18 @@ export type SiteConfig = {
 		showLastModified: boolean;
 		// 文章过期阈值（天数），超过此天数才显示"上次编辑"卡片
 		outdatedThreshold?: number;
-		// 是否显示分享海报按钮
-		sharePoster?: boolean;
+		// 是否显示文章页的分享按钮
+		share: boolean;
+		// 是否显示上一篇/下一篇文章导航
+		postNavigation: boolean;
+		// 是否显示相关文章推荐
+		relatedPosts: boolean;
+		// 是否显示随机文章推荐
+		randomPosts: boolean;
 		// OpenGraph图片功能
 		generateOgImages: boolean;
+		// 沉浸阅读配置
+		immersiveReading?: ImmersiveReadingConfig;
 	};
 
 	// bangumi配置
@@ -235,5 +245,15 @@ export type SiteConfig = {
 		 * 仅影响匹配域名的图片标签，不影响其他链接的 referrer 行为
 		 */
 		noReferrerDomains?: string[];
+	};
+
+	// 订阅 (RSS / Atom) 配置
+	feed?: {
+		/**
+		 * 订阅条目内容模式：
+		 * - "full": 包含文章正文全文（默认）
+		 * - "summary": 仅包含文章摘要/描述，不含正文
+		 */
+		contentMode?: "full" | "summary";
 	};
 };
