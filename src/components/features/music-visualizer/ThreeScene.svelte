@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { musicPlayerConfig } from "@/config/musicConfig";
 import { AudioAnalyzer, type AudioData } from "./AudioAnalyzer";
+import { getColorPreset, vizSettings } from "./visualizerSettings.svelte";
 
 interface Props {
 	audioAnalyzer: AudioAnalyzer;
@@ -123,6 +124,29 @@ function getThemeColors() {
 
 const themeColors = getThemeColors();
 const heightConfig = musicPlayerConfig.visualizer?.height;
+
+// 将用户设置（主题预设 / 多彩循环）同步到渲染目标色。
+// 每帧调用：普通模式下是几次廉价的 Color.set；多彩循环下按时间旋转色相，
+// 渲染循环里已有 lerp 会把 uniform 颜色平滑地过渡过去。
+function applyThemeSettings(elapsed: number) {
+	const preset = getColorPreset(vizSettings.presetId);
+	if (vizSettings.rainbow) {
+		const hue = (elapsed * 0.04) % 1;
+		themeColors.coolCore.setHSL(hue, 0.85, 0.5);
+		themeColors.coolEdge.setHSL((hue + 0.04) % 1, 0.9, 0.65);
+		themeColors.warmCore.setHSL((hue + 0.08) % 1, 0.85, 0.55);
+		themeColors.warmEdge.setHSL((hue + 0.12) % 1, 0.9, 0.7);
+		themeColors.rippleCool.setHSL(hue, 0.85, 0.6);
+		themeColors.rippleWarm.setHSL((hue + 0.1) % 1, 0.9, 0.72);
+	} else {
+		themeColors.coolCore.set(preset.coolCore);
+		themeColors.coolEdge.set(preset.coolEdge);
+		themeColors.warmCore.set(preset.warmCore);
+		themeColors.warmEdge.set(preset.warmEdge);
+		themeColors.rippleCool.set(preset.rippleCool);
+		themeColors.rippleWarm.set(preset.rippleWarm);
+	}
+}
 
 function addRipple(x: number, z: number, strength: number, isWhite: boolean) {
 	const idx = rippleIndex;
@@ -645,7 +669,13 @@ function animate() {
 	const elapsed = clock.getElapsedTime();
 
 	const audioData: AudioData = audioAnalyzer.update(delta);
-	const motionBoost = 1 + Math.min(2.5, audioData.energy * 2.2 + audioData.subBass * 0.8);
+	// 律动强度：用户可调的音频驱动幅度乘数（0 – 2.5，默认 1）
+	const intensity = vizSettings.intensity;
+	const motionBoost =
+		(1 + Math.min(2.5, audioData.energy * 2.2 + audioData.subBass * 0.8)) *
+		intensity;
+
+	applyThemeSettings(elapsed);
 
 	terrainMaterial.uniforms.uTime.value = elapsed;
 	terrainMaterial.uniforms.uSubBass.value = audioData.subBass * 1.8 * motionBoost;
@@ -653,15 +683,15 @@ function animate() {
 	terrainMaterial.uniforms.uLowMid.value = audioData.lowMid * 1.35 * motionBoost;
 	terrainMaterial.uniforms.uMid.value = audioData.mid * 1.2 * motionBoost;
 	terrainMaterial.uniforms.uHighMid.value = audioData.highMid * 1.15 * motionBoost;
-	terrainMaterial.uniforms.uPresence.value = audioData.presence * 1.2;
-	terrainMaterial.uniforms.uBrilliance.value = audioData.brilliance * 1.25;
-	terrainMaterial.uniforms.uAir.value = audioData.air * 1.25;
+	terrainMaterial.uniforms.uPresence.value = audioData.presence * 1.2 * intensity;
+	terrainMaterial.uniforms.uBrilliance.value = audioData.brilliance * 1.25 * intensity;
+	terrainMaterial.uniforms.uAir.value = audioData.air * 1.25 * intensity;
 	terrainMaterial.uniforms.uWarmth.value = audioData.warmth;
-	terrainMaterial.uniforms.uBrightness.value = audioData.brightness * 1.2;
-	terrainMaterial.uniforms.uSharpness.value = audioData.sharpness * 1.2;
+	terrainMaterial.uniforms.uBrightness.value = audioData.brightness * 1.2 * intensity;
+	terrainMaterial.uniforms.uSharpness.value = audioData.sharpness * 1.2 * intensity;
 	terrainMaterial.uniforms.uSmoothness.value = audioData.smoothness;
 	terrainMaterial.uniforms.uDensity.value = audioData.density;
-	terrainMaterial.uniforms.uEnergy.value = audioData.energy * 1.25;
+	terrainMaterial.uniforms.uEnergy.value = audioData.energy * 1.25 * intensity;
 	terrainMaterial.uniforms.uRipples.value = ripples;
 
 	terrainMaterial.uniforms.uBaseColor1.value.lerp(themeColors.base1, 3 * delta);

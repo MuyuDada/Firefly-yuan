@@ -98,6 +98,11 @@ enum I18nKey {
 	musicVisualizer = "musicVisualizer",
 	musicVisualizer3D = "musicVisualizer3D",
 	musicVisualizerDescription = "musicVisualizerDescription",
+	vizSettings = "vizSettings",
+	vizIntensity = "vizIntensity",
+	vizThemeColor = "vizThemeColor",
+	vizRainbow = "vizRainbow",
+	vizRainbowHint = "vizRainbowHint",
 
 	themeColor = "themeColor",
 

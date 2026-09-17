@@ -75,6 +75,11 @@ export const ko: Translation = {
 	[Key.musicVisualizer]: "음악 시각화",
 	[Key.musicVisualizer3D]: "3D 시각화",
 	[Key.musicVisualizerDescription]: "몰입형 3D 음악 시각화 경험",
+	[Key.vizSettings]: "시각화 설정",
+	[Key.vizIntensity]: "모션 강도",
+	[Key.vizThemeColor]: "테마 색상",
+	[Key.vizRainbow]: "레인보우 순환",
+	[Key.vizRainbowHint]: "음악에 맞춰 색이 계속 흐릅니다",
 
 	// Announcement
 	[Key.announcement]: "공지사항",

@@ -109,6 +109,42 @@ const managerConfigStr = JSON.stringify({
     document.body.appendChild(audio);
     audio.pause(); // 确保不自动播放
 
+    // ── Next-track prefetch ──────────────────────────────────
+    // 切歌提速：当前曲目开始播放后，把列表循环下的下一首提前拉进 HTTP 缓存，
+    // 切歌时浏览器可直接命中缓存，省去一次完整往返。随机/单曲模式不可预知，
+    // 跳过。预取失败（如 CDN 无 CORS 头）静默忽略，不影响正常播放。
+    var prefetchAbort = null;
+    var prefetchedUrl = null;
+
+    function prefetchNextTrack() {
+        if (prefetchAbort) {
+            prefetchAbort.abort();
+            prefetchAbort = null;
+        }
+        if (state.playlist.length === 0) return;
+        var nextIndex;
+        if (state.playMode === 1) {
+            nextIndex = state.currentIndex;
+        } else if (state.playMode === 0) {
+            nextIndex = (state.currentIndex + 1) % state.playlist.length;
+        } else {
+            return; // 随机模式不预取
+        }
+        var nextTrack = state.playlist[nextIndex];
+        if (!nextTrack || !nextTrack.url) return;
+        if (nextTrack.url === prefetchedUrl) return;
+        prefetchedUrl = nextTrack.url;
+
+        try {
+            prefetchAbort = new AbortController();
+            fetch(nextTrack.url, { mode: 'cors', signal: prefetchAbort.signal })
+                .then(function () {
+                    // 响应已写入浏览器 HTTP 缓存，audio.src 命中同一 URL 时可直接复用
+                })
+                .catch(function () {}); // 预取失败静默忽略
+        } catch (e) { /* ignore */ }
+    }
+
     // ── State ────────────────────────────────────────────────
     var loadVersion = 0; // incremented on each loadTrack to discard stale play() results
     var state = {
@@ -249,6 +285,7 @@ const managerConfigStr = JSON.stringify({
     function tryPlayCurrentTrackUrl(autoPlay, ver) {
         if (ver !== loadVersion) return;
         var playUrl = currentTrackUrls[currentTrackUrlIndex];
+        audio.preload = 'auto'; // 加载曲目时积极缓冲，缩短起播等待
         audio.src = playUrl;
 
         if (autoPlay) {
@@ -409,6 +446,7 @@ const managerConfigStr = JSON.stringify({
     });
 
     audio.addEventListener('playing', startLyricSync);
+    audio.addEventListener('playing', prefetchNextTrack);
     audio.addEventListener('seeking', function () {
         updateLyricIndex(audio.currentTime);
     });

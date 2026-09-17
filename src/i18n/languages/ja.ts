@@ -75,6 +75,11 @@ export const ja: Translation = {
 	[Key.musicVisualizer]: "音楽ビジュアライザー",
 	[Key.musicVisualizer3D]: "3Dビジュアライザー",
 	[Key.musicVisualizerDescription]: "没入型3D音楽ビジュアライザー",
+	[Key.vizSettings]: "ビジュアライザー設定",
+	[Key.vizIntensity]: "モーション強度",
+	[Key.vizThemeColor]: "テーマカラー",
+	[Key.vizRainbow]: "レインボーサイクル",
+	[Key.vizRainbowHint]: "音楽に合わせて色彩が流れ続けます",
 
 	// お知らせ
 	[Key.announcement]: "お知らせ",

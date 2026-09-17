@@ -75,6 +75,11 @@ export const en: Translation = {
 	[Key.musicVisualizer]: "Music visualizer",
 	[Key.musicVisualizer3D]: "3D visualizer",
 	[Key.musicVisualizerDescription]: "An immersive 3D music visualization experience",
+	[Key.vizSettings]: "Visualizer Settings",
+	[Key.vizIntensity]: "Motion Intensity",
+	[Key.vizThemeColor]: "Theme Color",
+	[Key.vizRainbow]: "Rainbow Cycle",
+	[Key.vizRainbowHint]: "Colors keep cycling with the music",
 
 	// Announcement
 	[Key.announcement]: "Announcement",

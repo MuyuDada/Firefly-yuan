@@ -3,6 +3,12 @@ import Icon from "@iconify/svelte";
 import { onDestroy, onMount } from "svelte";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
+import {
+	VIZ_COLOR_PRESETS,
+	getColorPreset,
+	persistVizSettings,
+	vizSettings,
+} from "./visualizerSettings.svelte";
 
 interface Track {
 	name: string;
@@ -60,7 +66,7 @@ let currentTimeStr = $state("0:00");
 let durationStr = $state("0:00");
 let progress = $state(0);
 let initialized = $state(false);
-let rightPanelMode = $state<"tools" | "playlist">("tools");
+let rightPanelMode = $state<"tools" | "playlist" | "settings">("tools");
 let playlistListEl: HTMLDivElement;
 let isDraggingProgress = $state(false);
 let isDraggingVolume = $state(false);
@@ -243,6 +249,33 @@ function togglePlaylist() {
 		setTimeout(syncPlaylistScroll, 0);
 	}
 }
+
+function openSettings() {
+	rightPanelMode = "settings";
+}
+
+function toggleSettings() {
+	rightPanelMode = rightPanelMode === "settings" ? "tools" : "settings";
+}
+
+function selectColorPreset(id: string) {
+	vizSettings.presetId = id;
+	persistVizSettings();
+}
+
+function onIntensityInput(e: Event) {
+	const value = (e.currentTarget as HTMLInputElement).valueAsNumber;
+	vizSettings.intensity = Number.isFinite(value) ? value : 1;
+	persistVizSettings();
+}
+
+function toggleRainbow() {
+	vizSettings.rainbow = !vizSettings.rainbow;
+	persistVizSettings();
+}
+
+// 设置面板强度滑块的展示值（百分比）
+const intensityPercent = $derived(Math.round(vizSettings.intensity * 100));
 
 function syncState() {
 	const mgr = window.__fireflyMusic;
@@ -532,10 +565,22 @@ onDestroy(() => {
 						{/if}
 					</button>
 				</div>
+
+				<button
+					type="button"
+					class="music-visualizer__tool-btn"
+					class:is-active={rightPanelMode === "settings"}
+					onclick={toggleSettings}
+					title={i18n(I18nKey.vizSettings)}
+					aria-label={i18n(I18nKey.vizSettings)}
+					aria-expanded={rightPanelMode === "settings"}
+				>
+					<Icon icon="material-symbols:tune-rounded" size="lg" />
+				</button>
 			</div>
 
 			<!-- 移动端保留：紧凑工具行（桌面隐藏） -->
-			<div class="music-visualizer__tool-row">
+				<div class="music-visualizer__tool-row">
 				<button
 					type="button"
 					class="music-visualizer__btn music-visualizer__btn--mobile-play"
@@ -591,9 +636,131 @@ onDestroy(() => {
 						<Icon icon="material-symbols:volume-up-rounded" size="md" />
 					{/if}
 				</button>
-			</div>
-		</section>
-	{:else}
+
+				<button
+					type="button"
+					class="music-visualizer__btn"
+					class:music-visualizer__btn--active={rightPanelMode === "settings"}
+					onclick={openSettings}
+					title={i18n(I18nKey.vizSettings)}
+					aria-label={i18n(I18nKey.vizSettings)}
+					aria-expanded={rightPanelMode === "settings"}
+				>
+					<Icon icon="material-symbols:tune-rounded" size="md" />
+				</button>
+				</div>
+			</section>
+		{:else if rightPanelMode === "settings"}
+			<aside
+				id="music-visualizer-settings-panel"
+				class="music-visualizer__settings-view"
+				aria-label={i18n(I18nKey.vizSettings)}
+			>
+				<div class="music-visualizer__settings-stage">
+					<div class="music-visualizer__settings-header">
+						<div>
+							<div class="music-visualizer__settings-kicker">VISUALIZER</div>
+							<div class="music-visualizer__settings-title">
+								{i18n(I18nKey.vizSettings)}
+							</div>
+						</div>
+						<button
+							type="button"
+							class="music-visualizer__playlist-back"
+							onclick={toggleSettings}
+							title={i18n(I18nKey.backToPlayer)}
+							aria-label={i18n(I18nKey.backToPlayer)}
+							aria-controls="music-visualizer-settings-panel"
+							aria-expanded={rightPanelMode === "settings"}
+						>
+							<Icon icon="material-symbols:close-rounded" size="md" />
+						</button>
+					</div>
+
+					<!-- 律动强度 -->
+					<section class="music-visualizer__settings-group">
+						<div class="music-visualizer__settings-row-head">
+							<span class="music-visualizer__settings-label">
+								{i18n(I18nKey.vizIntensity)}
+							</span>
+							<span class="music-visualizer__settings-value">{intensityPercent}%</span>
+						</div>
+						<input
+							class="music-visualizer__settings-slider"
+							type="range"
+							min="0"
+							max="2.5"
+							step="0.05"
+							value={vizSettings.intensity}
+							style={`--mv-fill: ${(vizSettings.intensity / 2.5) * 100}%`}
+							oninput={onIntensityInput}
+							onchange={persistVizSettings}
+							aria-label={i18n(I18nKey.vizIntensity)}
+							aria-valuemin="0"
+							aria-valuemax="250"
+							aria-valuenow={intensityPercent}
+						/>
+					</section>
+
+					<!-- 主题颜色 -->
+					<section class="music-visualizer__settings-group">
+						<div class="music-visualizer__settings-row-head">
+							<span class="music-visualizer__settings-label">
+								{i18n(I18nKey.vizThemeColor)}
+							</span>
+							<span class="music-visualizer__settings-value">
+								{vizSettings.rainbow ? i18n(I18nKey.vizRainbow) : getColorPreset(vizSettings.presetId).label}
+							</span>
+						</div>
+						<div
+							class="music-visualizer__settings-swatches"
+							role="radiogroup"
+							aria-label={i18n(I18nKey.vizThemeColor)}
+						>
+							{#each VIZ_COLOR_PRESETS as preset (preset.id)}
+								<button
+									type="button"
+									class="music-visualizer__swatch"
+									class:is-selected={vizSettings.presetId === preset.id &&
+										!vizSettings.rainbow}
+									style={`--swatch-a: ${preset.coolCore}; --swatch-b: ${preset.accent}; --swatch-c: ${preset.warmEdge};`}
+									onclick={() => selectColorPreset(preset.id)}
+									role="radio"
+									aria-checked={vizSettings.presetId === preset.id && !vizSettings.rainbow}
+									aria-label={preset.label}
+									title={preset.label}
+								></button>
+							{/each}
+						</div>
+					</section>
+
+					<!-- 多彩循环 -->
+					<section
+						class="music-visualizer__settings-group music-visualizer__settings-group--row"
+					>
+						<div class="music-visualizer__settings-row-text">
+							<div class="music-visualizer__settings-label">
+								{i18n(I18nKey.vizRainbow)}
+							</div>
+							<div class="music-visualizer__settings-hint">
+								{i18n(I18nKey.vizRainbowHint)}
+							</div>
+						</div>
+						<button
+							type="button"
+							class="music-visualizer__switch"
+							class:is-on={vizSettings.rainbow}
+							role="switch"
+							aria-checked={vizSettings.rainbow}
+							aria-label={i18n(I18nKey.vizRainbow)}
+							onclick={toggleRainbow}
+						>
+							<span class="music-visualizer__switch-thumb" aria-hidden="true"></span>
+						</button>
+					</section>
+				</div>
+			</aside>
+		{:else}
 		<aside
 			id="music-visualizer-playlist-panel"
 			class="music-visualizer__playlist-view"

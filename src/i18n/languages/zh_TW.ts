@@ -75,6 +75,11 @@ export const zh_TW: Translation = {
 	[Key.musicVisualizer]: "音樂視覺化",
 	[Key.musicVisualizer3D]: "3D視覺化",
 	[Key.musicVisualizerDescription]: "沉浸式 3D 音樂視覺化體驗",
+	[Key.vizSettings]: "視覺化設定",
+	[Key.vizIntensity]: "律動強度",
+	[Key.vizThemeColor]: "主題顏色",
+	[Key.vizRainbow]: "多彩循環",
+	[Key.vizRainbowHint]: "配色隨音樂持續流轉",
 
 	// 公告欄
 	[Key.announcement]: "公告",

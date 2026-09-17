@@ -75,6 +75,11 @@ export const ru: Translation = {
 	[Key.musicVisualizer]: "Музыкальная визуализация",
 	[Key.musicVisualizer3D]: "3D-визуализация",
 	[Key.musicVisualizerDescription]: "Иммерсивная 3D-визуализация музыки",
+	[Key.vizSettings]: "Настройки визуализации",
+	[Key.vizIntensity]: "Интенсивность",
+	[Key.vizThemeColor]: "Цвет темы",
+	[Key.vizRainbow]: "Радужный цикл",
+	[Key.vizRainbowHint]: "Цвета плавно сменяются под музыку",
 
 	// Объявление
 	[Key.announcement]: "Объявление",
