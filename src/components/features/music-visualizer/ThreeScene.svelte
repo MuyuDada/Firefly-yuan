@@ -678,17 +678,24 @@ function animate() {
 	applyThemeSettings(elapsed);
 
 	terrainMaterial.uniforms.uTime.value = elapsed;
-	terrainMaterial.uniforms.uSubBass.value = audioData.subBass * 1.8 * motionBoost;
+	terrainMaterial.uniforms.uSubBass.value =
+		audioData.subBass * 1.8 * motionBoost;
 	terrainMaterial.uniforms.uBass.value = audioData.bass * 1.5 * motionBoost;
-	terrainMaterial.uniforms.uLowMid.value = audioData.lowMid * 1.35 * motionBoost;
+	terrainMaterial.uniforms.uLowMid.value =
+		audioData.lowMid * 1.35 * motionBoost;
 	terrainMaterial.uniforms.uMid.value = audioData.mid * 1.2 * motionBoost;
-	terrainMaterial.uniforms.uHighMid.value = audioData.highMid * 1.15 * motionBoost;
-	terrainMaterial.uniforms.uPresence.value = audioData.presence * 1.2 * intensity;
-	terrainMaterial.uniforms.uBrilliance.value = audioData.brilliance * 1.25 * intensity;
+	terrainMaterial.uniforms.uHighMid.value =
+		audioData.highMid * 1.15 * motionBoost;
+	terrainMaterial.uniforms.uPresence.value =
+		audioData.presence * 1.2 * intensity;
+	terrainMaterial.uniforms.uBrilliance.value =
+		audioData.brilliance * 1.25 * intensity;
 	terrainMaterial.uniforms.uAir.value = audioData.air * 1.25 * intensity;
 	terrainMaterial.uniforms.uWarmth.value = audioData.warmth;
-	terrainMaterial.uniforms.uBrightness.value = audioData.brightness * 1.2 * intensity;
-	terrainMaterial.uniforms.uSharpness.value = audioData.sharpness * 1.2 * intensity;
+	terrainMaterial.uniforms.uBrightness.value =
+		audioData.brightness * 1.2 * intensity;
+	terrainMaterial.uniforms.uSharpness.value =
+		audioData.sharpness * 1.2 * intensity;
 	terrainMaterial.uniforms.uSmoothness.value = audioData.smoothness;
 	terrainMaterial.uniforms.uDensity.value = audioData.density;
 	terrainMaterial.uniforms.uEnergy.value = audioData.energy * 1.25 * intensity;

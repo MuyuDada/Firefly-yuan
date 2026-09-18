@@ -84,15 +84,19 @@ export const VIZ_COLOR_PRESETS: VizColorPreset[] = [
 	},
 ];
 
-export const DEFAULT_PRESET_ID = VIZ_COLOR_PRESETS[0].id;
+export const DEFAULT_PRESET_ID: string = VIZ_COLOR_PRESETS[0].id;
 
 // 律动强度：1 为默认（与原效果一致），范围 0–2.5
-export const INTENSITY_MIN = 0;
-export const INTENSITY_MAX = 2.5;
+export const INTENSITY_MIN: number = 0;
+export const INTENSITY_MAX: number = 2.5;
 
 const STORAGE_KEY = "firefly-mv-settings";
 
-function loadPersisted(): { intensity: number; presetId: string; rainbow: boolean } | null {
+function loadPersisted(): {
+	intensity: number;
+	presetId: string;
+	rainbow: boolean;
+} | null {
 	if (typeof localStorage === "undefined") return null;
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
@@ -113,16 +117,22 @@ function clampIntensity(v: unknown): number {
 }
 
 function normalizePresetId(v: unknown): string {
-	return VIZ_COLOR_PRESETS.some((p) => p.id === v) ? (v as string) : DEFAULT_PRESET_ID;
+	return VIZ_COLOR_PRESETS.some((p) => p.id === v)
+		? (v as string)
+		: DEFAULT_PRESET_ID;
 }
 
-export const vizSettings = $state({
+export const vizSettings: {
+	intensity: number;
+	presetId: string;
+	rainbow: boolean;
+} = $state({
 	intensity: clampIntensity(persisted?.intensity),
 	presetId: normalizePresetId(persisted?.presetId),
 	rainbow: persisted?.rainbow === true,
 });
 
-export function persistVizSettings() {
+export function persistVizSettings(): void {
 	try {
 		localStorage.setItem(
 			STORAGE_KEY,

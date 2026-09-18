@@ -8,6 +8,10 @@ export const musicPlayerConfig: MusicPlayerConfig = {
 	// 是否在侧边栏显示音乐播放器组件
 	showInSidebar: true,
 
+	// 音乐页跳转提速：在其他页面提前预取音乐页的可视化脚本（约 600KB，含 Three.js）
+	// 'always' = 页面空闲时自动预取（检测到省流模式或 2g 网络时自动跳过）
+	prefetchMusicPage: "always",
+
 	// 使用方式："meting" 使用 Meting API，"local" 使用本地音乐列表
 	mode: "meting",
 

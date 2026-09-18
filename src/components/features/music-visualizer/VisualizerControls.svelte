@@ -4,9 +4,9 @@ import { onDestroy, onMount } from "svelte";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import {
-	VIZ_COLOR_PRESETS,
 	getColorPreset,
 	persistVizSettings,
+	VIZ_COLOR_PRESETS,
 	vizSettings,
 } from "./visualizerSettings.svelte";
 

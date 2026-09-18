@@ -35,6 +35,8 @@ const managerConfigStr = JSON.stringify({
 	volume: config.volume ?? 0.7,
 	playMode: config.playMode ?? "list",
 	showLyrics: config.showLyrics ?? true,
+	prefetchMusicPage: config.prefetchMusicPage ?? "always",
+	musicPageUrl: url("music/"),
 	i18n: {
 		noPlaying: i18n(I18nKey.musicNoPlaying),
 		lyrics: i18n(I18nKey.musicLyrics),
@@ -62,6 +64,87 @@ const managerConfigStr = JSON.stringify({
     if (window.__fireflyMusic) return;
 
     var config = JSON.parse(managerConfigStr);
+
+    // ── Music page asset prefetch ────────────────────────────
+    // 跳转提速：音乐页的 3D 可视化脚本（含 Three.js，约 600KB）默认只在进入
+    // 音乐页后才开始下载，是切页白屏的主因。这里提前把岛组件 chunk 预取进
+    // HTTP 缓存：悬停/触摸音乐链接时立即触发，'always' 模式下页面空闲时也
+    // 自动触发。省流模式或 2g 网络自动降级为仅悬停预取。
+    var musicChunkPreloaded = false;
+
+    function extractMusicChunkUrl() {
+        var match = document.documentElement.innerHTML.match(
+            /component-url="(\/[^"]*MusicVisualizer[^"]*\.js)"/,
+        );
+        return match ? match[1] : null;
+    }
+
+    function prefetchMusicPageAssets() {
+        if (musicChunkPreloaded) return;
+        // 已在音乐页则无需预取
+        if (location.pathname === config.musicPageUrl || location.pathname === config.musicPageUrl.replace(/\/$/, '')) {
+            musicChunkPreloaded = true;
+            return;
+        }
+        // 本页恰好也渲染了该岛组件时，chunk 已在加载中
+        var chunkUrl = extractMusicChunkUrl();
+        if (chunkUrl) {
+            musicChunkPreloaded = true;
+            return;
+        }
+        musicChunkPreloaded = true;
+        fetch(config.musicPageUrl)
+            .then(function (res) { return res.ok ? res.text() : null; })
+            .then(function (html) {
+                if (!html) return;
+                var m = html.match(/component-url="(\/[^"]*MusicVisualizer[^"]*\.js)"/);
+                if (!m) return;
+                if (document.querySelector('link[href="' + m[1] + '"]')) return;
+                var link = document.createElement('link');
+                link.rel = 'modulepreload';
+                link.href = m[1];
+                document.head.appendChild(link);
+            })
+            .catch(function () { /* 预取失败静默忽略 */ });
+    }
+
+    function setupMusicPagePrefetch() {
+        var mode = config.prefetchMusicPage || 'always';
+        if (mode === 'off') return;
+
+        // 省流模式 / 极慢网络：降级为仅悬停预取，避免自动消耗流量
+        var conn = navigator.connection || {};
+        if (conn.saveData || conn.effectiveType === '2g' || conn.effectiveType === 'slow-2g') {
+            mode = 'hover';
+        }
+
+        if (mode === 'always') {
+            var idle = window.requestIdleCallback || function (cb) { return setTimeout(cb, 3000); };
+            idle(function () { prefetchMusicPageAssets(); }, { timeout: 6000 });
+        }
+
+        // 悬停/触摸音乐链接时立即预取（比空闲预取更早命中用户意图）
+        var HOVER_SELECTOR = 'a[href*="music"]';
+        var handler = function (e) {
+            var target = e.target && e.target.closest ? e.target.closest(HOVER_SELECTOR) : null;
+            if (!target) return;
+            var href = target.getAttribute('href') || '';
+            var base = config.musicPageUrl.replace(/\/$/, '');
+            if (href.indexOf(base) === -1 && href.indexOf('music') === -1) return;
+            prefetchMusicPageAssets();
+            document.removeEventListener('pointerenter', handler, true);
+            document.removeEventListener('touchstart', handler, true);
+        };
+        // pointerenter 不冒泡，捕获阶段在 document 上监听
+        document.addEventListener('pointerenter', handler, true);
+        document.addEventListener('focusin', handler, true);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupMusicPagePrefetch, { once: true });
+    } else {
+        setupMusicPagePrefetch();
+    }
 
     // ── Helpers ──────────────────────────────────────────────
     function formatTime(seconds) {
@@ -174,6 +257,36 @@ const managerConfigStr = JSON.stringify({
     }
 
     // ── Meting fetch ─────────────────────────────────────────
+    // 歌单缓存：Meting API 首次解析可能要数秒，是进入音乐页后歌单迟迟不出的
+    // 主因。成功获取后写入 localStorage，TTL 内的后续访问直接使用缓存歌单、
+    // 完全跳过网络请求。缓存里的音频 URL 若过期，播放时会走既有的 error →
+    // fallbackApis 重解析链路自动恢复，因此 TTL 可以放心设短一些。
+    var PLAYLIST_CACHE_KEY = 'firefly-music-playlist-cache';
+    var PLAYLIST_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 小时
+
+    function readPlaylistCache() {
+        try {
+            var raw = localStorage.getItem(PLAYLIST_CACHE_KEY);
+            if (!raw) return null;
+            var parsed = JSON.parse(raw);
+            if (!parsed || !Array.isArray(parsed.playlist) || parsed.playlist.length === 0) return null;
+            if (Date.now() - (parsed.time || 0) > PLAYLIST_CACHE_TTL) return null;
+            return parsed.playlist;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function writePlaylistCache() {
+        if (!state.playlist || state.playlist.length === 0) return;
+        try {
+            localStorage.setItem(PLAYLIST_CACHE_KEY, JSON.stringify({
+                time: Date.now(),
+                playlist: state.playlist
+            }));
+        } catch (e) { /* 存储不可用时静默忽略 */ }
+    }
+
     async function fetchMetingData() {
         if (!config.meting) return;
         var m = config.meting;
@@ -482,7 +595,13 @@ const managerConfigStr = JSON.stringify({
 
         try {
             if (config.mode === 'meting' && config.meting) {
-                await fetchMetingData();
+                var cachedPlaylist = readPlaylistCache();
+                if (cachedPlaylist) {
+                    state.playlist = cachedPlaylist;
+                } else {
+                    await fetchMetingData();
+                    writePlaylistCache();
+                }
             } else if (config.mode === 'local') {
                 state.playlist = config.localPlaylist || [];
             }

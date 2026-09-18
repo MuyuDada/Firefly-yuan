@@ -74,7 +74,8 @@ export const en: Translation = {
 	[Key.playModeShuffle]: "Shuffle",
 	[Key.musicVisualizer]: "Music visualizer",
 	[Key.musicVisualizer3D]: "3D visualizer",
-	[Key.musicVisualizerDescription]: "An immersive 3D music visualization experience",
+	[Key.musicVisualizerDescription]:
+		"An immersive 3D music visualization experience",
 	[Key.vizSettings]: "Visualizer Settings",
 	[Key.vizIntensity]: "Motion Intensity",
 	[Key.vizThemeColor]: "Theme Color",

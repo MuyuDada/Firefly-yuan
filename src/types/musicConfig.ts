@@ -18,6 +18,12 @@ export type MusicPlayerConfig = {
 	// 是否在侧边栏显示音乐播放器组件
 	showInSidebar?: boolean;
 
+	// 音乐页跳转提速：在其他页面提前预取音乐页的可视化脚本资源
+	// 'always' = 页面空闲时自动预取（省流模式/极慢网络下自动跳过）
+	// 'hover'  = 仅在悬停/触摸音乐链接时预取
+	// 'off'    = 关闭预取
+	prefetchMusicPage?: "always" | "hover" | "off";
+
 	// Meting API 配置
 	meting?: {
 		// Meting API 地址

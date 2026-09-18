@@ -20,7 +20,10 @@ type Rgb = [number, number, number];
 
 function hexToRgb(hex: string): Rgb {
 	const value = hex.replace("#", "");
-	const num = Number.parseInt(value.length === 3 ? value.replace(/./g, "$&$&") : value, 16);
+	const num = Number.parseInt(
+		value.length === 3 ? value.replace(/./g, "$&$&") : value,
+		16,
+	);
 	if (Number.isNaN(num)) return [39, 226, 255];
 	return [(num >> 16) & 0xff, (num >> 8) & 0xff, num & 0xff];
 }
@@ -31,7 +34,11 @@ function hslToRgb(h: number, s: number, l: number): Rgb {
 		const k = (n + h * 12) % 12;
 		return l - a * Math.max(-1, Math.min(Math.min(k - 3, 9 - k), 1));
 	};
-	return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+	return [
+		Math.round(f(0) * 255),
+		Math.round(f(8) * 255),
+		Math.round(f(4) * 255),
+	];
 }
 
 function css(rgb: Rgb, alpha: number) {
