@@ -8,14 +8,15 @@ import Dynamic from "@/components/widget/Dynamic.astro";
 import Music from "@/components/widget/Music.astro";
 import Profile from "@/components/widget/Profile.astro";
 import QuoteOfTheDay from "@/components/widget/QuoteOfTheDay.astro";
+import RelationshipTimer from "@/components/widget/RelationshipTimer.astro";
+import Schedule from "@/components/widget/Schedule.astro";
 import SidebarTOC from "@/components/widget/SidebarTOC.astro";
 import SiteInfo from "@/components/widget/SiteInfo.astro";
 import SiteStats from "@/components/widget/SiteStats.astro";
+import Tags from "@/components/widget/Tags.astro";
 import TimeGreeting from "@/components/widget/TimeGreeting.astro";
 import Weather from "@/components/widget/Weather.astro";
-import RelationshipTimer from "@/components/widget/RelationshipTimer.astro";
-import Tags from "@/components/widget/Tags.astro";
-import Schedule from "@/components/widget/Schedule.astro";
+import YearProgress from "@/components/widget/YearProgress.astro";
 import { sidebarLayoutConfig } from "@/config";
 import type {
 	MobileBottomComponentConfig,
@@ -65,7 +66,7 @@ const componentMap = {
 	weather: Weather,
 	relationship: RelationshipTimer,
 	schedule: Schedule,
-	
+	yearProgress: YearProgress,
 };
 
 // 获取侧边栏位置

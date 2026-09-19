@@ -66,20 +66,20 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 		},
 		{
 			// 组件类型：一言
-            type: "quoteOfTheDay",
+			type: "quoteOfTheDay",
 			// 是否启用该组件
-            enable: true,
+			enable: true,
 			// 组件位置
-            position: "top",
+			position: "top",
 			// 是否在文章详情页显示
-            showOnPostPage: false,
-        },
+			showOnPostPage: false,
+		},
 		{
-  		 	type: "relationship",
-  			enable: true,
-            position: "sticky",       // top | sticky
-            showOnPostPage: false,  // 文章详情页是否显示
-        },
+			type: "relationship",
+			enable: true,
+			position: "sticky", // top | sticky
+			showOnPostPage: false, // 文章详情页是否显示
+		},
 		{
 			// 组件类型：分类组件
 			type: "categories",
@@ -115,17 +115,27 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 	// 右侧边栏组件配置列表
 	rightComponents: [
 		{
-            type: "timeGreeting",
-            enable: true,
-            position: "top",
-            showOnPostPage: false,
-        },
+			type: "timeGreeting",
+			enable: true,
+			position: "top",
+			showOnPostPage: false,
+		},
 		{
-            type: "weather",
-            enable: true,
-            position: "top",
-            showOnPostPage: false,
-        },
+			// 组件类型：年度进度组件
+			type: "yearProgress",
+			// 是否启用该组件
+			enable: true,
+			// 组件位置
+			position: "top",
+			// 是否在文章详情页显示
+			showOnPostPage: false,
+		},
+		{
+			type: "weather",
+			enable: true,
+			position: "top",
+			showOnPostPage: false,
+		},
 		{
 			// 组件类型：最新动态组件
 			type: "dynamic",
@@ -144,11 +154,11 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 			},
 		},
 		{
-        type: "schedule",
-        enable: true,
-        position: "sticky",
-        showOnPostPage: false,
-        },
+			type: "schedule",
+			enable: true,
+			position: "sticky",
+			showOnPostPage: false,
+		},
 		{
 			// 组件类型：站点统计组件
 			type: "stats",
@@ -285,10 +295,18 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 			showOnPostPage: true,
 		},
 		{
-            type: "relationship",
-            enable: true,
-            showOnPostPage: true,
-        },
+			// 组件类型：年度进度组件
+			type: "yearProgress",
+			// 是否启用该组件
+			enable: true,
+			// 是否在文章详情页显示
+			showOnPostPage: false,
+		},
+		{
+			type: "relationship",
+			enable: true,
+			showOnPostPage: true,
+		},
 		{
 			// 组件类型：分类组件
 			type: "categories",

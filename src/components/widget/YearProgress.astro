@@ -1,0 +1,211 @@
+---
+import WidgetLayout from "@/components/common/WidgetLayout.astro";
+
+interface Props {
+	class?: string;
+	style?: string;
+}
+
+const { class: className, style } = Astro.props;
+
+// 构建时的初始值，客户端脚本会在页面加载后按访问者的当前时间重新计算
+const isLeapYear = (year: number) =>
+	(year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+const now = new Date();
+const currentYear = now.getFullYear();
+const daysInYear = isLeapYear(currentYear) ? 366 : 365;
+const dayOfYear = Math.floor(
+	(now.getTime() - new Date(currentYear, 0, 0).getTime()) / 86400000,
+);
+const currentYearProgress = (dayOfYear / daysInYear) * 100;
+const daysInMonth = new Date(currentYear, now.getMonth() + 1, 0).getDate();
+const monthProgress = Array.from({ length: 12 }, (_, month) => {
+	if (month < now.getMonth()) return 100;
+	if (month > now.getMonth()) return 0;
+	return (now.getDate() / daysInMonth) * 100;
+});
+const displayYears = [currentYear, currentYear + 1];
+---
+
+<WidgetLayout id="year-progress-widget" name="年度进度" class={className} style={style}>
+    <div class="year-progress-widget" data-year-progress>
+        <div class="year-progress-widget__stage">
+            <div class="year-progress-widget__years">
+                {displayYears.map((year, index) => (
+                    <span
+                        class="year-progress-widget__glyph year-progress-widget__glyph--year"
+                        style={`--progress-target: ${index === 0 ? currentYearProgress : 0}`}
+                    >
+                        {year}
+                    </span>
+                ))}
+            </div>
+            <div class="year-progress-widget__months">
+                {monthProgress.map((progress, index) => (
+                    <span
+                        class="year-progress-widget__glyph year-progress-widget__glyph--month"
+                        style={`--progress-target: ${progress}`}
+                    >
+                        {index + 1}
+                    </span>
+                ))}
+            </div>
+        </div>
+    </div>
+</WidgetLayout>
+
+<script is:inline>
+    (function () {
+        const isLeapYear = (year) => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+        const updateYearProgress = () => {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const date = now.getDate();
+            const daysInYear = isLeapYear(year) ? 366 : 365;
+            const dayOfYear = Math.floor((now - new Date(year, 0, 0)) / 86400000);
+            const yearValues = [(dayOfYear / daysInYear) * 100, 0];
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const monthValues = [];
+            for (let m = 0; m < 12; m++) {
+                if (m < month) monthValues.push(100);
+                else if (m > month) monthValues.push(0);
+                else monthValues.push((date / daysInMonth) * 100);
+            }
+            document.querySelectorAll("[data-year-progress]").forEach((widget) => {
+                widget.querySelectorAll(".year-progress-widget__glyph--year").forEach((glyph, i) => {
+                    if (i >= yearValues.length) return;
+                    glyph.textContent = String(year + i);
+                    glyph.style.setProperty("--progress-target", yearValues[i]);
+                });
+                widget.querySelectorAll(".year-progress-widget__glyph--month").forEach((glyph, i) => {
+                    if (i >= monthValues.length) return;
+                    glyph.style.setProperty("--progress-target", monthValues[i]);
+                });
+                const stage = widget.querySelector(".year-progress-widget__stage");
+                if (stage && !stage.classList.contains("is-ready")) stage.classList.add("is-ready");
+            });
+        };
+        const init = () => {
+            updateYearProgress();
+            // 跨天（月末/年末）时刷新进度
+            const next = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 1);
+            setTimeout(() => {
+                updateYearProgress();
+                setInterval(updateYearProgress, 86400000);
+            }, next - new Date());
+        };
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
+        else init();
+        document.addEventListener("astro:page-load", updateYearProgress);
+    })();
+</script>
+
+<style is:global>
+    /* 注册后 --yp-progress 才能在 keyframes 中平滑插值，实现数字填充动画 */
+    @property --yp-progress {
+        syntax: "<number>";
+        inherits: false;
+        initial-value: 0;
+    }
+
+    .year-progress-widget__stage {
+        --yp-fill: oklch(0.96 0.01 var(--hue));
+        --yp-muted: oklch(0.52 0.02 var(--hue));
+        background: oklch(0.11 0.01 var(--hue));
+        border-radius: calc(var(--radius-large) - 0.35rem);
+        clip-path: inset(0 100% 0 0);
+        padding: 0.85rem 0.65rem 0.75rem;
+        overflow: hidden;
+    }
+
+    .year-progress-widget__stage.is-ready {
+        animation: 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards year-progress-widget-reveal;
+    }
+
+    .year-progress-widget__stage.is-ready .year-progress-widget__glyph {
+        animation: 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards year-progress-widget-fill;
+    }
+
+    .year-progress-widget__years {
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 0.35rem;
+        margin-bottom: 0.65rem;
+        display: flex;
+    }
+
+    .year-progress-widget__months {
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: baseline;
+        gap: 0.28rem 0.42rem;
+        display: flex;
+    }
+
+    .year-progress-widget__glyph {
+        --yp-progress: 0;
+        background: linear-gradient(
+            90deg,
+            var(--yp-fill) 0%,
+            var(--yp-fill) calc(var(--yp-progress) * 1%),
+            var(--yp-muted) calc(var(--yp-progress) * 1%),
+            var(--yp-muted) 100%
+        );
+        color: transparent;
+        letter-spacing: -0.03em;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-background-clip: text;
+        background-clip: text;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .year-progress-widget__glyph--year {
+        font-size: clamp(1.65rem, 5.5vw, 2.15rem);
+    }
+
+    .year-progress-widget__glyph--month {
+        letter-spacing: -0.02em;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    @keyframes year-progress-widget-reveal {
+        0% {
+            clip-path: inset(0 100% 0 0);
+        }
+        to {
+            clip-path: inset(0);
+        }
+    }
+
+    @keyframes year-progress-widget-fill {
+        0% {
+            --yp-progress: 0;
+        }
+        to {
+            --yp-progress: var(--progress-target);
+        }
+    }
+
+    :root.dark .year-progress-widget__stage {
+        --yp-fill: oklch(0.97 0.008 var(--hue));
+        --yp-muted: oklch(0.5 0.018 var(--hue));
+        background: oklch(0.09 0.012 var(--hue));
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .year-progress-widget__stage,
+        .year-progress-widget__stage.is-ready {
+            clip-path: inset(0);
+            animation: none;
+        }
+        .year-progress-widget__glyph,
+        .year-progress-widget__stage.is-ready .year-progress-widget__glyph {
+            --yp-progress: var(--progress-target);
+            animation: none;
+        }
+    }
+</style>
