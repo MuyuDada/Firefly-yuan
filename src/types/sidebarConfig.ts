@@ -16,7 +16,8 @@ export type WidgetComponentType =
 	| "quoteOfTheDay"
 	| "weather"
 	| "relationship"
-	| "yearProgress";
+	| "yearProgress"
+	| "umamiStats";
 
 export type WidgetComponentConfig = {
 	type: WidgetComponentType; // 组件类型
