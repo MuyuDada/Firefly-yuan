@@ -8,7 +8,7 @@ image: api
 category: Firefly
 tags: [Firefly, 博客, 二开, 小部件]
 draft: false
-pinned: true
+pinned: false
 ---
 
 一个带有温度感的侧边小组件——显示当前时间、日期、星期，并根据早中晚不同时段切换问候语和背景图片，让博客更有"人味"。
