@@ -12,7 +12,7 @@ export const profileConfig: ProfileConfig = {
 	name: "MuyuDada",
 
 	// 个人签名
-	bio: "Hello, I'm MuyuDada.",
+	bio: "永远相信美好的事情即将发生",
 
 	// 链接配置
 	// 已经预装的图标集：fa7-brands，fa7-regular，fa7-solid，material-symbols，simple-icons

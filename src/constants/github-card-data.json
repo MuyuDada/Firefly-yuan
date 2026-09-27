@@ -5,6 +5,30 @@
 		"avatarUrl": "https://avatars.githubusercontent.com/u/43440669?v=4",
 		"license": "MIT"
 	},
+	"muyudada/muyudada.github.io": {
+		"description": "我的个人主页，homepage,个人引导页,简约主页,个人导航",
+		"language": "JavaScript",
+		"avatarUrl": "https://avatars.githubusercontent.com/u/68141057?v=4",
+		"license": null
+	},
+	"muyudada/smart-notes": {
+		"description": "智能网页工作便签",
+		"language": "HTML",
+		"avatarUrl": "https://avatars.githubusercontent.com/u/68141057?v=4",
+		"license": null
+	},
+	"muyudada/vgnkeyboardbattery": {
+		"description": "VGN 键盘电量插件（for TrafficMonitor）",
+		"language": "C++",
+		"avatarUrl": "https://avatars.githubusercontent.com/u/68141057?v=4",
+		"license": null
+	},
+	"muyudada/widget": {
+		"description": "一些自己收集的网页小组件",
+		"language": "HTML",
+		"avatarUrl": "https://avatars.githubusercontent.com/u/68141057?v=4",
+		"license": null
+	},
 	"saicaca/fuwari": {
 		"description": "✨A static blog template built with Astro. ",
 		"language": "Astro",
