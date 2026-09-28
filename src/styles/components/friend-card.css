@@ -1,0 +1,677 @@
+/* 友链卡片样式：极光晕 + 左侧色轨 + 玻璃票卡
+   视觉方向参考毛の博客的友链卡片（星海蓝境玻璃票卡） */
+
+.friend-card {
+	display: flex;
+	min-width: 0;
+}
+
+.friend-card-link {
+	--fc-ink: var(--deep-text);
+	--fc-surface: var(--card-bg);
+	--fc-edge: color-mix(in oklch, var(--primary) 42%, var(--line-divider));
+	--fc-glow: color-mix(in oklch, var(--primary) 28%, transparent);
+
+	isolation: isolate;
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	width: 100%;
+	overflow: hidden;
+	border: 1px solid var(--fc-edge);
+	border-radius: var(--radius-large);
+	background: var(--fc-surface);
+	box-shadow:
+		0 10px 28px var(--fc-glow),
+		inset 0 1px 0 rgb(255 255 255 / 0.55);
+	text-decoration: none;
+	transition:
+		transform 0.42s cubic-bezier(0.175, 0.885, 0.32, 1.2),
+		box-shadow 0.42s ease,
+		border-color 0.28s ease,
+		background 0.28s ease;
+}
+
+/* 无预览图时改为居中票卡布局 */
+.friend-card-link--no-preview {
+	align-items: center;
+	gap: 0.7rem;
+	min-height: 13.5rem;
+	padding: 1.35rem 1.15rem 1.1rem;
+}
+
+.friend-card-link--no-preview .friend-card-content {
+	align-items: center;
+	padding: 0;
+}
+
+.friend-card-link--no-preview .friend-card-meta {
+	flex-direction: column;
+	text-align: center;
+}
+
+.friend-card-link--no-preview .friend-card-name {
+	text-align: center;
+}
+
+.friend-card-link--no-preview .friend-card-url {
+	display: none;
+}
+
+.friend-card-link--no-preview .friend-card-avatar {
+	width: 4.6rem;
+	height: 4.6rem;
+}
+
+/* 悬停扫光 */
+.friend-card-link::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 4;
+	pointer-events: none;
+	opacity: 0;
+	background: linear-gradient(
+		115deg,
+		transparent 35%,
+		rgb(255 255 255 / 0.55) 48%,
+		transparent 62%
+	);
+	transform: translate(-120%) skew(-12deg);
+}
+
+.friend-card-link:hover::after {
+	opacity: 1;
+	animation: friendCardShine 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── 极光晕 ───────────────────────────────── */
+
+.friend-card-aurora {
+	position: absolute;
+	inset: -20% -10% auto;
+	z-index: 0;
+	height: 58%;
+	pointer-events: none;
+	opacity: 0.85;
+	transform-origin: top;
+	background:
+		radial-gradient(
+			ellipse 70% 80% at 20% 0%,
+			color-mix(in oklch, var(--primary) 28%, transparent),
+			transparent 70%
+		),
+		radial-gradient(
+			ellipse 60% 70% at 90% 10%,
+			color-mix(in oklch, #8ec5ff 32%, transparent),
+			transparent 65%
+		);
+	transition:
+		opacity 0.36s ease,
+		filter 0.36s ease;
+	animation: friendAuroraDrift 7s ease-in-out infinite alternate;
+}
+
+.friend-card-link:hover .friend-card-aurora {
+	opacity: 1;
+	filter: saturate(1.35) brightness(1.08);
+	animation: friendAuroraBurst 1.1s ease-out both;
+}
+
+/* ── 左侧色轨 ─────────────────────────────── */
+
+.friend-card-rail {
+	position: absolute;
+	top: 14%;
+	bottom: 14%;
+	left: 0;
+	z-index: 1;
+	width: 3px;
+	border-radius: 0 999px 999px 0;
+	background: linear-gradient(
+		180deg,
+		color-mix(in oklch, #8ec5ff 80%, white),
+		var(--primary) 55%,
+		color-mix(in oklch, var(--primary) 40%, transparent)
+	);
+	box-shadow: 0 0 12px color-mix(in oklch, var(--primary) 45%, transparent);
+	transition:
+		transform 0.42s cubic-bezier(0.175, 0.885, 0.32, 1.2),
+		box-shadow 0.36s ease,
+		width 0.28s ease;
+	animation: friendRailPulse 2.8s ease-in-out infinite;
+}
+
+.friend-card-link:hover .friend-card-rail {
+	width: 4px;
+	transform: scaleY(1.14);
+	box-shadow: 0 0 22px color-mix(in oklch, var(--primary) 75%, transparent);
+	animation: none;
+}
+
+/* ── 悬停整体 ─────────────────────────────── */
+
+.friend-card-link:hover {
+	border-color: color-mix(in oklch, var(--primary) 72%, var(--line-divider));
+	transform: translateY(-0.65rem) scale(1.02);
+	box-shadow:
+		0 22px 48px color-mix(in oklch, var(--primary) 42%, transparent),
+		0 0 0 1px color-mix(in oklch, var(--primary) 28%, transparent),
+		0 0 36px color-mix(in oklch, var(--primary) 22%, transparent),
+		inset 0 1px 0 rgb(255 255 255 / 0.6);
+}
+
+.friend-card-link--preview:hover {
+	transform: translateY(-0.45rem) scale(1.015);
+}
+
+.friend-card-link:active {
+	transform: translateY(-0.45rem) scale(1.015);
+}
+
+.friend-card-link:focus-visible {
+	outline: 2px solid color-mix(in oklch, var(--primary) 70%, transparent);
+	outline-offset: 3px;
+}
+
+/* ── Tag 角标 ─────────────────────────────── */
+
+.friend-card-chip {
+	position: absolute;
+	top: 0.65rem;
+	left: 0.65rem;
+	z-index: 5;
+	padding: 0.18rem 0.65rem;
+	border: 1px solid color-mix(in oklch, var(--primary) 35%, transparent);
+	border-radius: 999px;
+	font-size: 0.6875rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	color: var(--primary);
+	background: color-mix(in oklch, var(--primary) 14%, var(--card-bg));
+	box-shadow: 0 1px rgb(255 255 255 / 0.4);
+	transition:
+		transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+		box-shadow 0.36s ease;
+}
+
+.friend-card-link:hover .friend-card-chip {
+	transform: translateY(-2px) scale(1.04);
+	box-shadow: 0 4px 12px color-mix(in oklch, var(--primary) 25%, transparent);
+}
+
+:root.dark .friend-card-chip {
+	background: color-mix(in oklch, var(--primary) 22%, transparent);
+	box-shadow: none;
+}
+
+/* ── 访问延时徽章 ─────────────────────────── */
+
+.friend-latency {
+	position: absolute;
+	top: 0.65rem;
+	right: 0.65rem;
+	z-index: 3;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	padding: 0.2rem 0.55rem 0.2rem 0.42rem;
+	border-radius: 999px;
+	font-size: 0.65rem;
+	font-weight: 700;
+	line-height: 1;
+	letter-spacing: 0.04em;
+	color: #fff;
+	pointer-events: none;
+	box-shadow: 0 2px 8px rgb(0 0 0 / 0.16);
+	transition:
+		background 0.22s ease,
+		opacity 0.22s ease,
+		transform 0.36s ease;
+}
+
+.friend-card-link:hover .friend-latency {
+	transform: translateY(-1px) scale(1.03);
+}
+
+.friend-latency__dot {
+	flex-shrink: 0;
+	width: 0.38rem;
+	height: 0.38rem;
+	border-radius: 999px;
+	background: #fff;
+	opacity: 0.95;
+	box-shadow: 0 0 0 1.5px rgb(255 255 255 / 0.28);
+}
+
+.friend-latency__text {
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.friend-latency.is-pending {
+	background: color-mix(in oklch, var(--deep-text) 48%, transparent);
+	opacity: 0.88;
+}
+
+.friend-latency.is-pending .friend-latency__dot {
+	animation: friendLatencyPulse 1s ease-in-out infinite;
+}
+
+.friend-latency.is-good {
+	background: #22c55e;
+}
+
+.friend-latency.is-warn {
+	background: #f97316;
+}
+
+.friend-latency.is-bad {
+	background: #ef4444;
+}
+
+/* ── 顶部预览区 ───────────────────────────── */
+
+.friend-card-preview {
+	position: relative;
+	z-index: 1;
+	flex-shrink: 0;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	border-bottom: 1px solid
+		color-mix(in oklch, var(--primary) 22%, var(--line-divider));
+	background: color-mix(in oklch, var(--primary) 10%, var(--card-bg));
+}
+
+.friend-card-preview__img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: top center;
+	opacity: 0;
+	transition:
+		opacity 0.36s ease,
+		transform 0.42s ease;
+}
+
+.friend-card-preview.is-loaded .friend-card-preview__img {
+	opacity: 1;
+}
+
+.friend-card-link:hover .friend-card-preview.is-loaded .friend-card-preview__img {
+	transform: scale(1.05);
+}
+
+.friend-card-preview.is-placeholder {
+	display: grid;
+	place-items: center;
+	min-height: 5.25rem;
+	background: linear-gradient(
+		145deg,
+		color-mix(in oklch, var(--primary) 14%, var(--card-bg)),
+		color-mix(in oklch, #8ec5ff 18%, var(--card-bg))
+	);
+}
+
+.friend-card-preview__placeholder {
+	font-size: 2rem;
+	font-weight: 800;
+	color: color-mix(in oklch, var(--primary) 50%, transparent);
+}
+
+/* ── 主体内容 ─────────────────────────────── */
+
+.friend-card-content {
+	position: relative;
+	z-index: 2;
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 0.65rem;
+	padding: 0.85rem 1rem 1rem;
+}
+
+.friend-card-meta {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	min-width: 0;
+}
+
+.friend-card-head {
+	flex: 1;
+	min-width: 0;
+}
+
+.friend-card-url {
+	margin: 0.15rem 0 0;
+	font-size: 0.72rem;
+	font-weight: 500;
+	line-height: 1.3;
+	color: color-mix(in oklch, var(--deep-text) 58%, transparent);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ── 头像 ─────────────────────────────────── */
+
+.friend-card-avatar {
+	position: relative;
+	z-index: 2;
+	flex-shrink: 0;
+	width: 3.25rem;
+	height: 3.25rem;
+	overflow: hidden;
+	border: 2px solid color-mix(in oklch, var(--primary) 45%, white);
+	border-radius: 999px;
+	background: color-mix(in oklch, var(--primary) 12%, var(--card-bg));
+	box-shadow:
+		0 0 0 4px color-mix(in oklch, var(--primary) 14%, transparent),
+		0 8px 18px color-mix(in oklch, var(--primary) 22%, transparent);
+	transition:
+		transform 0.42s cubic-bezier(0.175, 0.885, 0.32, 1.2),
+		box-shadow 0.36s ease;
+}
+
+.friend-card-link:hover .friend-card-avatar {
+	transform: scale(1.1) translateY(-2px);
+	box-shadow:
+		0 0 0 6px color-mix(in oklch, var(--primary) 22%, transparent),
+		0 0 24px color-mix(in oklch, var(--primary) 40%, transparent),
+		0 14px 28px color-mix(in oklch, var(--primary) 32%, transparent);
+}
+
+.friend-card-avatar__face {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	font-size: 1.35rem;
+	font-weight: 800;
+	color: var(--primary);
+	background: linear-gradient(
+		145deg,
+		color-mix(in oklch, var(--primary) 18%, var(--card-bg)),
+		color-mix(in oklch, #8ec5ff 22%, var(--card-bg))
+	);
+	opacity: 0;
+}
+
+/* 加载失败时显示首字占位 */
+.friend-card-avatar.is-error .friend-card-avatar__face {
+	opacity: 1;
+}
+
+.friend-card-avatar.is-error .friend-card-avatar__img {
+	display: none;
+}
+
+.friend-card-avatar__img {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	opacity: 0;
+	transition:
+		opacity 0.36s ease,
+		transform 0.42s ease;
+}
+
+.friend-card-avatar.is-loaded .friend-card-avatar__img {
+	opacity: 1;
+}
+
+.friend-card-link:hover .friend-card-avatar.is-loaded .friend-card-avatar__img {
+	transform: scale(1.06);
+}
+
+/* ── 站名 ─────────────────────────────────── */
+
+.friend-card-name {
+	position: relative;
+	z-index: 2;
+	max-width: 100%;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	font-size: 0.95rem;
+	font-weight: 800;
+	line-height: 1.25;
+	letter-spacing: -0.01em;
+	text-align: left;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--fc-ink);
+	transition:
+		transform 0.36s ease,
+		color 0.28s ease;
+}
+
+.friend-card-link:hover .friend-card-name {
+	color: var(--primary);
+	transform: translateY(-2px);
+}
+
+/* ── 简介 ─────────────────────────────────── */
+
+.friend-card-intro {
+	position: relative;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	min-height: 2.35rem;
+	padding: 0.5rem 0.75rem;
+	overflow: hidden;
+	border: 1px solid color-mix(in oklch, var(--primary) 28%, var(--line-divider));
+	border-radius: 0.85rem;
+	background: color-mix(in oklch, var(--primary) 10%, var(--card-bg));
+	transition:
+		transform 0.36s ease,
+		border-color 0.28s ease,
+		background 0.28s ease;
+}
+
+:root.dark .friend-card-intro {
+	background: color-mix(in oklch, var(--primary) 16%, transparent);
+}
+
+.friend-card-link:hover .friend-card-intro {
+	border-color: color-mix(in oklch, var(--primary) 48%, var(--line-divider));
+	background: color-mix(in oklch, var(--primary) 16%, var(--card-bg));
+	transform: translateY(-1px);
+}
+
+.friend-card-intro__text {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	margin: 0;
+	overflow: hidden;
+	font-size: 0.75rem;
+	font-weight: 500;
+	line-height: 1.45;
+	text-align: left;
+	color: color-mix(in oklch, var(--deep-text) 82%, transparent);
+}
+
+/* ── 悬停前往按钮 ─────────────────────────── */
+
+.friend-card-go {
+	position: absolute;
+	bottom: 0.85rem;
+	right: 0.85rem;
+	z-index: 3;
+	display: grid;
+	place-items: center;
+	width: 1.85rem;
+	height: 1.85rem;
+	border-radius: 999px;
+	font-size: 0.85rem;
+	font-weight: 700;
+	color: #fff;
+	background: var(--primary);
+	box-shadow: 0 4px 12px color-mix(in oklch, var(--primary) 40%, transparent);
+	opacity: 0;
+	pointer-events: none;
+	transform: translate(8px, 8px) scale(0.7);
+	transition:
+		opacity 0.26s ease,
+		transform 0.26s ease;
+}
+
+.friend-card-link:hover .friend-card-go {
+	opacity: 1;
+	transform: translate(0) scale(1);
+	animation: friendGoPop 0.48s cubic-bezier(0.175, 0.885, 0.32, 1.35) both;
+}
+
+:root.dark .friend-card-go {
+	color: oklch(0.18 0.02 var(--hue, 250));
+}
+
+/* ── 暗色适配 ─────────────────────────────── */
+
+:root.dark .friend-card-link {
+	--fc-surface: color-mix(
+		in oklch,
+		var(--card-bg) 82%,
+		oklch(0.22 0.04 var(--hue, 250))
+	);
+	--fc-edge: color-mix(in oklch, var(--primary) 50%, transparent);
+	--fc-glow: color-mix(in oklch, var(--primary) 35%, transparent);
+}
+
+:root.dark .friend-card-link::after {
+	background: linear-gradient(
+		115deg,
+		transparent 35%,
+		color-mix(in oklch, #8ec5ff 40%, transparent) 48%,
+		transparent 62%
+	);
+}
+
+:root.dark .friend-card-name {
+	color: rgb(255 255 255 / 0.9);
+}
+
+:root.dark .friend-card-link:hover .friend-card-name {
+	color: var(--primary);
+}
+
+:root.dark .friend-card-url {
+	color: color-mix(in oklch, white 58%, transparent);
+}
+
+:root.dark .friend-card-intro__text {
+	color: color-mix(in oklch, white 82%, transparent);
+}
+
+/* ── 动画 ─────────────────────────────────── */
+
+@keyframes friendCardShine {
+	from {
+		transform: translate(-120%) skew(-12deg);
+	}
+	to {
+		transform: translate(120%) skew(-12deg);
+	}
+}
+
+@keyframes friendAuroraDrift {
+	from {
+		transform: translateY(-4%) scaleY(1);
+	}
+	to {
+		transform: translateY(4%) scaleY(1.08);
+	}
+}
+
+@keyframes friendAuroraBurst {
+	from {
+		transform: translateY(0) scale(1);
+	}
+	to {
+		transform: translateY(-6%) scale(1.06);
+	}
+}
+
+@keyframes friendRailPulse {
+	0%,
+	100% {
+		opacity: 0.75;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+@keyframes friendLatencyPulse {
+	0%,
+	100% {
+		opacity: 0.35;
+		transform: scale(0.85);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1.1);
+	}
+}
+
+@keyframes friendGoPop {
+	from {
+		transform: translate(8px, 8px) scale(0.7);
+	}
+	to {
+		transform: translate(0) scale(1);
+	}
+}
+
+/* ── 降低动效偏好 ─────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+	.friend-card-link,
+	.friend-card-aurora,
+	.friend-card-rail,
+	.friend-card-avatar,
+	.friend-card-avatar__img,
+	.friend-card-chip,
+	.friend-card-name,
+	.friend-card-intro,
+	.friend-card-go,
+	.friend-latency {
+		transition: none !important;
+		animation: none !important;
+	}
+
+	.friend-latency.is-pending .friend-latency__dot {
+		animation: none !important;
+	}
+
+	.friend-card-link::after {
+		display: none;
+	}
+
+	.friend-card-link:hover {
+		transform: none;
+	}
+
+	.friend-card-link:hover .friend-card-avatar,
+	.friend-card-link:hover .friend-card-avatar__img {
+		transform: none;
+		animation: none !important;
+	}
+
+	.friend-card-link:hover .friend-card-go {
+		opacity: 1;
+		transform: none;
+		animation: none !important;
+	}
+}

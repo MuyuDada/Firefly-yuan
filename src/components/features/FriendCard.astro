@@ -1,0 +1,153 @@
+---
+// 单张友链卡片
+//
+// 头像与预览图默认不立即加载：由 friends.astro 的内联脚本在卡片进入视口时
+// 把 data-src 赋给 src，避免一次性请求全部友链的图片。
+// 头像加载失败时回退到站名首字占位。
+import { Icon } from "astro-icon/components";
+import { friendsPageConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type { FriendLink } from "@/types/friendsConfig";
+
+interface Props {
+	friend: FriendLink;
+}
+
+const { friend } = Astro.props;
+
+const showLatency = friendsPageConfig.showLatency !== false;
+const showPreview = friendsPageConfig.showPreview !== false;
+
+// 预览图：手填的 previewurl 优先；autoPreview 时用第三方截图服务兜底
+const previewSrc =
+	friend.previewurl ||
+	(friendsPageConfig.autoPreview
+		? `https://s0.wp.com/mshots/v1/${encodeURIComponent(friend.siteurl)}?w=800`
+		: "");
+
+// 显示域名（去掉协议与结尾斜杠）
+let hostname = friend.siteurl;
+try {
+	hostname = new URL(friend.siteurl).hostname;
+} catch {
+	hostname = friend.siteurl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
+// 头像加载失败时的首字占位
+const initial = (friend.title || "?").trim().charAt(0).toUpperCase() || "?";
+
+// 卡片左上角角标取第一个 tag
+const firstTag = friend.tags?.[0] || "";
+
+// 常见英文 tag 的中文映射，未命中则原样显示
+const TAG_LABELS: Record<string, string> = {
+	Blog: "博客",
+	Docs: "文档",
+	Home: "主页",
+	Framework: "框架",
+};
+const tagLabel = TAG_LABELS[firstTag] || firstTag;
+---
+
+<div
+  class="friend-card"
+  data-tags={friend.tags?.join(",") || ""}
+  data-siteurl={friend.siteurl}
+>
+  <a
+    href={friend.siteurl}
+    target="_blank"
+    rel="noopener noreferrer"
+    title={friend.desc}
+    class:list={[
+      "friend-card-link",
+      previewSrc ? "friend-card-link--preview" : "friend-card-link--no-preview",
+    ]}
+  >
+    {/* 极光晕（悬停增强） */}
+    <span class="friend-card-aurora" aria-hidden="true"></span>
+    {/* 左侧色轨 */}
+    <span class="friend-card-rail" aria-hidden="true"></span>
+
+    {/* 左上角 Tag 角标 */}
+    {tagLabel && <span class="friend-card-chip">{tagLabel}</span>}
+
+    {/* 右上角访问延时徽章 */}
+    {
+      showLatency && (
+        <span
+          class="friend-latency is-pending"
+          data-latency
+          aria-live="polite"
+          data-timeout-label={i18n(I18nKey.friendsLatencyTimeout)}
+        >
+          <span class="friend-latency__dot" aria-hidden="true" />
+          <span class="friend-latency__text" data-latency-text>
+            {i18n(I18nKey.friendsLatencyTesting)}
+          </span>
+        </span>
+      )
+    }
+
+    {/* 顶部预览区 */}
+    {
+      showPreview && (
+        <div
+          class:list={[
+            "friend-card-preview",
+            previewSrc ? "" : "is-placeholder",
+          ]}
+        >
+          {previewSrc ? (
+            <img
+              class="friend-card-preview__img"
+              data-preview-thumb
+              data-src={previewSrc}
+              alt=""
+              draggable="false"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <span class="friend-card-preview__placeholder" aria-hidden="true">
+              {initial}
+            </span>
+          )}
+        </div>
+      )
+    }
+
+    {/* 主体信息 */}
+    <div class="friend-card-content">
+      <div class="friend-card-meta">
+        <div class="friend-card-avatar" data-avatar-wrap data-initial={initial}>
+          <span class="friend-card-avatar__face" aria-hidden="true">{initial}</span>
+          <img
+            class="friend-card-avatar__img"
+            data-avatar
+            data-src={friend.imgurl}
+            alt={friend.title}
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+
+        <div class="friend-card-head">
+          <h3 class="friend-card-name friend-name">{friend.title}</h3>
+          <p class="friend-card-url friend-host">{hostname}</p>
+        </div>
+      </div>
+
+      {/* 简介 */}
+      <div class="friend-card-intro">
+        <p class="friend-card-intro__text friend-desc">{friend.desc}</p>
+      </div>
+    </div>
+
+    {/* 悬停时右下角出现的前往按钮 */}
+    <span class="friend-card-go" aria-hidden="true">
+      <Icon name="material-symbols:arrow-outward-rounded" />
+    </span>
+  </a>
+</div>

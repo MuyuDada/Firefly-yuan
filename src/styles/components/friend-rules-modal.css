@@ -1,0 +1,340 @@
+/* 「如何申请友链」弹窗样式 */
+
+friend-rules-modal {
+	display: inline-block;
+}
+
+/* 触发按钮 */
+.friend-apply-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	padding: 0.5rem 0.875rem;
+	border-radius: 0.75rem;
+	font-size: 0.8rem;
+	font-weight: 600;
+	cursor: pointer;
+	color: var(--primary);
+	background: color-mix(in srgb, var(--primary) 12%, transparent);
+	transition: background 0.2s ease;
+}
+
+.friend-apply-btn:hover {
+	background: color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+/* 遮罩 */
+.friend-modal {
+	position: fixed;
+	inset: 0;
+	/* 需高于主题的浮动控件（z-1000）与移动端导航面板（z-1100） */
+	z-index: 1200;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+}
+
+.friend-modal[hidden] {
+	display: none;
+}
+
+.friend-modal-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgb(0 0 0 / 0.5);
+	backdrop-filter: blur(2px);
+}
+
+/* 面板 */
+.friend-modal-panel {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	max-width: 34rem;
+	/* 用 dvh 兼容移动端浏览器地址栏收缩；再兜一层百分比避免极端情况溢出 */
+	max-height: min(85dvh, 85vh, 44rem);
+	overflow: hidden;
+	border-radius: var(--radius-large);
+	border: 1px solid var(--line-divider);
+	background: var(--card-bg);
+	box-shadow: 0 24px 60px -12px rgb(0 0 0 / 0.35);
+}
+
+.friend-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 1rem 1.25rem;
+	border-bottom: 1px solid var(--line-divider);
+}
+
+.friend-modal-header h3 {
+	font-size: 1.05rem;
+	font-weight: 700;
+	color: rgb(0 0 0 / 90%);
+}
+
+.friend-modal-close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 2rem;
+	height: 2rem;
+	border-radius: 0.5rem;
+	cursor: pointer;
+	color: var(--content-meta);
+	transition:
+		background 0.2s ease,
+		color 0.2s ease;
+}
+
+.friend-modal-close:hover {
+	color: var(--primary);
+	background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.friend-modal-body {
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+	padding: 1.25rem;
+	overflow-y: auto;
+}
+
+.friend-modal-section h4 {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	margin-bottom: 0.625rem;
+	font-size: 0.85rem;
+	font-weight: 700;
+	color: rgb(0 0 0 / 90%);
+}
+
+/* ── 本站信息 ─────────────────────────────── */
+
+.friend-info-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.375rem;
+}
+
+.friend-info-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	padding: 0.5rem 0.625rem;
+	border-radius: 0.5rem;
+	background: color-mix(in srgb, var(--line-divider) 35%, transparent);
+}
+
+.friend-info-text {
+	display: flex;
+	flex-direction: column;
+	gap: 0.125rem;
+	min-width: 0;
+}
+
+.friend-info-label {
+	font-size: 0.65rem;
+	color: var(--content-meta);
+}
+
+.friend-info-value {
+	font-size: 0.75rem;
+	font-weight: 500;
+	color: rgb(0 0 0 / 90%);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.friend-copy-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 1.75rem;
+	height: 1.75rem;
+	border-radius: 0.375rem;
+	cursor: pointer;
+	color: var(--content-meta);
+	background: color-mix(in srgb, var(--line-divider) 60%, transparent);
+	transition:
+		color 0.2s ease,
+		background 0.2s ease;
+}
+
+.friend-copy-btn:hover {
+	color: var(--primary);
+	background: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.friend-copy-btn.is-copied {
+	color: #fff;
+	background: rgb(34 197 94 / 0.9);
+}
+
+/* ── 申请流程 ─────────────────────────────── */
+
+.friend-steps {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.friend-step {
+	display: flex;
+	gap: 0.75rem;
+}
+
+.friend-step-index {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 1.5rem;
+	height: 1.5rem;
+	border-radius: 9999px;
+	font-size: 0.7rem;
+	font-weight: 700;
+	color: #fff;
+	background: var(--primary);
+}
+
+.friend-step-content {
+	display: flex;
+	flex-direction: column;
+	gap: 0.125rem;
+}
+
+.friend-step-content strong {
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: rgb(0 0 0 / 90%);
+}
+
+.friend-step-content span {
+	font-size: 0.75rem;
+	line-height: 1.5;
+	color: var(--content-meta);
+}
+
+/* ── 申请模板 ─────────────────────────────── */
+
+.friend-template {
+	position: relative;
+	border-radius: 0.5rem;
+	background: color-mix(in srgb, var(--line-divider) 35%, transparent);
+}
+
+.friend-template pre {
+	margin: 0;
+	padding: 0.75rem 2.5rem 0.75rem 0.75rem;
+	font-size: 0.7rem;
+	line-height: 1.7;
+	white-space: pre-wrap;
+	word-break: break-word;
+	color: rgb(0 0 0 / 90%);
+}
+
+.friend-template-copy {
+	position: absolute;
+	top: 0.5rem;
+	right: 0.5rem;
+}
+
+/* ── 注意事项 ─────────────────────────────── */
+
+.friend-notes {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.friend-notes li {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	font-size: 0.75rem;
+	line-height: 1.6;
+	color: var(--content-meta);
+}
+
+.friend-notes li::before {
+	content: "";
+	flex-shrink: 0;
+	width: 0.375rem;
+	height: 0.375rem;
+	border-radius: 9999px;
+	background: var(--primary);
+}
+
+.friend-notes strong {
+	flex-shrink: 0;
+	font-weight: 600;
+	color: rgb(0 0 0 / 90%);
+}
+
+/* ── 底部动作 ─────────────────────────────── */
+
+.friend-modal-footer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	padding: 1rem 1.25rem;
+	border-top: 1px solid var(--line-divider);
+}
+
+.friend-modal-primary,
+.friend-modal-secondary {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	padding: 0.5rem 0.875rem;
+	border-radius: 0.625rem;
+	font-size: 0.8rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition:
+		background 0.2s ease,
+		opacity 0.2s ease;
+}
+
+.friend-modal-primary {
+	color: #fff;
+	background: var(--primary);
+}
+
+.friend-modal-primary:hover {
+	opacity: 0.85;
+}
+
+.friend-modal-secondary {
+	color: var(--primary);
+	background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.friend-modal-secondary:hover {
+	background: color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+/* 弹窗打开时锁定页面滚动 */
+body.friend-modal-open {
+	overflow: hidden;
+}
+
+/* ── 暗色适配 ─────────────────────────────── */
+
+:root.dark .friend-modal-header h3,
+:root.dark .friend-modal-section h4,
+:root.dark .friend-info-value,
+:root.dark .friend-step-content strong,
+:root.dark .friend-template pre,
+:root.dark .friend-notes strong {
+	color: rgb(255 255 255 / 90%);
+}

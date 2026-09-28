@@ -1,0 +1,199 @@
+---
+// 「如何申请友链」弹窗
+//
+// 是否渲染由 friends.astro 判断（applyLink / siteInfo / 评论区 三者之一满足即可），
+// 这里只负责内容与交互。本站信息与申请模板都支持一键复制。
+import { Icon } from "astro-icon/components";
+import { friendsPageConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+
+interface Props {
+	hasComment: boolean;
+}
+
+const { hasComment } = Astro.props;
+
+const { applyLink, siteInfo, notes } = friendsPageConfig;
+
+// 本站信息字段（可复制）
+const infoFields = siteInfo
+	? [
+			{ label: "站点名称", value: siteInfo.name },
+			{ label: "站点描述", value: siteInfo.desc },
+			{ label: "站点链接", value: siteInfo.url },
+			{ label: "头像链接", value: siteInfo.avatar },
+		]
+	: [];
+
+// 申请模板文本
+const template = siteInfo
+	? `站点名称：您的站点名称
+站点描述：您的站点描述
+站点链接：您的站点链接
+头像链接：您的站点头像`
+	: "";
+
+const steps = [
+	{
+		title: i18n(I18nKey.friendsApplyStep1Title),
+		desc: i18n(I18nKey.friendsApplyStep1Desc),
+	},
+	{
+		title: i18n(I18nKey.friendsApplyStep2Title),
+		desc: i18n(I18nKey.friendsApplyStep2Desc),
+	},
+	{
+		title: i18n(I18nKey.friendsApplyStep3Title),
+		desc: i18n(I18nKey.friendsApplyStep3Desc),
+	},
+];
+---
+
+<friend-rules-modal data-copy-label={i18n(I18nKey.friendsCopy)} data-copied-label={i18n(I18nKey.friendsCopied)}>
+  {/* 触发按钮 */}
+  <button type="button" data-modal-open class="friend-apply-btn">
+    <Icon name="material-symbols:help-outline-rounded" class="text-base" />
+    {i18n(I18nKey.friendsApplyHow)}
+  </button>
+
+  {/* 遮罩 + 面板 */}
+  <div data-modal-root class="friend-modal" hidden>
+    <div data-modal-backdrop class="friend-modal-backdrop"></div>
+
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={i18n(I18nKey.friendsApplyTitle)}
+      class="friend-modal-panel"
+    >
+      <header class="friend-modal-header">
+        <h3>{i18n(I18nKey.friendsApplyTitle)}</h3>
+        <button type="button" data-modal-close class="friend-modal-close" aria-label="Close">
+          <Icon name="material-symbols:close-rounded" class="text-lg" />
+        </button>
+      </header>
+
+      <div class="friend-modal-body">
+        {/* 本站信息 */}
+        {
+          infoFields.length > 0 && (
+            <section class="friend-modal-section">
+              <h4>
+                <Icon name="material-symbols:badge-outline" class="text-base" />
+                {i18n(I18nKey.friendsApplySiteInfo)}
+              </h4>
+              <div class="friend-info-list">
+                {infoFields.map((field) => (
+                  <div class="friend-info-row">
+                    <div class="friend-info-text">
+                      <span class="friend-info-label">{field.label}</span>
+                      <span class="friend-info-value">{field.value}</span>
+                    </div>
+                    <button
+                      type="button"
+                      class="friend-copy-btn"
+                      data-copy={field.value}
+                      aria-label={`${i18n(I18nKey.friendsCopy)} ${field.label}`}
+                    >
+                      <Icon name="material-symbols:content-copy-outline" class="text-sm" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )
+        }
+
+        {/* 申请流程 */}
+        <section class="friend-modal-section">
+          <h4>
+            <Icon name="material-symbols:list-alt-outline" class="text-base" />
+            {i18n(I18nKey.friendsApplySteps)}
+          </h4>
+          <ol class="friend-steps">
+            {
+              steps.map((step, index) => (
+                <li class="friend-step">
+                  <span class="friend-step-index">{index + 1}</span>
+                  <span class="friend-step-content">
+                    <strong>{step.title}</strong>
+                    <span>{step.desc}</span>
+                  </span>
+                </li>
+              ))
+            }
+          </ol>
+        </section>
+
+        {/* 申请模板 */}
+        {
+          template && (
+            <section class="friend-modal-section">
+              <h4>
+                <Icon name="material-symbols:edit-note" class="text-base" />
+                {i18n(I18nKey.friendsApplyTemplate)}
+              </h4>
+              <div class="friend-template">
+                <pre>{template}</pre>
+                <button
+                  type="button"
+                  class="friend-copy-btn friend-template-copy"
+                  data-copy={template}
+                  aria-label={i18n(I18nKey.friendsCopy)}
+                >
+                  <Icon name="material-symbols:content-copy-outline" class="text-sm" />
+                </button>
+              </div>
+            </section>
+          )
+        }
+
+        {/* 注意事项 */}
+        {
+          notes && notes.length > 0 && (
+            <section class="friend-modal-section">
+              <h4>
+                <Icon name="material-symbols:info-outline" class="text-base" />
+                {i18n(I18nKey.friendsApplyNotes)}
+              </h4>
+              <ul class="friend-notes">
+                {notes.map((note) => (
+                  <li>
+                    <strong>{note.title}</strong>
+                    <span>{note.content}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+      </div>
+
+      {/* 底部动作 */}
+      {
+        (applyLink || hasComment) && (
+          <footer class="friend-modal-footer">
+            {applyLink && (
+              <a
+                href={applyLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="friend-modal-primary"
+              >
+                <Icon name="material-symbols:open-in-new" class="text-base" />
+                {i18n(I18nKey.friendsApplySelfLink)}
+              </a>
+            )}
+            {hasComment && (
+              <button type="button" data-modal-comment class="friend-modal-secondary">
+                <Icon name="material-symbols:chat-outline" class="text-base" />
+                {i18n(I18nKey.friendsApplyGoComment)}
+              </button>
+            )}
+          </footer>
+        )
+      }
+    </div>
+  </div>
+</friend-rules-modal>

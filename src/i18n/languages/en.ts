@@ -97,6 +97,28 @@ export const en: Translation = {
 		"Here are my friends, welcome to visit and communicate with each other",
 	[Key.searchFriends]: "Search friends...",
 	[Key.friendsEmpty]: "No friends yet.",
+	[Key.friendsApplyHow]: "How to apply",
+	[Key.friendsApplyTitle]: "Apply for a link exchange",
+	[Key.friendsApplySiteInfo]: "My site info",
+	[Key.friendsApplySteps]: "Steps",
+	[Key.friendsApplyStep1Title]: "Add my site first",
+	[Key.friendsApplyStep1Desc]:
+		"Please add my site to your friends page first. You can copy each field above.",
+	[Key.friendsApplyStep2Title]: "Send your request",
+	[Key.friendsApplyStep2Desc]:
+		"Copy and fill in the template below, then leave a comment or send an email.",
+	[Key.friendsApplyStep3Title]: "Wait for review",
+	[Key.friendsApplyStep3Desc]:
+		"Once the info is verified, your link will be added as soon as possible.",
+	[Key.friendsApplyTemplate]: "Request template",
+	[Key.friendsApplyNotes]: "Notes",
+	[Key.friendsApplySelfLink]: "Apply via form",
+	[Key.friendsApplyGoComment]: "Go to comments",
+	[Key.friendsLatencyTimeout]: "Timeout",
+	[Key.friendsLatencyTesting]: "Testing",
+	[Key.friendsCopy]: "Copy",
+	[Key.friendsCopied]: "Copied",
+	[Key.friendsPreviewAlt]: "Site preview",
 	[Key.booknav]: "Bookmark Nav",
 	[Key.booknavDescription]:
 		"A curated collection of useful sites, organized by category.",

@@ -96,6 +96,28 @@ export const ru: Translation = {
 		"Вот мои друзья, добро пожаловать посетить и общаться друг с другом",
 	[Key.searchFriends]: "Поиск друзей...",
 	[Key.friendsEmpty]: "Друзей пока нет.",
+	[Key.friendsApplyHow]: "Как подать заявку",
+	[Key.friendsApplyTitle]: "Заявка на обмен ссылками",
+	[Key.friendsApplySiteInfo]: "Информация о моём сайте",
+	[Key.friendsApplySteps]: "Порядок действий",
+	[Key.friendsApplyStep1Title]: "Сначала добавьте мой сайт",
+	[Key.friendsApplyStep1Desc]:
+		"Сначала добавьте информацию о моём сайте на страницу друзей вашего сайта. Можно скопировать поля выше.",
+	[Key.friendsApplyStep2Title]: "Отправьте заявку",
+	[Key.friendsApplyStep2Desc]:
+		"Скопируйте и заполните шаблон ниже, затем оставьте комментарий или отправьте письмо.",
+	[Key.friendsApplyStep3Title]: "Ожидайте проверки",
+	[Key.friendsApplyStep3Desc]:
+		"После проверки информации ваша ссылка будет добавлена в ближайшее время.",
+	[Key.friendsApplyTemplate]: "Шаблон заявки",
+	[Key.friendsApplyNotes]: "Примечания",
+	[Key.friendsApplySelfLink]: "Заявка через форму",
+	[Key.friendsApplyGoComment]: "К комментариям",
+	[Key.friendsLatencyTimeout]: "Тайм-аут",
+	[Key.friendsLatencyTesting]: "Проверка",
+	[Key.friendsCopy]: "Копировать",
+	[Key.friendsCopied]: "Скопировано",
+	[Key.friendsPreviewAlt]: "Превью сайта",
 	[Key.booknav]: "Каталог закладок",
 	[Key.booknavDescription]:
 		"Подборка полезных сайтов, сгруппированных по категориям.",
