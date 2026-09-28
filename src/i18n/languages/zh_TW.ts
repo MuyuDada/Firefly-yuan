@@ -146,6 +146,16 @@ export const zh_TW: Translation = {
 	[Key.tagsCount]: "個標籤",
 	[Key.noData]: "暫無資料",
 
+	// 歸檔頁熱力圖
+	[Key.postHeatmap]: "文章分佈",
+	[Key.githubHeatmap]: "GitHub 貢獻",
+	[Key.heatmapLess]: "少",
+	[Key.heatmapMore]: "多",
+	[Key.heatmapPrevYear]: "上一年",
+	[Key.heatmapNextYear]: "下一年",
+	[Key.heatmapLoadFailed]: "GitHub 貢獻資料載入失敗",
+	[Key.heatmapContributions]: "次貢獻",
+
 	[Key.themeColor]: "主題色相",
 
 	[Key.lightMode]: "亮色",

@@ -112,6 +112,15 @@ export type SiteConfig = {
 	// 归档页是否折叠非最新年份文章
 	foldArticle?: boolean;
 
+	// 归档页热力图配置
+	heatmap?: {
+		// GitHub 贡献热力图（构建时从第三方 API 拉取，无需 Token）
+		github?: {
+			enabled: boolean; // 是否启用
+			username: string; // GitHub 用户名
+		};
+	};
+
 	// 文章列表布局配置
 	postListLayout: {
 		defaultMode: "list" | "grid"; // 默认布局模式：list=列表模式，grid=网格模式

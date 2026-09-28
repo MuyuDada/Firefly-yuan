@@ -1,0 +1,338 @@
+/* 归档时间轴：年 → 月 → 文章 三级结构，含悬停高亮连线 */
+
+.archive-panel {
+	--tw: 2rem; /* 节点列宽度 */
+	--lc: var(--line-color); /* 虚线颜色 */
+	--nc: var(--line-color); /* 普通节点边框 */
+	--nh: var(--btn-content); /* 高亮色（比 --primary 略深，更清晰） */
+	--lw: 2.5px; /* 线宽 */
+	position: relative;
+}
+
+/* ── 年份块 ───────────────────────────────── */
+
+.ap-year-block {
+	position: relative;
+	margin-bottom: 2.5rem;
+}
+
+/* 年份左侧的贯穿虚线 */
+.ap-year-block::before {
+	content: "";
+	position: absolute;
+	left: calc(var(--tw) / 2);
+	top: calc(var(--tw) / 2);
+	bottom: 1rem;
+	width: 0;
+	border-left: var(--lw) dashed var(--lc);
+	z-index: 0;
+}
+
+.ap-year-header,
+.ap-month-header {
+	display: flex;
+	align-items: center;
+	min-height: var(--tw);
+}
+
+.ap-year-label,
+.ap-month-label {
+	display: flex;
+	flex: 1;
+	align-items: baseline;
+	gap: 0.6rem;
+	padding-left: 0.5rem;
+}
+
+.ap-year-toggle {
+	display: flex;
+	flex: 1;
+	align-items: baseline;
+	gap: 0.6rem;
+	padding: 0;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	text-align: left;
+}
+
+.ap-h1 {
+	margin: 0;
+	font-size: 1.375rem;
+	font-weight: 700;
+	color: var(--deep-text);
+}
+
+.ap-h2 {
+	margin: 0;
+	font-size: 1.05rem;
+	font-weight: 600;
+	color: var(--deep-text);
+}
+
+.ap-count {
+	font-size: 0.75rem;
+	color: var(--content-meta);
+}
+
+/* ── 月份块 ───────────────────────────────── */
+
+.ap-months-area,
+.ap-posts-area {
+	padding-left: var(--tw);
+}
+
+.ap-month-block {
+	position: relative;
+	margin-bottom: 0.5rem;
+}
+
+.ap-month-block::before {
+	content: "";
+	position: absolute;
+	left: calc(var(--tw) / 2);
+	top: calc(var(--tw) / 2);
+	bottom: 1rem;
+	width: 0;
+	border-left: var(--lw) dashed var(--lc);
+	z-index: 0;
+}
+
+/* ── 节点列 ───────────────────────────────── */
+
+.ap-col {
+	position: relative;
+	flex-shrink: 0;
+	align-self: stretch;
+	width: var(--tw);
+}
+
+.ap-node {
+	position: absolute;
+	left: 50%;
+	transform: translate(-50%);
+	border-radius: 50%;
+	z-index: 2;
+	transition:
+		background-color 0.15s ease,
+		border-color 0.15s ease,
+		transform 0.15s ease;
+}
+
+.ap-node.highlighted,
+.ap-node.hovered {
+	z-index: 3;
+}
+
+.ap-year-node {
+	top: calc(50% - 0.375rem);
+	width: 0.75rem;
+	height: 0.75rem;
+	border: 2px solid var(--nc);
+	background: var(--page-bg);
+}
+
+.ap-year-node.highlighted {
+	border-width: 2.5px;
+	border-color: var(--nh);
+	background: var(--page-bg);
+	box-shadow: 0 0 0 4px color-mix(in oklch, var(--btn-content) 24%, transparent);
+	transform: translate(-50%) scale(1.1);
+}
+
+.ap-month-node {
+	top: calc(50% - 0.25rem);
+	width: 0.5rem;
+	height: 0.5rem;
+	box-sizing: border-box;
+	border: 2px solid transparent;
+	background: var(--nc);
+}
+
+.ap-month-node.highlighted {
+	border-color: var(--nh);
+	background: var(--page-bg);
+	box-shadow: 0 0 0 3px color-mix(in oklch, var(--btn-content) 22%, transparent);
+	transform: translate(-50%) scale(1.4);
+}
+
+.ap-post-node {
+	top: calc(50% - 0.2rem);
+	width: 0.4rem;
+	height: 0.4rem;
+	background: var(--nc);
+}
+
+.ap-post-node.hovered {
+	background: var(--nh);
+	box-shadow: 0 0 0 3px color-mix(in oklch, var(--btn-content) 24%, transparent);
+	transform: translate(-50%) scale(1.5);
+}
+
+/* ── 横向虚线 ─────────────────────────────── */
+
+.ap-hline {
+	position: absolute;
+	height: 0;
+	border-top: var(--lw) dashed var(--lc);
+	z-index: 1;
+}
+
+.ap-month-hline,
+.ap-post-hline {
+	top: 50%;
+	left: calc(-1 * var(--tw) / 2);
+	width: var(--tw);
+}
+
+/* ── 悬停高亮 SVG ─────────────────────────── */
+
+.ap-highlight-svg {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.ap-highlight-glow,
+.ap-highlight-line {
+	fill: none;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	transition: opacity 0.2s ease;
+}
+
+.ap-highlight-glow {
+	stroke: color-mix(in oklch, var(--btn-content) 32%, transparent);
+	stroke-width: 6;
+	opacity: 0.62;
+}
+
+.ap-highlight-line {
+	stroke: var(--btn-content);
+	stroke-width: 2.5;
+	opacity: 0.9;
+}
+
+/* ── 文章行 ───────────────────────────────── */
+
+.ap-post-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ap-post-row {
+	position: relative;
+	display: flex;
+	align-items: center;
+	min-height: 2.25rem;
+	transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ap-post-row:hover {
+	transform: translate(0.375rem);
+}
+
+.ap-post-link {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: 0.6rem;
+	min-width: 0;
+	min-height: 2.25rem;
+	padding: 0.2rem 0.5rem 0.2rem 0;
+	border-radius: 0.5rem;
+	overflow: hidden;
+	text-decoration: none;
+}
+
+.ap-date {
+	flex-shrink: 0;
+	width: 2.8rem;
+	font-size: 0.875rem;
+	text-align: right;
+	color: var(--content-meta);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.ap-category {
+	flex-shrink: 0;
+	min-width: 3rem;
+	font-size: 0.8rem;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.ap-title {
+	display: inline-block;
+	flex: 1;
+	overflow: hidden;
+	font-size: 0.9rem;
+	font-weight: 500;
+	color: var(--deep-text);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	transition: color 0.15s ease;
+}
+
+.ap-post-row:hover .ap-title {
+	color: var(--primary);
+}
+
+/* ── 移动端：隐藏节点与连线，保留列表 ─────── */
+
+@media (max-width: 768px) {
+	.archive-panel {
+		--tw: 1.5rem;
+	}
+
+	.ap-date {
+		width: 2.4rem;
+		font-size: 0.8rem;
+	}
+
+	.ap-category {
+		min-width: 2.5rem;
+		font-size: 0.75rem;
+	}
+
+	.ap-title {
+		font-size: 0.82rem;
+	}
+
+	.ap-year-block::before,
+	.ap-month-block::before {
+		content: none;
+	}
+
+	.ap-hline,
+	.ap-node,
+	.ap-col,
+	.ap-highlight-svg {
+		display: none;
+	}
+
+	.ap-months-area,
+	.ap-posts-area {
+		padding-left: 0.5rem;
+	}
+}
+
+/* ── 降低动效偏好 ─────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+	.ap-post-row,
+	.ap-node,
+	.ap-title {
+		transition: none !important;
+	}
+
+	.ap-post-row:hover {
+		transform: none;
+	}
+}

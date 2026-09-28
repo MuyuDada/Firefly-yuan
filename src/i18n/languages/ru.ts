@@ -151,6 +151,16 @@ export const ru: Translation = {
 	[Key.tagsCount]: "тегов",
 	[Key.noData]: "Нет данных",
 
+	// Тепловая карта архива
+	[Key.postHeatmap]: "Активность постов",
+	[Key.githubHeatmap]: "Вклад в GitHub",
+	[Key.heatmapLess]: "Меньше",
+	[Key.heatmapMore]: "Больше",
+	[Key.heatmapPrevYear]: "Предыдущий год",
+	[Key.heatmapNextYear]: "Следующий год",
+	[Key.heatmapLoadFailed]: "Не удалось загрузить данные о вкладе в GitHub",
+	[Key.heatmapContributions]: "вкладов",
+
 	[Key.themeColor]: "Цвет темы",
 
 	[Key.lightMode]: "Светлая",

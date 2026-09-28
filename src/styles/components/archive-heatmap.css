@@ -1,0 +1,383 @@
+/* 归档页热力图：左栏 GitHub 贡献（绿色）+ 右栏文章发布分布（跟随主题色） */
+
+.archive-heatmap {
+	--cell-size: 14px;
+	--cell-gap: 3px;
+	--post-cell-size: 26px;
+	--post-cell-gap: 3px;
+}
+
+/* 两栏并排；每栏至少 320px，放不下时自动折成上下堆叠。
+   注意不能用 @media 判断：内容区被侧边栏挤压后往往只有 600px 左右，
+   而视口宽度是 1300px+，媒体查询会误判成"够宽"。auto-fit + minmax
+   由容器自身宽度决定列数，才和真实可用空间一致。 */
+.heatmap-container {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+	align-items: start;
+	gap: 1.5rem;
+}
+
+.heatmap-panel {
+	min-width: 0;
+}
+
+/* ── 面板标题 ─────────────────────────────── */
+
+.heatmap-section-title {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	margin-bottom: 0.5rem;
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--deep-text);
+}
+
+.heatmap-stats {
+	margin-left: auto;
+	font-size: 0.65rem;
+	font-weight: 400;
+	color: var(--content-meta);
+	opacity: 0.8;
+}
+
+/* ── 年份切换 ─────────────────────────────── */
+
+.heatmap-year-nav {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	margin-left: auto;
+}
+
+.heatmap-year-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border: 1px solid var(--deep-text);
+	border-radius: 4px;
+	color: var(--deep-text);
+	background: var(--card-bg);
+	cursor: pointer;
+	appearance: none;
+	transition:
+		background 0.15s ease,
+		border-color 0.15s ease,
+		opacity 0.15s ease;
+}
+
+.heatmap-year-btn svg {
+	color: var(--deep-text);
+}
+
+.heatmap-year-btn:hover {
+	background: var(--btn-regular-bg-hover);
+	border-color: var(--primary);
+}
+
+.heatmap-year-btn.is-disabled {
+	opacity: 0.3;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+.heatmap-year-label {
+	min-width: 2.5rem;
+	font-size: 0.7rem;
+	font-weight: 600;
+	text-align: center;
+	color: var(--deep-text);
+	font-variant-numeric: tabular-nums;
+}
+
+.heatmap-error {
+	padding: 0.5rem 0;
+	font-size: 0.75rem;
+	color: var(--content-meta);
+}
+
+.heatmap-hint {
+	padding: 2px 0 6px;
+	font-size: 0.65rem;
+	text-align: center;
+	color: var(--content-meta);
+	opacity: 0.7;
+}
+
+/* ── 通用格子 ─────────────────────────────── */
+
+.heatmap-body {
+	margin-top: 0.5rem;
+}
+
+.github-heatmap .heatmap-body,
+.post-heatmap .heatmap-body {
+	margin-top: 0.25rem;
+}
+
+.heatmap-cell {
+	width: var(--cell-size);
+	height: var(--cell-size);
+	border-radius: 3px;
+	background: var(--muted);
+	transition:
+		background 0.15s ease,
+		transform 0.15s ease;
+}
+
+.heatmap-cell:hover {
+	position: relative;
+	z-index: 2;
+	outline: 2px solid var(--primary);
+	transform: scale(1.3);
+}
+
+.heatmap-cell.is-month-active {
+	outline: 2px solid var(--primary);
+	outline-offset: 1px;
+}
+
+/* ── GitHub 贡献图（经典绿色系） ──────────── */
+
+/* 月份行与网格共用横向滚动：两者放在同一个滚动容器里，
+   否则月份标签会自己撑出去、与格子错位。 */
+.heatmap-scroll {
+	overflow-x: auto;
+	padding-bottom: 2px;
+}
+
+.heatmap-months {
+	display: grid;
+	grid-template-columns: repeat(53, var(--cell-size));
+	gap: var(--cell-gap);
+	padding-left: calc(var(--cell-size) + var(--cell-gap));
+	margin-bottom: 4px;
+	/* 与下方网格同宽，滚动时一起移动 */
+	width: max-content;
+}
+
+.heatmap-month-label {
+	font-size: 0.65rem;
+	white-space: nowrap;
+	color: var(--content-meta);
+}
+
+.heatmap-grid-wrap {
+	display: flex;
+	gap: var(--cell-gap);
+	width: max-content;
+}
+
+.heatmap-days {
+	display: grid;
+	flex-shrink: 0;
+	grid-template-rows: repeat(7, var(--cell-size));
+	gap: var(--cell-gap);
+}
+
+.heatmap-day-label {
+	font-size: 0.6rem;
+	line-height: var(--cell-size);
+	text-align: center;
+	color: var(--content-meta);
+}
+
+.heatmap-grid {
+	display: flex;
+	gap: var(--cell-gap);
+}
+
+.heatmap-week {
+	display: grid;
+	flex-shrink: 0;
+	grid-template-rows: repeat(7, var(--cell-size));
+	gap: var(--cell-gap);
+}
+
+/* GitHub 保持官方绿（色相 160），不跟随主题色 */
+.github-cell.level-0 {
+	background: var(--muted);
+}
+
+:root.dark .github-cell.level-0 {
+	background: var(--btn-regular-bg);
+}
+
+.github-cell.level-1 {
+	background: #b8d6c5;
+}
+
+:root.dark .github-cell.level-1 {
+	background: #14261d;
+}
+
+.github-cell.level-2 {
+	background: #77b493;
+}
+
+:root.dark .github-cell.level-2 {
+	background: #133f2b;
+}
+
+.github-cell.level-3 {
+	background: #118659;
+}
+
+:root.dark .github-cell.level-3 {
+	background: oklch(42% 0.1 160);
+}
+
+.github-cell.level-4 {
+	background: oklch(38% 0.15 160);
+}
+
+:root.dark .github-cell.level-4 {
+	background: oklch(52% 0.14 160);
+}
+
+/* ── 文章发布分布图（跟随主题色相） ───────── */
+
+.post-cell {
+	width: var(--post-cell-size);
+	height: var(--post-cell-size);
+}
+
+.post-heatmap-months {
+	display: grid;
+	grid-template-columns: repeat(12, var(--post-cell-size));
+	gap: var(--post-cell-gap);
+	padding-left: calc(2.5rem + var(--post-cell-gap));
+	margin-bottom: 4px;
+	width: max-content;
+}
+
+.post-heatmap-month-label {
+	font-size: 0.65rem;
+	text-align: center;
+	white-space: nowrap;
+	color: var(--content-meta);
+}
+
+.post-heatmap-grid-wrap {
+	display: flex;
+	gap: var(--post-cell-gap);
+	width: max-content;
+}
+
+.post-heatmap-weeks {
+	display: grid;
+	flex-shrink: 0;
+	grid-template-rows: repeat(4, var(--post-cell-size));
+	gap: var(--post-cell-gap);
+	width: 2.5rem;
+}
+
+.post-heatmap-week-label {
+	padding-right: 2px;
+	font-size: 0.6rem;
+	line-height: var(--post-cell-size);
+	text-align: right;
+	color: var(--content-meta);
+}
+
+.post-heatmap-grid {
+	display: grid;
+	grid-template-rows: repeat(4, var(--post-cell-size));
+	gap: var(--post-cell-gap);
+}
+
+.post-heatmap-row {
+	display: grid;
+	grid-template-columns: repeat(12, var(--post-cell-size));
+	gap: var(--post-cell-gap);
+}
+
+/* 色阶随 --hue 变化，站点换主题色时自动跟随 */
+.post-cell.level-0 {
+	background: var(--muted);
+}
+
+:root.dark .post-cell.level-0 {
+	background: var(--btn-regular-bg);
+}
+
+.post-cell.level-1 {
+	background: oklch(0.91 0.035 var(--hue));
+}
+
+:root.dark .post-cell.level-1 {
+	background: oklch(0.32 0.04 var(--hue));
+}
+
+.post-cell.level-2 {
+	background: oklch(0.82 0.08 var(--hue));
+}
+
+:root.dark .post-cell.level-2 {
+	background: oklch(0.4 0.08 var(--hue));
+}
+
+.post-cell.level-3 {
+	background: oklch(0.72 0.12 var(--hue));
+}
+
+:root.dark .post-cell.level-3 {
+	background: oklch(0.5 0.11 var(--hue));
+}
+
+.post-cell.level-4 {
+	background: oklch(0.62 0.14 var(--hue));
+}
+
+:root.dark .post-cell.level-4 {
+	background: oklch(0.62 0.13 var(--hue));
+}
+
+/* ── 图例 ─────────────────────────────────── */
+
+.heatmap-legend {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 4px;
+	margin-top: 0.75rem;
+}
+
+.heatmap-legend .heatmap-cell {
+	width: 12px;
+	height: 12px;
+}
+
+.heatmap-legend .post-cell {
+	width: 14px;
+	height: 14px;
+}
+
+.heatmap-legend-label {
+	margin: 0 4px;
+	font-size: 0.6rem;
+	color: var(--content-meta);
+}
+
+/* ── 响应式 ───────────────────────────────── */
+
+@media (max-width: 640px) {
+	.archive-heatmap {
+		--cell-size: 11px;
+		--cell-gap: 2px;
+		--post-cell-size: 20px;
+		--post-cell-gap: 2px;
+	}
+
+	.post-heatmap-weeks {
+		width: 2rem;
+	}
+
+	.post-heatmap-months {
+		padding-left: calc(2rem + var(--post-cell-gap));
+	}
+}

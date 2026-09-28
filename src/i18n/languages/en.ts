@@ -152,6 +152,16 @@ export const en: Translation = {
 	[Key.tagsCount]: "tags",
 	[Key.noData]: "No data yet",
 
+	// Archive heatmap
+	[Key.postHeatmap]: "Post activity",
+	[Key.githubHeatmap]: "GitHub contributions",
+	[Key.heatmapLess]: "Less",
+	[Key.heatmapMore]: "More",
+	[Key.heatmapPrevYear]: "Previous year",
+	[Key.heatmapNextYear]: "Next year",
+	[Key.heatmapLoadFailed]: "Failed to load GitHub contributions",
+	[Key.heatmapContributions]: "contributions",
+
 	[Key.themeColor]: "Theme Color",
 
 	[Key.lightMode]: "Light",

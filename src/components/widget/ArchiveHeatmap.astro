@@ -1,0 +1,32 @@
+---
+// 归档页双热力图容器
+//
+// 左栏 GitHub 贡献（可配置关闭），右栏文章发布分布。
+import { siteConfig } from "@/config";
+import GithubHeatmap from "./GithubHeatmap.astro";
+import PostHeatmap from "./PostHeatmap.astro";
+
+interface Props {
+	posts: { data: { published: Date } }[];
+}
+
+const { posts } = Astro.props;
+
+const githubConfig = siteConfig.heatmap?.github;
+const showGithub = Boolean(githubConfig?.enabled && githubConfig.username);
+---
+
+<div class="archive-heatmap mb-6" id="archive-heatmap">
+  <div class="heatmap-container">
+    {
+      showGithub && (
+        <div class="heatmap-panel">
+          <GithubHeatmap username={githubConfig!.username} />
+        </div>
+      )
+    }
+    <div class="heatmap-panel">
+      <PostHeatmap posts={posts} />
+    </div>
+  </div>
+</div>

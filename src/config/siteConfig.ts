@@ -159,6 +159,17 @@ export const siteConfig: SiteConfig = {
 	// 归档页是否折叠非最新年份文章，禁用后默认展开全部年份
 	foldArticle: true,
 
+	// ── 归档页热力图配置 ──────────────────────────────────
+	// 左栏 GitHub 贡献热力图 + 右栏文章发布分布热力图
+	heatmap: {
+		github: {
+			// 是否显示 GitHub 贡献热力图（构建时从第三方 API 拉取，无需 Token）
+			enabled: true,
+			// 你的 GitHub 用户名
+			username: "MuyuDada",
+		},
+	},
+
 	// ── 文章列表布局配置 ──────────────────────────────────
 	postListLayout: {
 		// 默认布局模式："list" 列表模式（单列布局），"grid" 网格模式（多列布局）

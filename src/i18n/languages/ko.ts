@@ -150,6 +150,16 @@ export const ko: Translation = {
 	[Key.tagsCount]: "태그",
 	[Key.noData]: "데이터 없음",
 
+	// 아카이브 히트맵
+	[Key.postHeatmap]: "게시글 분포",
+	[Key.githubHeatmap]: "GitHub 기여",
+	[Key.heatmapLess]: "적음",
+	[Key.heatmapMore]: "많음",
+	[Key.heatmapPrevYear]: "이전 해",
+	[Key.heatmapNextYear]: "다음 해",
+	[Key.heatmapLoadFailed]: "GitHub 기여 데이터를 불러오지 못했습니다",
+	[Key.heatmapContributions]: "회 기여",
+
 	[Key.themeColor]: "테마 색상",
 
 	[Key.lightMode]: "라이트",

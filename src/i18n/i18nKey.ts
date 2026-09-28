@@ -73,6 +73,16 @@ enum I18nKey {
 	tagsCount = "tagsCount",
 	noData = "noData",
 
+	// Archive Heatmap
+	postHeatmap = "postHeatmap",
+	githubHeatmap = "githubHeatmap",
+	heatmapLess = "heatmapLess",
+	heatmapMore = "heatmapMore",
+	heatmapPrevYear = "heatmapPrevYear",
+	heatmapNextYear = "heatmapNextYear",
+	heatmapLoadFailed = "heatmapLoadFailed",
+	heatmapContributions = "heatmapContributions",
+
 	// Music Widget
 	musicNoPlaying = "musicNoPlaying",
 	musicLyrics = "musicLyrics",

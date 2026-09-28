@@ -146,6 +146,16 @@ export const zh_CN: Translation = {
 	[Key.tagsCount]: "个标签",
 	[Key.noData]: "暂无数据",
 
+	// 归档页热力图
+	[Key.postHeatmap]: "文章分布",
+	[Key.githubHeatmap]: "GitHub 贡献",
+	[Key.heatmapLess]: "少",
+	[Key.heatmapMore]: "多",
+	[Key.heatmapPrevYear]: "上一年",
+	[Key.heatmapNextYear]: "下一年",
+	[Key.heatmapLoadFailed]: "GitHub 贡献数据加载失败",
+	[Key.heatmapContributions]: "次贡献",
+
 	[Key.themeColor]: "主题色相",
 
 	[Key.lightMode]: "亮色",

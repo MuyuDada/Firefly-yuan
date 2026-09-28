@@ -5,38 +5,100 @@ import { i18n } from "@/i18n/translation";
 import { getSortedPostsList } from "@/utils/content-utils";
 import { getPostUrlBySlug, url } from "@/utils/url-utils";
 
-// 归档列表：全量按年分组，服务端渲染。筛选（?tag=/?category=/?uncategorized）
-// 与年份折叠由客户端脚本处理——数据本身在构建期已全部就绪。
+// 归档列表：全量按「年 → 月 → 文章」三级分组，服务端渲染。
+// 筛选（?tag=/?category=/?uncategorized）与年份折叠由客户端脚本处理。
 const sortedPostsList = await getSortedPostsList();
 
-// 严格按发布时间倒序（不受置顶影响），镜像原 Svelte 版行为
+// 严格按发布时间倒序（不受置顶影响）
 const posts = sortedPostsList
 	.slice()
 	.sort((a, b) => b.data.published.getTime() - a.data.published.getTime());
 
-// 按年份分组
-const grouped = new Map<number, typeof posts>();
+// 按月名做本地化（zh-CN → 9月 / en → Sep）
+const langTag = (siteConfig.lang || "zh_CN").replace("_", "-");
+const monthFormatter = new Intl.DateTimeFormat(langTag, { month: "short" });
+
+interface MonthGroup {
+	month: number; // 1-12
+	label: string;
+	posts: typeof posts;
+}
+
+interface YearGroup {
+	year: number;
+	posts: typeof posts;
+	months: MonthGroup[];
+}
+
+// 分组：年 → 月
+const yearMap = new Map<number, Map<number, typeof posts>>();
 for (const post of posts) {
 	const year = post.data.published.getFullYear();
-	if (!grouped.has(year)) grouped.set(year, []);
-	grouped.get(year)?.push(post);
+	const month = post.data.published.getMonth() + 1;
+	let months = yearMap.get(year);
+	if (!months) {
+		months = new Map();
+		yearMap.set(year, months);
+	}
+	let monthPosts = months.get(month);
+	if (!monthPosts) {
+		monthPosts = [];
+		months.set(month, monthPosts);
+	}
+	monthPosts.push(post);
 }
-const groups = Array.from(grouped.entries())
-	.map(([year, yearPosts]) => ({ year, posts: yearPosts }))
+
+const groups: YearGroup[] = Array.from(yearMap.entries())
+	.map(([year, months]) => {
+		const yearPosts = [...months.values()].flat();
+		const monthGroups: MonthGroup[] = Array.from(months.entries())
+			.map(([month, monthPosts]) => ({
+				month,
+				label: monthFormatter.format(new Date(year, month - 1, 1)),
+				posts: monthPosts,
+			}))
+			.sort((a, b) => b.month - a.month);
+		return { year, posts: yearPosts, months: monthGroups };
+	})
 	.sort((a, b) => b.year - a.year);
 
 // 初始折叠规则：foldArticle 非 false 且多于一年时，除首年外全部折叠
 const foldArticle = siteConfig.foldArticle !== false;
 const collapseAllButFirst = foldArticle && groups.length > 1;
 
+// 分类配色：固定色盘，按分类名排序后循环分配，保证同一分类颜色稳定
+const CATEGORY_COLORS = [
+	"#f59e0b",
+	"#f43f5e",
+	"#10b981",
+	"#3b82f6",
+	"#8b5cf6",
+	"#06b6d4",
+	"#fb923c",
+	"#ec4899",
+	"#14b8a6",
+	"#6366f1",
+	"#84cc16",
+	"#d946ef",
+	"#0ea5e9",
+	"#ef4444",
+	"#22c55e",
+	"#a855f7",
+	"#eab308",
+	"#64748b",
+];
+const allCategories = [
+	...new Set(posts.map((p) => p.data.category).filter(Boolean) as string[]),
+].sort();
+const categoryColors = new Map<string, string>();
+allCategories.forEach((name, index) => {
+	categoryColors.set(name, CATEGORY_COLORS[index % CATEGORY_COLORS.length]);
+});
+
 function formatDate(date: Date) {
 	const month = (date.getMonth() + 1).toString().padStart(2, "0");
 	const day = date.getDate().toString().padStart(2, "0");
 	return `${month}-${day}`;
-}
-
-function formatTag(tagList: string[]) {
-	return tagList.map((t) => `#${t}`).join(" ");
 }
 
 // 传给客户端脚本的 i18n 文案与配置
@@ -49,12 +111,11 @@ const i18nStrings = {
 };
 const tagsBaseUrl = url("/tags/");
 const categoriesBaseUrl = url("/categories/");
-const foldOnFilter = collapseAllButFirst;
 ---
 
 <archive-panel
-  class="card-base px-8 py-6"
-  data-fold={foldOnFilter ? "true" : "false"}
+  class="archive-panel"
+  data-fold={collapseAllButFirst ? "true" : "false"}
 >
   {/* 筛选头部：默认隐藏，客户端在有筛选时填充并显示 */}
   <div id="archive-filter-header" class="mb-5 hidden">
@@ -71,82 +132,111 @@ const foldOnFilter = collapseAllButFirst;
     </div>
   </div>
 
+  {/* 悬停高亮连线（桌面端） */}
+  <svg class="ap-highlight-svg" data-highlight-svg aria-hidden="true">
+    <path class="ap-highlight-glow" data-highlight-glow d="" />
+    <path class="ap-highlight-line" data-highlight-line d="" />
+  </svg>
+
+  {
+    groups.length === 0 && (
+      <p class="py-8 text-center text-sm text-50">{i18n(I18nKey.noData)}</p>
+    )
+  }
+
   {groups.map((group, groupIndex) => {
     const collapsed = collapseAllButFirst && groupIndex > 0;
     return (
-      <div class="archive-year-block" data-year={group.year} data-count={group.posts.length}>
-        <button
-          class="archive-year-toggle flex flex-row w-full items-center h-15 cursor-pointer rounded-lg
-                 hover:bg-(--btn-plain-bg-hover) transition-colors group/yr"
-          aria-expanded={collapsed ? "false" : "true"}
-        >
-          <div class="w-[15%] md:w-[10%] transition text-2xl font-bold text-right text-75
-                      group-hover/yr:text-(--primary)">
-            {group.year}
+      <div
+        class="ap-year-block"
+        data-year={group.year}
+        data-count={group.posts.length}
+      >
+        <div class="ap-year-header">
+          <div class="ap-col">
+            <span class="ap-node ap-year-node" data-year-node />
           </div>
-          <div class="w-[15%] md:w-[10%]">
-            <div class="h-3 w-3 bg-none rounded-full outline-(--primary) mx-auto
-                        -outline-offset-2 z-50 outline-3"></div>
-          </div>
-          <div class="w-[70%] md:w-[80%] transition text-left text-50 flex items-center gap-2
-                      group-hover/yr:text-(--primary)">
-            <span class="archive-year-count">{group.posts.length}</span>
-            {" "}
-            <span class="archive-year-count-label">{i18n(group.posts.length === 1 ? I18nKey.postCount : I18nKey.postsCount)}</span>
-            <span class="archive-arrow" style={collapsed ? "transform: rotate(-90deg)" : ""}>
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </span>
-          </div>
-        </button>
-
-        <div class="archive-year-content" hidden={collapsed}>
-          {group.posts.map((post) => (
-            <a
-              href={getPostUrlBySlug(post.id)}
-              aria-label={post.data.title}
-              class="archive-post group btn-plain block! h-10 w-full rounded-lg hover:text-[initial]"
-              data-tags={JSON.stringify(post.data.tags || [])}
-              data-category={post.data.category || ""}
+          <div class="ap-year-label">
+            <button
+              type="button"
+              class="ap-year-toggle"
+              aria-expanded={collapsed ? "false" : "true"}
             >
-              <div class="flex flex-row justify-start items-center h-full">
-                {/* date */}
-                <div class="w-[15%] md:w-[10%] transition text-sm text-right text-50">
-                  {formatDate(post.data.published)}
-                </div>
+              <h3 class="ap-h1">{group.year}</h3>
+              <span class="ap-count">
+                <span class="archive-year-count">{group.posts.length}</span>
+                {" "}
+                <span class="archive-year-count-label">
+                  {i18n(group.posts.length === 1 ? I18nKey.postCount : I18nKey.postsCount)}
+                </span>
+              </span>
+              <span
+                class="archive-arrow"
+                style={collapsed ? "transform: rotate(-90deg)" : ""}
+              >
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </button>
+          </div>
+        </div>
 
-                {/* dot and line */}
-                <div class="w-[15%] md:w-[10%] relative dash-line h-full flex items-center">
-                  <div class="transition-all mx-auto w-1 h-1 rounded-sm group-hover:h-5
-                              bg-[oklch(0.5_0.05_var(--hue))] group-hover:bg-(--primary)
-                              outline-4 z-50 outline-(--card-bg)
-                              group-hover:outline-(--btn-plain-bg-hover)
-                              group-active:outline-(--btn-plain-bg-active)"></div>
+        <div class="ap-months-area archive-year-content" hidden={collapsed}>
+          {group.months.map((monthGroup) => (
+            <div class="ap-month-block" data-month={monthGroup.month}>
+              <div class="ap-month-header">
+                <div class="ap-col">
+                  <span class="ap-node ap-month-node" data-month-node />
+                  <span class="ap-hline ap-month-hline" />
                 </div>
-
-                {/* post title */}
-                <div class="w-[70%] md:max-w-[65%] md:w-[65%] text-left font-bold
-                            group-hover:translate-x-1 transition-all group-hover:text-(--primary)
-                            text-75 pr-8 whitespace-nowrap text-ellipsis overflow-hidden flex items-center gap-2">
-                  {post.data.category && (
-                    <span class="shrink-0 inline-block text-xs font-medium px-1.5 py-0.5 rounded-sm
-                                 bg-[oklch(0.95_0.025_var(--hue))] dark:bg-[oklch(0.25_0.025_var(--hue))]
-                                 text-(--primary) group-hover:bg-(--primary) group-hover:text-white!
-                                 transition-colors">
-                      {post.data.category}
+                <div class="ap-month-label">
+                  <h4 class="ap-h2">{monthGroup.label}</h4>
+                  <span class="ap-count">
+                    <span class="archive-month-count">{monthGroup.posts.length}</span>
+                    {" "}
+                    <span class="archive-month-count-label">
+                      {i18n(monthGroup.posts.length === 1 ? I18nKey.postCount : I18nKey.postsCount)}
                     </span>
-                  )}
-                  <span class="truncate">{post.data.title}</span>
-                </div>
-
-                {/* tag list */}
-                <div class="hidden md:block md:w-[15%] text-left text-sm transition
-                            whitespace-nowrap text-ellipsis overflow-hidden text-30">
-                  {formatTag(post.data.tags || [])}
+                  </span>
                 </div>
               </div>
-            </a>
+
+              <div class="ap-posts-area">
+                <ul class="ap-post-list">
+                  {monthGroup.posts.map((post) => {
+                    const category = post.data.category || "";
+                    const color = category ? categoryColors.get(category) : undefined;
+                    return (
+                      <li class="ap-post-row" data-post-row>
+                        <div class="ap-col">
+                          <span class="ap-node ap-post-node" data-post-node />
+                          <span class="ap-hline ap-post-hline" />
+                        </div>
+                        <a
+                          href={getPostUrlBySlug(post.id)}
+                          aria-label={post.data.title}
+                          class="ap-post-link archive-post"
+                          data-tags={JSON.stringify(post.data.tags || [])}
+                          data-category={category}
+                        >
+                          <span class="ap-date">{formatDate(post.data.published)}</span>
+                          {category && (
+                            <span
+                              class="ap-category"
+                              style={color ? `color: ${color}` : undefined}
+                            >
+                              {category}
+                            </span>
+                          )}
+                          <span class="ap-title">{post.data.title}</span>
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -187,96 +277,110 @@ const foldOnFilter = collapseAllButFirst;
       }
 
       this.bindYearToggles();
+      this.bindHighlight();
+
+      // 视口尺寸变化后缓存的节点坐标失效
+      window.addEventListener("resize", () => {
+        this.nodeCache = null;
+        this.clearHighlight();
+      });
     }
 
-    // 按筛选条件隐藏不匹配的文章行，重算每年计数，隐藏空年份，重新折叠
+    // ── 筛选 ──────────────────────────────────
+
     applyFilter(tags, categories, uncategorized) {
       const foldOnFilter = this.dataset.fold === "true";
-      const blocks = Array.from(this.querySelectorAll(".archive-year-block"));
+      const blocks = Array.from(this.querySelectorAll(".ap-year-block"));
       let totalVisible = 0;
       const visibleBlocks = [];
 
       for (const block of blocks) {
-        const rows = Array.from(block.querySelectorAll(".archive-post"));
-        let visibleCount = 0;
+        const rows = Array.from(block.querySelectorAll("[data-post-row]"));
+        let yearVisible = 0;
 
         for (const row of rows) {
+          const link = row.querySelector(".ap-post-link");
           let rowTags = [];
           try {
-            rowTags = JSON.parse(row.dataset.tags || "[]");
+            rowTags = JSON.parse(link?.dataset.tags || "[]");
           } catch {
             rowTags = [];
           }
-          const rowCategory = row.dataset.category || "";
+          const rowCategory = link?.dataset.category || "";
 
           let match = true;
-          if (tags.length > 0) {
-            match = match && rowTags.some((t) => tags.includes(t));
-          }
-          if (categories.length > 0) {
-            match = match && !!rowCategory && categories.includes(rowCategory);
-          }
-          if (uncategorized) {
-            match = match && !rowCategory;
-          }
+          if (tags.length > 0) match = match && rowTags.some((t) => tags.includes(t));
+          if (categories.length > 0) match = match && !!rowCategory && categories.includes(rowCategory);
+          if (uncategorized) match = match && !rowCategory;
 
           row.hidden = !match;
-          if (match) visibleCount++;
+          if (match) yearVisible++;
         }
 
-        // 更新每年计数显示
-        const countEl = block.querySelector(".archive-year-count");
-        const labelEl = block.querySelector(".archive-year-count-label");
-        if (countEl) countEl.textContent = String(visibleCount);
-        if (labelEl) {
-          labelEl.textContent =
-            visibleCount === 1 ? i18nStrings.postCount : i18nStrings.postsCount;
+        // 更新每年计数
+        const yearCountEl = block.querySelector(".archive-year-count");
+        const yearLabelEl = block.querySelector(".archive-year-count-label");
+        if (yearCountEl) yearCountEl.textContent = String(yearVisible);
+        if (yearLabelEl) {
+          yearLabelEl.textContent =
+            yearVisible === 1 ? i18nStrings.postCount : i18nStrings.postsCount;
         }
 
-        // 隐藏没有可见文章的年份块
-        block.hidden = visibleCount === 0;
-        if (visibleCount > 0) {
+        // 更新每月计数，并隐藏没有可见文章的月份
+        for (const monthBlock of block.querySelectorAll(".ap-month-block")) {
+          const monthRows = Array.from(monthBlock.querySelectorAll("[data-post-row]"));
+          const monthVisible = monthRows.filter((r) => !r.hidden).length;
+          const monthCountEl = monthBlock.querySelector(".archive-month-count");
+          const monthLabelEl = monthBlock.querySelector(".archive-month-count-label");
+          if (monthCountEl) monthCountEl.textContent = String(monthVisible);
+          if (monthLabelEl) {
+            monthLabelEl.textContent =
+              monthVisible === 1 ? i18nStrings.postCount : i18nStrings.postsCount;
+          }
+          monthBlock.hidden = monthVisible === 0;
+        }
+
+        block.hidden = yearVisible === 0;
+        if (yearVisible > 0) {
           visibleBlocks.push(block);
-          totalVisible += visibleCount;
+          totalVisible += yearVisible;
         }
       }
 
       // 重新应用折叠：首个可见年份展开，其余折叠
       visibleBlocks.forEach((block, index) => {
-        const shouldCollapse = foldOnFilter && index > 0;
-        this.setBlockCollapsed(block, shouldCollapse);
+        this.setBlockCollapsed(block, foldOnFilter && index > 0);
       });
 
-      // 填充并显示筛选头部
       this.renderFilterHeader(tags, categories, uncategorized, totalVisible);
     }
 
     setBlockCollapsed(block, collapsed) {
       const content = block.querySelector(".archive-year-content");
-      const toggle = block.querySelector(".archive-year-toggle");
+      const toggle = block.querySelector(".ap-year-toggle");
       const arrow = block.querySelector(".archive-arrow");
       if (content) content.hidden = collapsed;
       if (toggle) toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-      if (arrow) {
-        arrow.style.transform = collapsed ? "rotate(-90deg)" : "";
-      }
+      if (arrow) arrow.style.transform = collapsed ? "rotate(-90deg)" : "";
     }
 
     renderFilterHeader(tags, categories, uncategorized, count) {
       const header = this.querySelector("#archive-filter-header");
       if (!header) return;
 
-      // 构造筛选项（tag 优先作为主筛选，镜像原逻辑）
       const filters = [];
       if (categories.length > 0)
         filters.push({ label: i18nStrings.categories, values: categories, isTag: false });
       if (uncategorized)
-        filters.push({ label: i18nStrings.categories, values: [i18nStrings.uncategorized], isTag: false });
+        filters.push({
+          label: i18nStrings.categories,
+          values: [i18nStrings.uncategorized],
+          isTag: false,
+        });
       if (tags.length > 0)
         filters.push({ label: i18nStrings.tags, values: tags, isTag: true });
 
-      const primary =
-        filters.find((f) => f.isTag) || filters[0] || null;
+      const primary = filters.find((f) => f.isTag) || filters[0] || null;
       if (!primary) return;
       const secondary = filters.filter((f) => f !== primary);
 
@@ -298,10 +402,9 @@ const foldOnFilter = collapseAllButFirst;
       if (valuesEl) valuesEl.textContent = fmtValues(primary);
       if (secondaryEl) {
         if (secondary.length > 0) {
-          const summary = secondary
+          secondaryEl.textContent = `· ${secondary
             .map((f) => `${f.label}: ${fmtValues(f)}`)
-            .join("  ·  ");
-          secondaryEl.textContent = `· ${summary}`;
+            .join("  ·  ")}`;
           secondaryEl.classList.remove("hidden");
         } else {
           secondaryEl.classList.add("hidden");
@@ -321,23 +424,20 @@ const foldOnFilter = collapseAllButFirst;
       if (!bannerTitle) return;
 
       let newTitle = "";
-      if (categories.length > 0) {
-        newTitle = categories.join(" / ");
-      } else if (uncategorized) {
-        newTitle = i18nStrings.uncategorized;
-      } else if (tags.length > 0) {
-        newTitle = tags.map((t) => `#${t}`).join(" / ");
-      }
-      // 直接设置（自定义元素在解析阶段升级、首帧前执行），避免默认标题闪烁
+      if (categories.length > 0) newTitle = categories.join(" / ");
+      else if (uncategorized) newTitle = i18nStrings.uncategorized;
+      else if (tags.length > 0) newTitle = tags.map((t) => `#${t}`).join(" / ");
+
       if (newTitle && bannerTitle.textContent !== newTitle) {
         bannerTitle.textContent = newTitle;
       }
     }
 
+    // ── 年份折叠 ──────────────────────────────
+
     bindYearToggles() {
-      const blocks = Array.from(this.querySelectorAll(".archive-year-block"));
-      for (const block of blocks) {
-        const toggle = block.querySelector(".archive-year-toggle");
+      for (const block of this.querySelectorAll(".ap-year-block")) {
+        const toggle = block.querySelector(".ap-year-toggle");
         const content = block.querySelector(".archive-year-content");
         const arrow = block.querySelector(".archive-arrow");
         if (!toggle || !content) continue;
@@ -347,7 +447,6 @@ const foldOnFilter = collapseAllButFirst;
           content.hidden = willCollapse;
           toggle.setAttribute("aria-expanded", willCollapse ? "false" : "true");
 
-          // 用 Web Animations API 做旋转动画，绕开 Swup 对 CSS transition 的干扰
           if (arrow) {
             requestAnimationFrame(() => {
               arrow.animate(
@@ -359,7 +458,110 @@ const foldOnFilter = collapseAllButFirst;
               );
             });
           }
+          // 折叠会改变布局，缓存的节点坐标失效
+          this.nodeCache = null;
+          this.clearHighlight();
         });
+      }
+    }
+
+    // ── 悬停高亮连线 ──────────────────────────
+
+    // 节点坐标只在首次悬停时测量并缓存；布局变化（折叠/筛选/缩放）后置空
+    measureNodes() {
+      const svg = this.querySelector("[data-highlight-svg]");
+      if (!svg) return null;
+      const base = svg.getBoundingClientRect();
+      const center = (el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.left + r.width / 2 - base.left, y: r.top + r.height / 2 - base.top };
+      };
+      const cache = { base, years: new Map(), months: new Map(), posts: new Map() };
+
+      for (const block of this.querySelectorAll(".ap-year-block")) {
+        const yearNode = block.querySelector("[data-year-node]");
+        if (yearNode) cache.years.set(block, center(yearNode));
+
+        for (const monthBlock of block.querySelectorAll(".ap-month-block")) {
+          const monthNode = monthBlock.querySelector("[data-month-node]");
+          if (monthNode) cache.months.set(monthBlock, center(monthNode));
+
+          for (const row of monthBlock.querySelectorAll("[data-post-row]")) {
+            const postNode = row.querySelector("[data-post-node]");
+            if (postNode) cache.posts.set(row, center(postNode));
+          }
+        }
+      }
+      return cache;
+    }
+
+    // 生成带圆角拐弯的连续路径：年节点 → 月节点 → 文章节点
+    buildPath(x0, y0, x1, y1, x2, y2) {
+      const r = 8;
+      // 垂直距离太小就不做圆角，避免路径自交
+      const dy1 = Math.abs(y1 - y0);
+      const dy2 = Math.abs(y2 - y1);
+      const rr1 = Math.min(r, dy1 / 2);
+      const rr2 = Math.min(r, dy2 / 2);
+
+      return [
+        `M ${x0} ${y0}`,
+        `L ${x0} ${y1 - rr1}`,
+        `A ${rr1} ${rr1} 0 0 0 ${x0 + rr1} ${y1}`,
+        `L ${x1 - rr1} ${y1}`,
+        `A ${rr1} ${rr1} 0 0 0 ${x1} ${y1 + rr1}`,
+        `L ${x1} ${y2 - rr2}`,
+        `A ${rr2} ${rr2} 0 0 0 ${x1 + rr2} ${y2}`,
+        `L ${x2} ${y2}`,
+      ].join(" ");
+    }
+
+    clearHighlight() {
+      const svg = this.querySelector("[data-highlight-svg]");
+      if (!svg) return;
+      svg.querySelector("[data-highlight-line]")?.setAttribute("d", "");
+      svg.querySelector("[data-highlight-glow]")?.setAttribute("d", "");
+      this.querySelectorAll(".highlighted, .hovered").forEach((el) =>
+        el.classList.remove("highlighted", "hovered"),
+      );
+    }
+
+    bindHighlight() {
+      // 移动端隐藏了节点与连线，无需绑定
+      if (window.matchMedia("(max-width: 768px)").matches) return;
+
+      const svg = this.querySelector("[data-highlight-svg]");
+      const line = svg?.querySelector("[data-highlight-line]");
+      const glow = svg?.querySelector("[data-highlight-glow]");
+      if (!svg || !line || !glow) return;
+
+      for (const row of this.querySelectorAll("[data-post-row]")) {
+        row.addEventListener("mouseenter", () => {
+          if (row.hidden) return;
+          const monthBlock = row.closest(".ap-month-block");
+          const yearBlock = row.closest(".ap-year-block");
+          if (!monthBlock || !yearBlock) return;
+
+          if (!this.nodeCache) this.nodeCache = this.measureNodes();
+          const cache = this.nodeCache;
+          if (!cache) return;
+
+          const y = cache.years.get(yearBlock);
+          const m = cache.months.get(monthBlock);
+          const p = cache.posts.get(row);
+          if (!y || !m || !p) return;
+
+          this.clearHighlight();
+          yearBlock.querySelector("[data-year-node]")?.classList.add("highlighted");
+          monthBlock.querySelector("[data-month-node]")?.classList.add("highlighted");
+          row.querySelector("[data-post-node]")?.classList.add("hovered");
+
+          const d = this.buildPath(y.x, y.y, m.x, m.y, p.x, p.y);
+          line.setAttribute("d", d);
+          glow.setAttribute("d", d);
+        });
+
+        row.addEventListener("mouseleave", () => this.clearHighlight());
       }
     }
   }

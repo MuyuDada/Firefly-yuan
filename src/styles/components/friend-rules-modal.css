@@ -153,6 +153,19 @@ friend-rules-modal {
 	white-space: nowrap;
 }
 
+/* 可点击的字段（站点链接 / 邮箱） */
+.friend-info-link {
+	display: block;
+	color: var(--primary);
+	text-decoration: none;
+	transition: opacity 0.2s ease;
+}
+
+.friend-info-link:hover {
+	opacity: 0.75;
+	text-decoration: underline;
+}
+
 .friend-copy-btn {
 	display: flex;
 	align-items: center;
@@ -337,4 +350,9 @@ body.friend-modal-open {
 :root.dark .friend-template pre,
 :root.dark .friend-notes strong {
 	color: rgb(255 255 255 / 90%);
+}
+
+/* 链接字段跟随主题色，暗色下同样清晰 */
+:root.dark .friend-info-link {
+	color: var(--primary);
 }

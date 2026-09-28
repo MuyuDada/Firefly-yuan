@@ -150,6 +150,16 @@ export const ja: Translation = {
 	[Key.tagsCount]: "タグ",
 	[Key.noData]: "データなし",
 
+	// アーカイブのヒートマップ
+	[Key.postHeatmap]: "記事の分布",
+	[Key.githubHeatmap]: "GitHub の貢献",
+	[Key.heatmapLess]: "少",
+	[Key.heatmapMore]: "多",
+	[Key.heatmapPrevYear]: "前年",
+	[Key.heatmapNextYear]: "翌年",
+	[Key.heatmapLoadFailed]: "GitHub の貢献データを読み込めませんでした",
+	[Key.heatmapContributions]: "回の貢献",
+
 	[Key.themeColor]: "テーマカラー",
 
 	[Key.lightMode]: "ライト",

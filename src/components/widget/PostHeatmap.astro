@@ -1,0 +1,251 @@
+---
+// 文章发布分布热力图
+//
+// 12 个月 × 4 周网格。服务端把每年的统计序列化到 data-grids，
+// 客户端脚本负责年份切换与月份高亮。色阶在 CSS 里按 var(--hue) 渲染。
+import { Icon } from "astro-icon/components";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+
+interface Props {
+	posts: { data: { published: Date } }[];
+}
+
+const { posts } = Astro.props;
+
+interface CellData {
+	month: number; // 0-11
+	week: number; // 0-3
+	count: number;
+	level: number;
+}
+
+interface YearGrid {
+	grid: CellData[][]; // [week][month]
+	total: number;
+}
+
+// ── 统计：按年 → 月 → 周（1-7 日为 W1，以此类推，最多 4 周） ──
+const byYear = new Map<number, number[][]>(); // year -> [month][week]
+
+for (const post of posts) {
+	const d = post.data.published;
+	const year = d.getFullYear();
+	const month = d.getMonth();
+	const week = Math.min(3, Math.floor((d.getDate() - 1) / 7));
+
+	if (!byYear.has(year)) {
+		byYear.set(
+			year,
+			Array.from({ length: 12 }, () => [0, 0, 0, 0]),
+		);
+	}
+	const months = byYear.get(year);
+	if (months) months[month][week] += 1;
+}
+
+/** 把次数映射到 0-4 色阶（相对该年最大值分档） */
+function toLevel(count: number, max: number): number {
+	if (count === 0) return 0;
+	if (max <= 1) return 4;
+	const ratio = count / max;
+	if (ratio <= 0.25) return 1;
+	if (ratio <= 0.5) return 2;
+	if (ratio <= 0.75) return 3;
+	return 4;
+}
+
+const grids: Record<string, YearGrid> = {};
+for (const [year, months] of byYear) {
+	let max = 0;
+	for (const weeks of months) for (const c of weeks) max = Math.max(max, c);
+	let total = 0;
+	for (const weeks of months) for (const c of weeks) total += c;
+
+	// grid[week][month]
+	const grid: CellData[][] = Array.from({ length: 4 }, (_, week) =>
+		Array.from({ length: 12 }, (_, month) => {
+			const count = months[month][week];
+			return { month, week, count, level: toLevel(count, max) };
+		}),
+	);
+
+	grids[String(year)] = { grid, total };
+}
+
+const years = Object.keys(grids)
+	.map(Number)
+	.sort((a, b) => b - a);
+const initialYear = years[0] ?? new Date().getFullYear();
+const initialGrid = grids[String(initialYear)]?.grid ?? [];
+
+const weekLabels = ["W1", "W2", "W3", "W4"];
+
+// 客户端切换年份需要的文案
+const i18nStrings = {
+	postHeatmap: i18n(I18nKey.postHeatmap),
+	prevYear: i18n(I18nKey.heatmapPrevYear),
+	nextYear: i18n(I18nKey.heatmapNextYear),
+};
+---
+
+<div
+  class="post-heatmap"
+  id="post-heatmap"
+  data-grids={JSON.stringify(grids)}
+  data-initial-year={String(initialYear)}
+  data-years={JSON.stringify(years)}
+>
+  <div class="heatmap-section-title">
+    <Icon name="mdi:file-document-outline" class="text-base" />
+    <span>{i18n(I18nKey.postHeatmap)}</span>
+    <span class="heatmap-year-nav">
+      <button
+        type="button"
+        class="heatmap-year-btn"
+        data-year-prev
+        aria-label={i18n(I18nKey.heatmapPrevYear)}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <span class="heatmap-year-label" data-year-label>{initialYear}</span>
+      <button
+        type="button"
+        class="heatmap-year-btn"
+        data-year-next
+        aria-label={i18n(I18nKey.heatmapNextYear)}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </span>
+  </div>
+
+  <div class="heatmap-body">
+    <div class="heatmap-scroll">
+      <div class="post-heatmap-months">
+        {Array.from({ length: 12 }, (_, i) => <span class="post-heatmap-month-label">{i + 1}</span>)}
+      </div>
+
+      <div class="post-heatmap-grid-wrap">
+        <div class="post-heatmap-weeks">
+          {weekLabels.map((w) => <span class="post-heatmap-week-label">{w}</span>)}
+        </div>
+
+        <div class="post-heatmap-grid" data-post-grid>
+          {
+            initialGrid.map((row) => (
+              <div class="post-heatmap-row">
+                {row.map((cell) => (
+                  <div
+                    class:list={["heatmap-cell", "post-cell", `level-${cell.level}`]}
+                    data-month={cell.month}
+                    data-count={cell.count}
+                    title={`${cell.month + 1}月 第${cell.week + 1}周：${cell.count} 篇`}
+                  />
+                ))}
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ i18nStrings }}>
+  (() => {
+    function initPostHeatmap() {
+      const root = document.getElementById("post-heatmap");
+      if (!root || root.dataset.bound === "true") return;
+      root.dataset.bound = "true";
+
+      let grids = {};
+      let years = [];
+      try {
+        grids = JSON.parse(root.dataset.grids || "{}");
+        years = JSON.parse(root.dataset.years || "[]");
+      } catch {
+        return;
+      }
+      if (!years.length) return;
+
+      let index = years.indexOf(Number(root.dataset.initialYear));
+      if (index < 0) index = 0;
+
+      const gridEl = root.querySelector("[data-post-grid]");
+      const labelEl = root.querySelector("[data-year-label]");
+      const prevBtn = root.querySelector("[data-year-prev]");
+      const nextBtn = root.querySelector("[data-year-next]");
+
+      function render() {
+        const year = years[index];
+        const data = grids[String(year)];
+        if (!gridEl || !data) return;
+
+        gridEl.innerHTML = "";
+        for (const row of data.grid) {
+          const rowEl = document.createElement("div");
+          rowEl.className = "post-heatmap-row";
+          for (const cell of row) {
+            const cellEl = document.createElement("div");
+            cellEl.className =
+              "heatmap-cell post-cell level-" + cell.level;
+            cellEl.dataset.month = String(cell.month);
+            cellEl.dataset.count = String(cell.count);
+            cellEl.title = `${cell.month + 1}月 第${cell.week + 1}周：${cell.count} 篇`;
+            rowEl.appendChild(cellEl);
+          }
+          gridEl.appendChild(rowEl);
+        }
+
+        if (labelEl) labelEl.textContent = String(year);
+        // 年份边界禁用
+        prevBtn?.classList.toggle("is-disabled", index <= 0);
+        nextBtn?.classList.toggle("is-disabled", index >= years.length - 1);
+      }
+
+      prevBtn?.addEventListener("click", () => {
+        if (index <= 0) return;
+        index -= 1;
+        render();
+      });
+      nextBtn?.addEventListener("click", () => {
+        if (index >= years.length - 1) return;
+        index += 1;
+        render();
+      });
+
+      // 点击月份格子高亮该月
+      root.addEventListener("click", (event) => {
+        const cell = event.target.closest(".post-cell");
+        if (!cell) return;
+        const month = cell.dataset.month;
+        const active = cell.classList.contains("is-month-active");
+        root.querySelectorAll(".post-cell").forEach((c) =>
+          c.classList.remove("is-month-active"),
+        );
+        if (!active) {
+          root
+            .querySelectorAll(`.post-cell[data-month="${month}"]`)
+            .forEach((c) => c.classList.add("is-month-active"));
+        }
+      });
+
+      render();
+    }
+
+    if (!window.__postHeatmapInit) {
+      window.__postHeatmapInit = true;
+      document.addEventListener("astro:page-load", initPostHeatmap);
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initPostHeatmap, { once: true });
+    } else {
+      initPostHeatmap();
+    }
+  })();
+</script>
