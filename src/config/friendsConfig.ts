@@ -81,7 +81,17 @@ export const friendsConfig: FriendLink[] = [
 		desc: "永远相信美好的事情即将发生",
 		siteurl: "https://muyudada.dpdns.org",
 		tags: ["本站"],
-		weight: 999, // 权重，数字越大排序越靠前
+		weight: 99, // 权重，数字越大排序越靠前
+		enabled: true, // 是否启用
+	},
+	{
+		title: "番茄主理人",
+		imgurl:
+			"https://q1.qlogo.cn/g?b=qq&nk=20447289&s=640",
+		desc: "躬身入局，心为主理，行有尺度，自持本心。",
+		siteurl: "https://blog.fqzlr.top/",
+		tags: ["Blog"],
+		weight: 5, // 权重，数字越大排序越靠前
 		enabled: true, // 是否启用
 	},
 	{
