@@ -71,13 +71,17 @@
 
 /* Waline 没给 .wl-panel 设 color，它继承自 body（亮色下是纯黑）。
    暗色模式必须显式指定，否则就是"深底黑字"。 */
+/* 注意：这里不能加 overflow: hidden。
+   表情面板 .wl-emoji-popup 是 position:absolute; top:100%，挂在 .wl-comment
+   （position:relative）下面 —— 它本来就落在 .wl-panel 的盒子之外，父级一旦
+   裁剪就会被整个切掉。上游 .wl-panel 也没有 overflow，圆角靠 .wl-header
+   自身的 border-top-left/right-radius + overflow:hidden 兜住，不需要父级裁剪。 */
 #waline .wl-panel {
 	margin: 0;
 	border: 1px solid var(--line-divider);
 	border-radius: var(--radius-large);
 	color: var(--waline-color);
 	background: var(--waline-bg-color);
-	overflow: hidden;
 }
 
 /* ── 3. 输入区 ─────────────────────────────────────────────── */
