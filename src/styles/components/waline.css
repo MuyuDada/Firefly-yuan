@@ -1,0 +1,263 @@
+/*
+ * Waline 评论主题适配
+ *
+ * 目标：让评论区看起来像主题自带的一部分，而不是外挂组件。
+ *
+ * 做法分两层：
+ *   1. 覆盖 Waline 的 CSS 变量（--waline-*），把它的绿主题换成站点主题色，
+ *      并让背景/边框/圆角跟随 --card-bg / --line-divider / --radius-large；
+ *   2. 补少量显式规则 —— 有些地方 Waline 并没有走变量（比如 .wl-panel 的
+ *      color 是继承来的、展开渐变的底色是写死的白色），只改变量修不好。
+ *
+ * 所有选择器都加 #waline 前缀，确保优先级压过 Waline 自带样式（不依赖加载顺序）。
+ */
+
+/* ── 1. 变量层：把 Waline 调色板接到主题 token 上 ───────────── */
+
+#waline {
+	--waline-font-size: inherit;
+
+	/* 主题色：替换 Waline 默认绿 #27ae60 / #2ecc71 */
+	--waline-theme-color: var(--primary);
+	--waline-active-color: color-mix(in oklch, var(--primary) 82%, #fff 18%);
+
+	/* 正文与背景 */
+	--waline-color: color-mix(in oklch, var(--card-bg) 10%, #000 90%);
+	--waline-bg-color: var(--card-bg);
+	--waline-bg-color-light: color-mix(in oklch, var(--card-bg) 94%, var(--primary) 6%);
+	--waline-bg-color-hover: color-mix(in oklch, var(--card-bg) 88%, var(--primary) 12%);
+
+	/* 边框与分割线 */
+	--waline-border-color: var(--line-divider);
+	--waline-border: 1px solid var(--line-divider);
+
+	/* 次要文字 */
+	--waline-light-grey: var(--content-meta);
+	--waline-dark-grey: var(--content-meta);
+	--waline-info-color: var(--content-meta);
+	--waline-info-bg-color: color-mix(in oklch, var(--card-bg) 92%, var(--primary) 8%);
+
+	/* 禁用态 */
+	--waline-disable-bg-color: color-mix(in oklch, var(--card-bg) 90%, var(--line-divider) 10%);
+	--waline-disable-color: color-mix(in oklch, var(--content-meta) 70%, transparent);
+
+	/* 代码块与引用块跟随主题 */
+	--waline-code-bg-color: var(--codeblock-bg);
+	--waline-bq-color: var(--btn-regular-bg);
+
+	/* 徽标用主题色 */
+	--waline-badge-color: var(--primary);
+
+	/* 面板阴影与圆角向主题靠拢 */
+	--waline-box-shadow: none;
+	--waline-avatar-radius: 0.75rem;
+}
+
+/* 暗色：文字必须翻成亮色，否则深底黑字完全看不清 */
+:root.dark #waline {
+	--waline-color: color-mix(in oklch, var(--card-bg) 10%, #fff 90%);
+	--waline-bg-color: var(--card-bg);
+	--waline-bg-color-light: color-mix(in oklch, var(--card-bg) 88%, #fff 12%);
+	--waline-bg-color-hover: color-mix(in oklch, var(--card-bg) 80%, #fff 20%);
+	--waline-border-color: var(--line-divider);
+	--waline-border: 1px solid var(--line-divider);
+	--waline-info-bg-color: color-mix(in oklch, var(--card-bg) 86%, #fff 14%);
+	--waline-disable-bg-color: color-mix(in oklch, var(--card-bg) 82%, #fff 18%);
+	--waline-disable-color: color-mix(in oklch, #fff 45%, transparent);
+	--waline-bq-color: color-mix(in oklch, var(--card-bg) 84%, #fff 16%);
+}
+
+/* ── 2. 面板：贴合主题卡片观感 ─────────────────────────────── */
+
+/* Waline 没给 .wl-panel 设 color，它继承自 body（亮色下是纯黑）。
+   暗色模式必须显式指定，否则就是"深底黑字"。 */
+#waline .wl-panel {
+	margin: 0;
+	border: 1px solid var(--line-divider);
+	border-radius: var(--radius-large);
+	color: var(--waline-color);
+	background: var(--waline-bg-color);
+	overflow: hidden;
+}
+
+/* ── 3. 输入区 ─────────────────────────────────────────────── */
+
+/* 表头原来是 2px 虚线，改成主题的实线分割 */
+#waline .wl-header {
+	border-bottom: 1px solid var(--line-divider);
+}
+
+#waline .wl-header label {
+	color: var(--content-meta);
+}
+
+#waline .wl-header input,
+#waline .wl-editor,
+#waline .wl-input {
+	color: var(--waline-color);
+}
+
+#waline .wl-header input::placeholder,
+#waline .wl-editor::placeholder {
+	color: color-mix(in oklch, var(--content-meta) 75%, transparent);
+}
+
+/* 聚焦时用主题色描边，和站内输入框一致 */
+#waline .wl-editor:focus,
+#waline .wl-input:focus,
+#waline .wl-header input:focus {
+	background: var(--waline-bg-color-light);
+	box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--primary) 35%, transparent);
+}
+
+/* 移动端表头项之间的虚线分割同样改成实线 */
+@media (max-width: 580px) {
+	#waline .wl-header-item:not(:last-child) {
+		border-bottom: 1px solid var(--line-divider);
+	}
+}
+
+/* ── 4. 按钮 ───────────────────────────────────────────────── */
+
+#waline .wl-btn {
+	border-radius: 0.625rem;
+	transition:
+		color 0.2s ease,
+		background-color 0.2s ease,
+		border-color 0.2s ease;
+}
+
+/* 主按钮：主题色底 + 深色文字。
+   实测白字压在 --primary 上只有 2.66 对比度（暗色 2.23），远低于 4.5；
+   深色文字则有 7.89 / 9.42。这与主题自身按钮的约定一致
+   （站内是 text-white dark:text-black/70，暗色下同样用深色文字）。 */
+#waline .wl-btn.primary {
+	color: rgb(0 0 0 / 70%);
+	border-color: var(--primary);
+	background: var(--primary);
+}
+
+#waline .wl-btn.primary:hover,
+#waline .wl-btn.primary:active {
+	color: rgb(0 0 0 / 70%);
+	border-color: var(--waline-active-color);
+	background: var(--waline-active-color);
+}
+
+/* 次级按钮：悬停走主题色 */
+#waline .wl-btn:not(.primary):hover,
+#waline .wl-btn:not(.primary):active {
+	color: var(--primary);
+	border-color: color-mix(in oklch, var(--primary) 55%, var(--line-divider) 45%);
+	background: color-mix(in oklch, var(--primary) 8%, transparent);
+}
+
+/* ── 5. 评论列表 ───────────────────────────────────────────── */
+
+#waline .wl-card .wl-meta > span {
+	border-radius: 0.375rem;
+	color: var(--waline-info-color);
+	background: var(--waline-info-bg-color);
+}
+
+#waline .wl-card .wl-badge {
+	border-color: color-mix(in oklch, var(--primary) 45%, transparent);
+	color: var(--primary);
+}
+
+/* 展开渐变的底色是写死的白色/黑色，暗色下会糊成一块，改成跟随卡片底色 */
+#waline .wl-card .wl-content.expand::before {
+	background: linear-gradient(180deg, transparent, var(--waline-bg-color));
+}
+
+#waline .wl-card .wl-content.expand::after {
+	color: var(--content-meta);
+	background: var(--waline-bg-color);
+}
+
+/* 正文里的引用与代码块跟随主题 */
+#waline .wl-content blockquote {
+	color: var(--content-meta);
+	border-inline-start: 3px solid var(--waline-bq-color);
+	background: var(--waline-bq-color);
+	border-radius: 0 0.375rem 0.375rem 0;
+}
+
+#waline .wl-content pre,
+#waline .wl-content pre[class*="language-"] {
+	border-radius: 0.625rem;
+}
+
+#waline .wl-content code {
+	border-radius: 0.25rem;
+}
+
+#waline .wl-content .wl-tex {
+	color: var(--waline-info-color);
+	background: var(--waline-info-bg-color);
+}
+
+/* 头像圆角跟随主题卡片 */
+#waline .wl-avatar {
+	border: 1px solid var(--line-divider);
+}
+
+/* ── 6. 排序 / 计数 / 页脚 ─────────────────────────────────── */
+
+#waline .wl-sort li.active,
+#waline .wl-sort li:hover {
+	color: var(--primary);
+}
+
+#waline .wl-info .wl-text-number {
+	color: var(--content-meta);
+}
+
+#waline .wl-power {
+	color: var(--content-meta);
+}
+
+#waline .wl-power a {
+	color: var(--primary);
+}
+
+/* ── 7. 表情面板：跟随主题底色与圆角 ───────────────────────── */
+
+#waline .wl-emoji-popup,
+#waline .wl-gif-popup {
+	border: 1px solid var(--line-divider);
+	border-radius: 0.75rem;
+	background: var(--waline-bg-color);
+	box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.28);
+}
+
+/* 各分类表情数量不同，切换时面板布局会跟着变，下面逐项消除 */
+
+#waline .wl-tab-wrapper {
+	/* 内容溢出时出现的滚动条会挤掉约 6px 宽度，网格随之重排 */
+	scrollbar-gutter: stable;
+	/* 内容不足时网格区按内容收缩，比顶满时矮 1px；固定高度使其恒定。
+	   145px 取自 Waline 自身的 max-height，其大版本若调整需同步 */
+	height: 145px;
+}
+
+/* Waline 给选中态加了 0 1px 1px 边框，激活的 tab 比未激活宽 2px、高 1px，
+   切换时相邻 tab 会左右挪；给未选中的补等宽透明边框统一占位 */
+#waline .wl-tabs .wl-tab:not(.active) {
+	border: solid transparent;
+	border-width: 0 1px 1px;
+}
+
+/* ── 8. 透明壁纸模式：卡片本身是半透明的，评论面板也要跟上 ── */
+
+body.wallpaper-transparent #waline {
+	--waline-bg-color: var(--card-bg-transparent);
+	--waline-bg-color-light: color-mix(in oklch, var(--card-bg-transparent) 88%, var(--primary) 12%);
+	--waline-bg-color-hover: color-mix(in oklch, var(--card-bg-transparent) 82%, var(--primary) 18%);
+	--waline-info-bg-color: color-mix(in oklch, var(--card-bg-transparent) 88%, var(--primary) 12%);
+}
+
+body.wallpaper-transparent #waline .wl-panel {
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+}
