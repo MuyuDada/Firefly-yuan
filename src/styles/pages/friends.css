@@ -71,8 +71,12 @@ friend-filter {
 
 .friend-tab-indicator {
 	position: absolute;
-	top: 0.25rem;
-	bottom: 0.25rem;
+	/* 不要用 top/bottom 撑满：标签换行成多行时，指示条会横跨所有行、
+	   盖住上下相邻的选项。高度与纵向位置改由脚本按当前按钮的矩形设置。 */
+	top: 0;
+	left: 0;
+	height: 0;
+	width: 0;
 	border-radius: 999px;
 	background: var(--primary);
 	box-shadow: 0 2px 10px color-mix(in oklch, var(--primary) 35%, transparent);
@@ -80,7 +84,9 @@ friend-filter {
 	pointer-events: none;
 	transition:
 		left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-		width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+		width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+		height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .friend-tab-btn {

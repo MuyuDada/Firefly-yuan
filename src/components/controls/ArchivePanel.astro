@@ -109,7 +109,8 @@ const i18nStrings = {
 	postCount: i18n(I18nKey.postCount),
 	postsCount: i18n(I18nKey.postsCount),
 };
-const tagsBaseUrl = url("/tags/");
+// 标签已并入分类标签页的标签关系图，这里直接指向锚点，避免多一跳 301
+const tagsBaseUrl = url("/categories/#tag-graph-container");
 const categoriesBaseUrl = url("/categories/");
 ---
 

@@ -27,6 +27,14 @@ export const zh_TW: Translation = {
 	[Key.allCategories]: "全部分類",
 	[Key.allTags]: "全部標籤",
 	[Key.allSeries]: "全部系列",
+
+	// 分類標籤頁（視覺化）
+	[Key.categoriesTagsPage]: "分類標籤",
+	[Key.categoriesTagsSubtitle]: "視覺化瀏覽文章分類與標籤關係",
+	[Key.categoryRoseTitle]: "文章分類",
+	[Key.tagGraphTitle]: "標籤關係",
+	[Key.tagGraphMeta]: "連線表示兩個標籤至少共同出現在 {threshold} 篇文章中",
+	[Key.cooccurLabel]: "共現",
 	[Key.recentPosts]: "最新文章",
 	[Key.postList]: "文章列表",
 	[Key.tableOfContents]: "文章目錄",

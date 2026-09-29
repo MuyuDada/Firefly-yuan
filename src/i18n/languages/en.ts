@@ -27,6 +27,16 @@ export const en: Translation = {
 	[Key.allCategories]: "All Categories",
 	[Key.allTags]: "All Tags",
 	[Key.allSeries]: "All Series",
+
+	// Categories & Tags page (visualised)
+	[Key.categoriesTagsPage]: "Categories & Tags",
+	[Key.categoriesTagsSubtitle]:
+		"Explore post categories and tag relationships visually",
+	[Key.categoryRoseTitle]: "Post categories",
+	[Key.tagGraphTitle]: "Tag relationships",
+	[Key.tagGraphMeta]:
+		"A link means two tags co-occur in at least {threshold} posts",
+	[Key.cooccurLabel]: "co-occur",
 	[Key.recentPosts]: "Recent Posts",
 	[Key.postList]: "Post List",
 	[Key.tableOfContents]: "Table of Contents",

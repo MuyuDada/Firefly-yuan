@@ -27,6 +27,14 @@ export const zh_CN: Translation = {
 	[Key.allCategories]: "全部分类",
 	[Key.allTags]: "全部标签",
 	[Key.allSeries]: "全部系列",
+
+	// 分类标签页（可视化）
+	[Key.categoriesTagsPage]: "分类标签",
+	[Key.categoriesTagsSubtitle]: "可视化浏览文章分类与标签关系",
+	[Key.categoryRoseTitle]: "文章分类",
+	[Key.tagGraphTitle]: "标签关系",
+	[Key.tagGraphMeta]: "连线表示两个标签至少共同出现在 {threshold} 篇文章中",
+	[Key.cooccurLabel]: "共现",
 	[Key.recentPosts]: "最新文章",
 	[Key.postList]: "文章列表",
 	[Key.tableOfContents]: "文章目录",

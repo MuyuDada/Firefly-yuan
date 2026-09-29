@@ -3,8 +3,8 @@ title: '为Firefly添加IP定位欢迎弹窗'
 published: 2026-08-28
 description: '首次访问时右下角弹出欢迎提示，显示访客所在地，5 秒后自动关闭。'
 image: api
-tags: [Firefly, 博客, 二开, 交互]
-category: Firefly
+tags: [交互, API]
+category: 小组件
 draft: false
 slug: welcome-toast
 pinned: false

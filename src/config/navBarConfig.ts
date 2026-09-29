@@ -25,11 +25,8 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 			// 归档
 			LinkPresets.Archive,
 
-			// 分类
+			// 分类标签（分类与标签已合并为一页：玫瑰图 + 标签关系图）
 			LinkPresets.Categories,
-
-			// 标签
-			LinkPresets.Tags,
 
 			// 系列
 			LinkPresets.Series,
@@ -165,7 +162,7 @@ export const LinkPresets: Record<string, NavBarLink> = {
 		icon: "material-symbols:archive",
 	},
 	Categories: {
-		name: "分类",
+		name: "分类标签",
 		url: "/categories/",
 		icon: "material-symbols:folder-open-rounded",
 	},

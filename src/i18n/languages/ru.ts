@@ -27,6 +27,16 @@ export const ru: Translation = {
 	[Key.allCategories]: "Все категории",
 	[Key.allTags]: "Все теги",
 	[Key.allSeries]: "Все серии",
+
+	// Страница категорий и тегов (визуализация)
+	[Key.categoriesTagsPage]: "Категории и теги",
+	[Key.categoriesTagsSubtitle]:
+		"Визуальный обзор категорий и связей между тегами",
+	[Key.categoryRoseTitle]: "Категории постов",
+	[Key.tagGraphTitle]: "Связи тегов",
+	[Key.tagGraphMeta]:
+		"Линия означает, что два тега встречаются вместе минимум в {threshold} постах",
+	[Key.cooccurLabel]: "совместно",
 	[Key.recentPosts]: "Последние посты",
 	[Key.postList]: "Список постов",
 	[Key.tableOfContents]: "Содержание",

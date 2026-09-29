@@ -1,0 +1,324 @@
+---
+// 分类南丁格尔玫瑰图（ECharts）
+//
+// 服务端把分类数据序列化到 data-chart-data，客户端用 ECharts 渲染。
+// ECharts 通过 CDN 动态加载，不需要 npm 安装。
+import type { Category } from "@/utils/content-utils";
+
+interface Props {
+	categories: Category[];
+	articleUnit: string; // 「篇文章」等计数单位，用于 tooltip
+}
+
+const { categories, articleUnit } = Astro.props;
+
+const chartData = categories.map((c) => ({
+	name: c.name,
+	value: c.count,
+	url: c.url,
+}));
+
+const totalPosts = categories.reduce((sum, c) => sum + c.count, 0);
+const categoryRoseAriaLabel = `文章分类玫瑰图，共 ${categories.length} 个分类`;
+---
+
+<section class="category-rose" aria-labelledby="category-rose-title">
+  <div
+    id="category-rose-container"
+    data-chart-data={JSON.stringify(chartData)}
+    data-article-unit={articleUnit}
+  >
+    <div class="category-rose__layout">
+      <div
+        id="category-rose-chart"
+        class="category-rose__chart"
+        role="img"
+        aria-label={categoryRoseAriaLabel}
+      >
+      </div>
+
+      <div class="category-rose__list">
+        {
+          categories.map((cat) => (
+            <a href={cat.url} class="category-rose__list-item">
+              <span class="category-rose__list-name">
+                <span class="category-rose__swatch" aria-hidden="true" />
+                {cat.name}
+              </span>
+              <span class="category-rose__list-count">
+                {cat.count} {articleUnit}
+              </span>
+            </a>
+          ))
+        }
+        <div class="category-rose__list-total">
+          共 {categories.length} 个分类 · {totalPosts} {articleUnit}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  (function () {
+    if (window.__categoryRoseBound) return;
+    window.__categoryRoseBound = true;
+
+    var activeState = null;
+
+    function prefersReducedMotion() {
+      return (
+        window.matchMedia &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      );
+    }
+
+    function getHue() {
+      var raw = getComputedStyle(document.documentElement)
+        .getPropertyValue("--hue")
+        .trim();
+      var parsed = parseFloat(raw);
+      return Number.isFinite(parsed) ? parsed : 250;
+    }
+
+    // 以主题色相为起点，把色环等分给每个分类 —— 分类多时也不会撞色
+    function buildPalette(count) {
+      var baseHue = getHue();
+      var isDark = document.documentElement.classList.contains("dark");
+      var colors = [];
+      var step = 360 / Math.max(count, 1);
+      for (var i = 0; i < count; i++) {
+        var h = (baseHue + i * step) % 360;
+        var s = isDark ? 46 : 50;
+        var l = isDark ? 64 + (i % 3) * 4 : 48 + (i % 3) * 5;
+        colors.push("hsl(" + h.toFixed(1) + " " + s + "% " + l + "%)");
+      }
+      return colors;
+    }
+
+    function getThemeColors() {
+      var isDark = document.documentElement.classList.contains("dark");
+      return {
+        textColor: isDark ? "rgba(255,255,255,0.88)" : "rgba(24,24,27,0.88)",
+        subtextColor: isDark
+          ? "rgba(255,255,255,0.5)"
+          : "rgba(63,63,70,0.55)",
+        tooltipBg: isDark ? "rgba(24,24,27,0.94)" : "rgba(255,255,255,0.94)",
+        tooltipBorder: isDark
+          ? "rgba(255,255,255,0.14)"
+          : "rgba(0,0,0,0.08)",
+      };
+    }
+
+    // 把调色板同步到右侧列表的小圆点，保证图表与列表颜色一一对应
+    function applySwatches(container, palette) {
+      var items = container.querySelectorAll(".category-rose__list-item");
+      for (var i = 0; i < items.length; i++) {
+        var swatch = items[i].querySelector(".category-rose__swatch");
+        if (swatch)
+          swatch.style.setProperty("--swatch", palette[i % palette.length]);
+      }
+    }
+
+    function loadECharts(callback) {
+      if (window.echarts) {
+        callback(window.echarts);
+        return;
+      }
+      // 复用同一个 loader，避免玫瑰图与关系图各插一份 script
+      var existing = document.querySelector("script[data-echarts-loader]");
+      if (existing) {
+        if (window.echarts) callback(window.echarts);
+        else
+          existing.addEventListener(
+            "load",
+            function () {
+              callback(window.echarts);
+            },
+            { once: true },
+          );
+        return;
+      }
+      var script = document.createElement("script");
+      script.src =
+        "https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js";
+      script.async = true;
+      script.dataset.echartsLoader = "true";
+      script.onload = function () {
+        callback(window.echarts);
+      };
+      script.onerror = function () {
+        console.warn("[CATEGORY-ROSE] Failed to load ECharts from CDN");
+      };
+      document.head.appendChild(script);
+    }
+
+    function cleanupState() {
+      if (!activeState) return;
+      window.removeEventListener("resize", activeState.resizeHandler);
+      activeState.observer.disconnect();
+      activeState.chart.dispose();
+      activeState.chartDom.removeAttribute("data-echarts-initialized");
+      activeState = null;
+    }
+
+    function initCategoryRose() {
+      var container = document.getElementById("category-rose-container");
+      if (!container) {
+        cleanupState();
+        return;
+      }
+
+      var chartDom = document.getElementById("category-rose-chart");
+      if (!chartDom || chartDom.getAttribute("data-echarts-initialized")) return;
+
+      var rawData = container.getAttribute("data-chart-data");
+      if (!rawData) return;
+      var chartData;
+      try {
+        chartData = JSON.parse(rawData);
+      } catch (_e) {
+        return;
+      }
+      if (!chartData.length) return;
+
+      var articleUnit = container.getAttribute("data-article-unit") || "";
+
+      loadECharts(function (echarts) {
+        if (
+          !echarts ||
+          !document.documentElement.contains(container) ||
+          !document.documentElement.contains(chartDom) ||
+          chartDom.getAttribute("data-echarts-initialized")
+        )
+          return;
+
+        cleanupState();
+        chartDom.setAttribute("data-echarts-initialized", "true");
+
+        var palette = buildPalette(chartData.length);
+        applySwatches(container, palette);
+
+        var colors = getThemeColors();
+        var reduced = prefersReducedMotion();
+        var chart = echarts.init(chartDom);
+
+        chart.setOption({
+          tooltip: {
+            trigger: "item",
+            formatter: function (params) {
+              return (
+                "<strong>" +
+                params.name +
+                "</strong><br/>" +
+                params.value +
+                " " +
+                articleUnit +
+                "<br/>" +
+                params.percent +
+                "%"
+              );
+            },
+            backgroundColor: colors.tooltipBg,
+            borderColor: colors.tooltipBorder,
+            borderWidth: 1,
+            textStyle: { color: colors.textColor },
+            extraCssText:
+              "border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,0.14);",
+          },
+          legend: { show: false },
+          series: [
+            {
+              name: "categories",
+              type: "pie",
+              radius: ["22%", "72%"],
+              center: ["50%", "50%"],
+              roseType: "area",
+              itemStyle: {
+                borderRadius: 8,
+                borderColor: colors.tooltipBg,
+                borderWidth: 2,
+              },
+              label: {
+                color: colors.textColor,
+                fontSize: 12,
+                fontWeight: "bold",
+              },
+              labelLine: { lineStyle: { color: colors.subtextColor } },
+              emphasis: {
+                // 关闭 hover 放大：扇区被放大后可能从光标下方"长出去"，
+                // 触发 mouseout → 缩小 → 又进入 → 放大 的无限抖动。
+                scale: false,
+                itemStyle: {
+                  shadowBlur: reduced ? 0 : 12,
+                  shadowOffsetX: 0,
+                  shadowColor: "rgba(0,0,0,0.22)",
+                },
+              },
+              animation: !reduced,
+              animationType: "scale",
+              animationEasing: "cubicOut",
+              animationDuration: reduced ? 0 : 800,
+              animationDelay: function (idx) {
+                return reduced ? 0 : idx * 70;
+              },
+              data: chartData,
+              color: palette,
+            },
+          ],
+        });
+
+        // 点击扇区跳转到归档页的分类筛选
+        chart.on("click", function (params) {
+          for (var i = 0; i < chartData.length; i++) {
+            if (chartData[i].name === params.name && chartData[i].url) {
+              window.location.href = chartData[i].url;
+              break;
+            }
+          }
+        });
+
+        var state = {
+          chart: chart,
+          chartDom: chartDom,
+          resizeHandler: function () {
+            chart.resize();
+          },
+          // 主题切换（dark class / --hue 变化）后重建调色板
+          observer: new MutationObserver(function () {
+            var nextPalette = buildPalette(chartData.length);
+            applySwatches(container, nextPalette);
+            var nc = getThemeColors();
+            chart.setOption({
+              color: nextPalette,
+              tooltip: {
+                backgroundColor: nc.tooltipBg,
+                borderColor: nc.tooltipBorder,
+                textStyle: { color: nc.textColor },
+              },
+              series: [
+                {
+                  color: nextPalette,
+                  label: { color: nc.textColor },
+                  labelLine: { lineStyle: { color: nc.subtextColor } },
+                },
+              ],
+            });
+          }),
+        };
+        activeState = state;
+
+        window.addEventListener("resize", state.resizeHandler);
+        state.observer.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ["class", "style"],
+        });
+      });
+    }
+
+    document.addEventListener("swup:willReplaceContent", cleanupState);
+    document.addEventListener("astro:page-load", initCategoryRose);
+    document.addEventListener("swup:contentReplaced", initCategoryRose);
+    initCategoryRose();
+  })();
+</script>

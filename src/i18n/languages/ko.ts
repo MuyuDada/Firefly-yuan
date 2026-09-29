@@ -27,6 +27,15 @@ export const ko: Translation = {
 	[Key.allCategories]: "모든 카테고리",
 	[Key.allTags]: "모든 태그",
 	[Key.allSeries]: "모든 시리즈",
+
+	// 카테고리·태그 페이지 (시각화)
+	[Key.categoriesTagsPage]: "카테고리와 태그",
+	[Key.categoriesTagsSubtitle]: "카테고리와 태그 관계를 시각적으로 탐색",
+	[Key.categoryRoseTitle]: "게시글 카테고리",
+	[Key.tagGraphTitle]: "태그 관계",
+	[Key.tagGraphMeta]:
+		"선은 두 태그가 최소 {threshold}개 게시글에서 함께 등장함을 의미합니다",
+	[Key.cooccurLabel]: "동시 등장",
 	[Key.recentPosts]: "최근 게시글",
 	[Key.postList]: "게시글 목록",
 	[Key.tableOfContents]: "목차",

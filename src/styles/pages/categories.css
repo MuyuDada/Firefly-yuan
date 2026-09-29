@@ -1,0 +1,269 @@
+/* 分类标签页：玫瑰图 + 标签关系图 */
+
+.categories-page {
+	width: 100%;
+	border-radius: var(--radius-large);
+	overflow: hidden;
+}
+
+.categories-page__divider {
+	margin: 2.25rem 0;
+	border-top: 1px solid var(--line-divider);
+}
+
+.categories-page__section-header {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1rem;
+}
+
+.categories-page__section-title {
+	margin: 0;
+	font-size: 1.25rem;
+	font-weight: 800;
+	line-height: 1.35;
+	letter-spacing: -0.02em;
+	color: var(--deep-text);
+}
+
+.categories-page__section-meta {
+	margin: 0.2rem 0 0;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	color: var(--content-meta);
+}
+
+.categories-page__empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 12rem;
+	padding: 2rem 1.25rem;
+	border: 1px solid color-mix(in oklch, var(--primary) 12%, var(--line-divider));
+	border-radius: var(--radius-large);
+	font-size: 0.9375rem;
+	text-align: center;
+	color: var(--content-meta);
+	background: color-mix(in oklch, var(--primary) 4%, var(--card-bg));
+}
+
+/* ── 分类玫瑰图 ───────────────────────────── */
+
+.category-rose {
+	width: 100%;
+}
+
+.category-rose__layout {
+	display: flex;
+	align-items: stretch;
+	gap: 1.75rem;
+}
+
+.category-rose__chart {
+	flex: 1;
+	min-width: 0;
+	height: 380px;
+	min-height: 300px;
+	overflow: hidden;
+	border: 1px solid color-mix(in oklch, var(--primary) 10%, var(--line-divider));
+	border-radius: var(--radius-large);
+	background:
+		linear-gradient(
+			180deg,
+			color-mix(in oklch, var(--primary) 5%, transparent),
+			transparent 42%
+		),
+		var(--card-bg);
+}
+
+.category-rose__list {
+	display: flex;
+	flex-shrink: 0;
+	flex-direction: column;
+	gap: 0.25rem;
+	width: 220px;
+	padding: 0.25rem;
+	border: 1px solid color-mix(in oklch, var(--primary) 10%, var(--line-divider));
+	border-radius: var(--radius-large);
+	background: color-mix(in oklch, var(--primary) 3%, var(--card-bg));
+}
+
+.category-rose__list-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.55rem 0.7rem;
+	border-radius: calc(var(--radius-large) - 0.35rem);
+	font-size: 0.9375rem;
+	line-height: 1.4;
+	text-decoration: none;
+	color: var(--deep-text);
+	transition:
+		background-color 0.2s ease,
+		color 0.2s ease,
+		transform 0.2s ease;
+}
+
+.category-rose__list-item:hover {
+	color: var(--primary);
+	background: color-mix(in oklch, var(--primary) 12%, transparent);
+	transform: translate(2px);
+}
+
+.category-rose__list-item:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+.category-rose__list-name {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 0;
+	font-weight: 600;
+	text-transform: capitalize;
+}
+
+.category-rose__swatch {
+	flex-shrink: 0;
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: 999px;
+	background: var(--swatch, var(--primary));
+	box-shadow: 0 0 0 2px
+		color-mix(in oklch, var(--swatch, var(--primary)) 22%, transparent);
+}
+
+.category-rose__list-count {
+	flex-shrink: 0;
+	font-size: 0.8125rem;
+	color: var(--content-meta);
+	font-variant-numeric: tabular-nums;
+	transition: color 0.2s ease;
+}
+
+.category-rose__list-item:hover .category-rose__list-count {
+	color: var(--primary);
+}
+
+.category-rose__list-total {
+	margin-top: 0.35rem;
+	padding: 0.65rem 0.7rem 0.45rem;
+	border-top: 1px solid var(--line-divider);
+	font-size: 0.8125rem;
+	font-weight: 600;
+	color: var(--content-meta);
+	font-variant-numeric: tabular-nums;
+}
+
+/* ── 标签关系图 ───────────────────────────── */
+
+.tag-graph {
+	position: relative;
+	width: 100%;
+}
+
+/* 从 /tags/ 重定向带 #tag-graph-container 锚点过来时，
+   避让固定导航栏，否则标题会被压在导航下方 */
+.tag-graph__container {
+	scroll-margin-top: 5.5rem;
+}
+
+.tag-graph__header {
+	margin-bottom: 1rem;
+}
+
+.tag-graph__section-title {
+	margin: 0;
+	font-size: 1.25rem;
+	font-weight: 800;
+	line-height: 1.35;
+	letter-spacing: -0.02em;
+	color: var(--deep-text);
+}
+
+.tag-graph__meta {
+	margin: 0.2rem 0 0;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	color: var(--content-meta);
+}
+
+.tag-graph__chart {
+	width: 100%;
+	height: 620px;
+	min-height: 360px;
+	overflow: hidden;
+	border: 1px solid color-mix(in oklch, var(--primary) 10%, var(--line-divider));
+	border-radius: var(--radius-large);
+	background:
+		radial-gradient(
+			ellipse at 30% 20%,
+			color-mix(in oklch, var(--primary) 8%, transparent),
+			transparent 55%
+		),
+		var(--card-bg);
+}
+
+/* ── 暗色适配 ─────────────────────────────── */
+
+:root.dark .categories-page__section-title,
+:root.dark .tag-graph__section-title,
+:root.dark .category-rose__list-item {
+	color: rgb(255 255 255 / 90%);
+}
+
+:root.dark .category-rose__list-item:hover {
+	color: var(--primary);
+}
+
+/* ── 响应式 ───────────────────────────────── */
+
+@media (max-width: 1023px) {
+	.tag-graph__chart {
+		height: 520px;
+	}
+}
+
+@media (max-width: 768px) {
+	.category-rose__layout {
+		flex-direction: column;
+		gap: 1.25rem;
+	}
+
+	.category-rose__chart {
+		width: 100%;
+		height: 300px;
+	}
+
+	.category-rose__list {
+		width: 100%;
+	}
+
+	.tag-graph__chart {
+		height: 420px;
+	}
+}
+
+@media (max-width: 480px) {
+	.category-rose__chart {
+		height: 240px;
+	}
+
+	.tag-graph__chart {
+		height: 360px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.category-rose__list-item {
+		transition: none;
+	}
+
+	.category-rose__list-item:hover {
+		transform: none;
+	}
+}

@@ -1,7 +1,8 @@
 import { type CollectionEntry, getCollection } from "astro:content";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import { getCategoryUrl } from "@utils/url-utils";
+import { buildTagGraphData, type TagGraphData } from "@utils/tag-graph-data";
+import { getCategoryUrl, getPostUrlBySlug, getTagUrl } from "@utils/url-utils";
 
 // // Retrieve posts and sort them by publication date
 async function getRawSortedPosts() {
@@ -182,6 +183,39 @@ export type Category = {
 	count: number;
 	url: string;
 };
+
+/**
+ * 标签关系图数据：节点 + 共现边。
+ * 节点 url 指向归档页的标签筛选（/archive/?tag=…）。
+ *
+ * threshold 是共现次数阈值。这里默认 1（共现过一次就连线）：
+ * 标签整理后每篇文章的标签更聚焦，共现对本来就少，
+ * 用 2 会把「交互 / API / 天气 / 数据」这类只共现一次的正常标签全部丢掉，
+ * 图谱只剩三两条边。文章和标签变多后可调高到 2～3 避免糊成一团。
+ */
+export async function getTagGraphData(threshold = 1): Promise<TagGraphData> {
+	const allBlogPosts = await getCollection("posts", ({ data }) => {
+		return import.meta.env.PROD ? data.draft !== true : true;
+	});
+
+	const graph = buildTagGraphData(
+		allBlogPosts.map((post) => ({
+			title: post.data.title,
+			url: getPostUrlBySlug(post.id),
+			published: post.data.published,
+			tags: post.data.tags || [],
+		})),
+		threshold,
+	);
+
+	return {
+		...graph,
+		nodes: graph.nodes.map((node) => ({
+			...node,
+			url: getTagUrl(node.name),
+		})),
+	};
+}
 
 export async function getCategoryList(): Promise<Category[]> {
 	const allBlogPosts = await getCollection<"posts">("posts", ({ data }) => {

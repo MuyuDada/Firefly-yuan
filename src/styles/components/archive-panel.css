@@ -70,6 +70,17 @@
 	color: var(--deep-text);
 }
 
+/* 暗色下 --deep-text 仍为深色，标题/文章名需覆盖为亮色文字 */
+:root.dark .ap-h1,
+:root.dark .ap-h2,
+:root.dark .ap-title {
+	color: rgb(255 255 255 / 90%);
+}
+
+:root.dark .ap-post-row:hover .ap-title {
+	color: var(--primary);
+}
+
 .ap-count {
 	font-size: 0.75rem;
 	color: var(--content-meta);

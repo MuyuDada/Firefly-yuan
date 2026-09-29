@@ -5,8 +5,8 @@ published: 2026-08-28
 updated: 2026-08-31
 description: '侧边栏实时时钟组件，根据时段自动切换问候语和背景图。'
 image: api
-category: Firefly
-tags: [Firefly, 博客, 二开, 小部件]
+category: 小组件
+tags: [时间, 动画]
 draft: false
 pinned: false
 ---

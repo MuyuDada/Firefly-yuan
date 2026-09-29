@@ -4,8 +4,8 @@ slug: 'firefly-friends-page'
 published: 2026-09-28
 description: '把 Firefly 自带的友链页从「一排卡片」改造成带搜索、Tag 筛选、分页、访问延时徽章和申请指南弹窗的完整页面，并踩平了两个静默失效的坑：DOMContentLoaded 被第三方资源卡死、祖先元素的 transform 让 position:fixed 弹窗错位。'
 image: api
-category: Firefly
-tags: [Firefly, 博客, 二开, 友链]
+category: 页面改造
+tags: [交互]
 draft: false
 pinned: true
 ---

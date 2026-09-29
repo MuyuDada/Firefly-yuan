@@ -94,6 +94,21 @@
 	font-variant-numeric: tabular-nums;
 }
 
+/* 暗色下 --deep-text 仍为深色，面板标题与年份数字需覆盖为亮色 */
+:root.dark .heatmap-section-title,
+:root.dark .heatmap-year-label {
+	color: rgb(255 255 255 / 90%);
+}
+
+:root.dark .heatmap-year-btn {
+	border-color: rgb(255 255 255 / 35%);
+	color: rgb(255 255 255 / 90%);
+}
+
+:root.dark .heatmap-year-btn svg {
+	color: rgb(255 255 255 / 90%);
+}
+
 .heatmap-error {
 	padding: 0.5rem 0;
 	font-size: 0.75rem;

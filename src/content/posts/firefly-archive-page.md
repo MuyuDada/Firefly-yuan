@@ -4,8 +4,8 @@ slug: 'firefly-archive-page'
 published: 2026-09-28
 description: '把 Firefly 自带的时间轴归档页升级为 GitHub 贡献 + 文章发布双热力图，加上年→月→文章三级结构与 SVG 悬停高亮连线，并记录了三个真实踩到的坑：容器宽度误判、月份行错位、第三方 API 抖动。'
 image: api
-category: Firefly
-tags: [Firefly, 博客, 二开, 归档]
+category: 页面改造
+tags: [ECharts, 可视化]
 draft: false
 pinned: false
 ---

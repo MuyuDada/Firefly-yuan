@@ -27,6 +27,15 @@ export const ja: Translation = {
 	[Key.allCategories]: "すべてのカテゴリ",
 	[Key.allTags]: "すべてのタグ",
 	[Key.allSeries]: "すべてのシリーズ",
+
+	// カテゴリ・タグページ（可視化）
+	[Key.categoriesTagsPage]: "カテゴリとタグ",
+	[Key.categoriesTagsSubtitle]: "カテゴリとタグの関係を可視化して閲覧",
+	[Key.categoryRoseTitle]: "投稿カテゴリ",
+	[Key.tagGraphTitle]: "タグの関係",
+	[Key.tagGraphMeta]:
+		"線は 2 つのタグが {threshold} 件以上の投稿で共起することを示します",
+	[Key.cooccurLabel]: "共起",
 	[Key.recentPosts]: "最近の投稿",
 	[Key.postList]: "投稿リスト",
 	[Key.tableOfContents]: "目次",

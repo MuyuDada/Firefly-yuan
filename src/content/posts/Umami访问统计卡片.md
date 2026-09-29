@@ -4,8 +4,8 @@ slug: 'umami-stats'
 published: 2026-09-26
 description: '在侧边栏实时展示 Umami 的总浏览量、访问数与游客数，基于公开分享链接免 API Key 拉取，带数字滚动动画与懒加载。'
 image: api
-category: Firefly
-tags: [Firefly, 博客, 二开, 小部件]
+category: 小组件
+tags: [API, 数据]
 draft: false
 pinned: true
 ---

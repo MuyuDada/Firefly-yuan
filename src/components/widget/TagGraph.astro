@@ -1,0 +1,395 @@
+---
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+// 标签力导向关系图（ECharts graph）
+//
+// 节点大小 = 标签引用次数，连线 = 两个标签的共现次数。
+// 数据在服务端算好（见 utils/tag-graph-data.ts），这里只负责渲染与交互。
+import type { TagGraphData } from "@/utils/tag-graph-data";
+
+interface Props {
+	graph: TagGraphData;
+	cooccurLabel: string; // tooltip 中「共现」的文案
+	articleUnit: string;
+}
+
+const { graph, cooccurLabel, articleUnit } = Astro.props;
+
+// 按引用次数分档，给节点上不同颜色组
+const chartData = {
+	...graph,
+	nodes: graph.nodes.map((node) => ({
+		...node,
+		category:
+			node.value >= 5 ? "高频标签" : node.value >= 2 ? "常用标签" : "低频标签",
+	})),
+};
+---
+
+<section class="tag-graph" aria-labelledby="tag-graph-title">
+  <div class="tag-graph__header">
+    <h2 id="tag-graph-title" class="tag-graph__section-title">
+      {i18n(I18nKey.tagGraphTitle)}
+    </h2>
+    <p class="tag-graph__meta">
+      {i18n(I18nKey.tagGraphMeta).replace("{threshold}", String(graph.threshold))}
+    </p>
+  </div>
+
+  <div
+    id="tag-graph-container"
+    class="tag-graph__container"
+    data-graph={JSON.stringify(chartData)}
+    data-article-unit={articleUnit}
+    data-cooccur-label={cooccurLabel}
+  >
+    <div
+      id="tag-graph-chart"
+      class="tag-graph__chart"
+      role="img"
+      aria-label={`标签关系图，共 ${graph.nodes.length} 个标签`}
+    >
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  (function () {
+    if (window.__tagGraphBound) return;
+    window.__tagGraphBound = true;
+
+    var activeState = null;
+
+    function prefersReducedMotion() {
+      return (
+        window.matchMedia &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      );
+    }
+
+    function getHue() {
+      var raw = getComputedStyle(document.documentElement)
+        .getPropertyValue("--hue")
+        .trim();
+      var parsed = parseFloat(raw);
+      return Number.isFinite(parsed) ? parsed : 250;
+    }
+
+    function buildPalette(count) {
+      var baseHue = getHue();
+      var isDark = document.documentElement.classList.contains("dark");
+      var colors = [];
+      var total = Math.max(count, 8);
+      var step = 360 / total;
+      for (var i = 0; i < total; i++) {
+        var h = (baseHue + i * step * 0.85) % 360;
+        var s = isDark ? 48 : 52;
+        var l = isDark ? 66 + (i % 4) * 3 : 46 + (i % 4) * 4;
+        colors.push("hsl(" + h.toFixed(1) + " " + s + "% " + l + "%)");
+      }
+      return colors;
+    }
+
+    function getThemeColors() {
+      var isDark = document.documentElement.classList.contains("dark");
+      var hue = getHue();
+      return {
+        isDark: isDark,
+        text: isDark ? "rgba(255,255,255,0.9)" : "rgba(24,24,27,0.92)",
+        muted: isDark ? "rgba(255,255,255,0.56)" : "rgba(63,63,70,0.66)",
+        tooltipBg: isDark ? "rgba(24,24,27,0.96)" : "rgba(255,255,255,0.96)",
+        tooltipBorder: isDark
+          ? "rgba(255,255,255,0.14)"
+          : "rgba(0,0,0,0.08)",
+        tooltipText: isDark ? "rgba(255,255,255,0.94)" : "rgba(24,24,27,0.92)",
+        primary:
+          "hsl(" + hue.toFixed(1) + " " + (isDark ? "52% 68%" : "55% 48%") + ")",
+      };
+    }
+
+    function loadECharts(callback) {
+      if (window.echarts) {
+        callback(window.echarts);
+        return;
+      }
+      var existing = document.querySelector("script[data-echarts-loader]");
+      if (existing) {
+        if (window.echarts) callback(window.echarts);
+        else
+          existing.addEventListener(
+            "load",
+            function () {
+              callback(window.echarts);
+            },
+            { once: true },
+          );
+        return;
+      }
+      var script = document.createElement("script");
+      script.src =
+        "https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js";
+      script.async = true;
+      script.dataset.echartsLoader = "true";
+      script.onload = function () {
+        callback(window.echarts);
+      };
+      script.onerror = function () {
+        console.warn("[TAG-GRAPH] Failed to load ECharts from CDN");
+      };
+      document.head.appendChild(script);
+    }
+
+    // 节点直径按引用次数线性映射到 [24, 78]
+    function getSymbolSize(value, minValue, maxValue) {
+      var minSize = 24;
+      var maxSize = 78;
+      if (maxValue === minValue) return 44;
+      return (
+        minSize + ((value - minValue) / (maxValue - minValue)) * (maxSize - minSize)
+      );
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function cleanupState() {
+      if (!activeState) return;
+      window.removeEventListener("resize", activeState.resizeHandler);
+      activeState.observer.disconnect();
+      activeState.chart.dispose();
+      activeState.chartDom.removeAttribute("data-echarts-initialized");
+      activeState = null;
+    }
+
+    function initTagGraph() {
+      var container = document.getElementById("tag-graph-container");
+      if (!container) {
+        cleanupState();
+        return;
+      }
+
+      var chartDom = document.getElementById("tag-graph-chart");
+      if (!chartDom || chartDom.getAttribute("data-echarts-initialized")) return;
+
+      var raw = container.getAttribute("data-graph");
+      if (!raw) return;
+      var graph;
+      try {
+        graph = JSON.parse(raw);
+      } catch (_e) {
+        return;
+      }
+      if (!graph || !graph.nodes || !graph.nodes.length) return;
+
+      var articleUnit = container.getAttribute("data-article-unit") || "";
+      var cooccurLabel = container.getAttribute("data-cooccur-label") || "";
+
+      loadECharts(function (echarts) {
+        if (
+          !echarts ||
+          !document.documentElement.contains(container) ||
+          !document.documentElement.contains(chartDom) ||
+          chartDom.getAttribute("data-echarts-initialized")
+        )
+          return;
+
+        cleanupState();
+        chartDom.setAttribute("data-echarts-initialized", "true");
+
+        var colors = getThemeColors();
+        var palette = buildPalette(graph.nodes.length);
+        var reduced = prefersReducedMotion();
+
+        var values = graph.nodes.map(function (n) {
+          return n.value;
+        });
+        var maxValue = Math.max.apply(null, values);
+        var minValue = Math.min.apply(null, values);
+        var maxLink = Math.max.apply(
+          null,
+          graph.links
+            .map(function (l) {
+              return l.value;
+            })
+            .concat([1]),
+        );
+
+        var nodes = graph.nodes.map(function (node, index) {
+          var color = palette[index % palette.length];
+          return {
+            id: node.id,
+            name: node.name,
+            value: node.value,
+            url: node.url,
+            posts: node.posts,
+            category: node.category,
+            symbolSize: getSymbolSize(node.value, minValue, maxValue),
+            itemStyle: {
+              color: color,
+              borderColor: colors.isDark
+                ? "rgba(255,255,255,0.45)"
+                : "rgba(255,255,255,0.92)",
+              borderWidth: 2,
+              shadowBlur: reduced ? 0 : 14,
+              shadowColor: colors.isDark
+                ? "rgba(0,0,0,0.35)"
+                : "rgba(0,0,0,0.12)",
+            },
+            label: {
+              show: true,
+              position: "right",
+              formatter: "{b}",
+              color: colors.text,
+              fontSize: node.value >= maxValue * 0.5 ? 13 : 11,
+              fontWeight: node.value >= maxValue * 0.5 ? "bold" : "normal",
+            },
+          };
+        });
+
+        var links = graph.links.map(function (link) {
+          return {
+            source: link.source,
+            target: link.target,
+            value: link.value,
+            lineStyle: {
+              width: 0.8 + (link.value / maxLink) * 3,
+              color: colors.primary,
+              opacity: 0.22 + (link.value / maxLink) * 0.5,
+              curveness: 0.12,
+            },
+          };
+        });
+
+        var chart = echarts.init(chartDom);
+
+        chart.setOption({
+          tooltip: {
+            confine: true,
+            backgroundColor: colors.tooltipBg,
+            borderColor: colors.tooltipBorder,
+            borderWidth: 1,
+            textStyle: { color: colors.tooltipText },
+            extraCssText:
+              "border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,0.16);max-width:280px;",
+            formatter: function (params) {
+              if (params.dataType === "edge") {
+                return (
+                  escapeHtml(params.data.source) +
+                  " ↔ " +
+                  escapeHtml(params.data.target) +
+                  "<br/>" +
+                  cooccurLabel +
+                  " " +
+                  params.data.value +
+                  " " +
+                  articleUnit
+                );
+              }
+              var data = params.data || {};
+              var lines = [
+                "<strong>" + escapeHtml(data.name) + "</strong><br/>" +
+                  data.value + " " + articleUnit,
+              ];
+              if (data.posts && data.posts.length) {
+                lines.push(
+                  '<div style="margin-top:6px;opacity:.75;font-size:12px;line-height:1.6">' +
+                    data.posts.map(escapeHtml).join("<br/>") +
+                    "</div>",
+                );
+              }
+              return lines.join("");
+            },
+          },
+          series: [
+            {
+              type: "graph",
+              layout: "force",
+              roam: true,
+              draggable: true,
+              force: {
+                repulsion: 150,
+                edgeLength: [44, 150],
+                gravity: 0.08,
+                // 关键：默认 true 会让力导向布局永久跑动画 —— 即使鼠标不动，
+                // 节点也会一直微动、canvas 每帧重绘，表现为整块图"乱闪"。
+                // 设为 false 后布局一次算完就静止，拖拽依然可用。
+                layoutAnimation: false,
+              },
+              emphasis: { focus: "adjacency", scale: false },
+              label: { show: true },
+              lineStyle: { color: colors.primary },
+              data: nodes,
+              links: links,
+              animation: !reduced,
+              animationDuration: reduced ? 0 : 700,
+            },
+          ],
+        });
+
+        // 点击节点跳转到归档页的标签筛选
+        chart.on("click", function (params) {
+          if (params.dataType === "node" && params.data && params.data.url) {
+            window.location.href = params.data.url;
+          }
+        });
+
+        var state = {
+          chart: chart,
+          chartDom: chartDom,
+          resizeHandler: function () {
+            chart.resize();
+          },
+          observer: new MutationObserver(function () {
+            var nc = getThemeColors();
+            var nextPalette = buildPalette(graph.nodes.length);
+            chart.setOption({
+              tooltip: {
+                backgroundColor: nc.tooltipBg,
+                borderColor: nc.tooltipBorder,
+                textStyle: { color: nc.tooltipText },
+              },
+              series: [
+                {
+                  lineStyle: { color: nc.primary },
+                  // 注意：节点自带 label，其优先级高于 series 级 label，
+                  // 所以必须逐个节点重写 label.color，只改 series.label 不生效。
+                  data: nodes.map(function (n, i) {
+                    return {
+                      ...n,
+                      itemStyle: {
+                        ...n.itemStyle,
+                        color: nextPalette[i % nextPalette.length],
+                        borderColor: nc.isDark
+                          ? "rgba(255,255,255,0.45)"
+                          : "rgba(255,255,255,0.92)",
+                      },
+                      label: { ...n.label, color: nc.text },
+                    };
+                  }),
+                },
+              ],
+            });
+          }),
+        };
+        activeState = state;
+
+        window.addEventListener("resize", state.resizeHandler);
+        state.observer.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ["class", "style"],
+        });
+      });
+    }
+
+    document.addEventListener("swup:willReplaceContent", cleanupState);
+    document.addEventListener("astro:page-load", initTagGraph);
+    document.addEventListener("swup:contentReplaced", initTagGraph);
+    initTagGraph();
+  })();
+</script>

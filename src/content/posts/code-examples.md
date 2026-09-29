@@ -4,11 +4,12 @@ published: 1970-01-03
 pinned: false
 image: api
 description: 在Firefly中使用表达性代码的代码块在 Markdown 中的外观。
-tags: [Markdown, Firefly]
+tags: [Markdown, 代码块]
 category: 文章示例
 slug: code-examples
 series: "Firefly 功能示例2"
 seriesOrder: 5
+draft: true
 ---
 
 在这里，我们将探索如何使用 [Expressive Code](https://expressive-code.com/) 展示代码块。提供的示例基于官方文档，您可以参考以获取更多详细信息。

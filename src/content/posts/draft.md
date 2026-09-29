@@ -1,7 +1,7 @@
 ---
 title: 草稿示例
 published: 1970-01-01
-tags: [Markdown, 博客, 演示]
+tags: [Markdown]
 category: 文章示例
 draft: true
 slug: draft

@@ -23,6 +23,14 @@ enum I18nKey {
 	allCategories = "allCategories",
 	allTags = "allTags",
 	allSeries = "allSeries",
+
+	// 分类标签页（可视化）
+	categoriesTagsPage = "categoriesTagsPage",
+	categoriesTagsSubtitle = "categoriesTagsSubtitle",
+	categoryRoseTitle = "categoryRoseTitle",
+	tagGraphTitle = "tagGraphTitle",
+	tagGraphMeta = "tagGraphMeta",
+	cooccurLabel = "cooccurLabel",
 	recentPosts = "recentPosts",
 	postList = "postList",
 	tableOfContents = "tableOfContents",

@@ -4,8 +4,8 @@ slug: 'year-progress'
 published: 2026-09-20
 description: '侧边栏年度进度组件，年份数字按进度水平填充、月份逐个点亮，附揭幕与填充双动画。'
 image: api
-category: Firefly
-tags: [Firefly, 博客, 二开, 小部件]
+category: 小组件
+tags: [时间, 动画]
 draft: false
 ---
 

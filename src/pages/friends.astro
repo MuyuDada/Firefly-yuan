@@ -416,13 +416,17 @@ const hasApplyModal = Boolean(
         const tabsWrap = filter?.querySelector("[data-friend-tabs]");
         const indicator = filter?.querySelector("[data-tab-indicator]");
 
-        /** 把指示条移动到当前激活的 Tag 按钮下方 */
+        /** 把指示条对齐到当前激活的 Tag 按钮（含纵向位置与高度） */
         function moveIndicator(button) {
           if (!indicator || !tabsWrap || !button) return;
           const wrapRect = tabsWrap.getBoundingClientRect();
           const btnRect = button.getBoundingClientRect();
+          // 同时设置 top/height：标签换行后按钮可能落在第二行，
+          // 只设 left/width 会让指示条停在第一行或横跨多行。
           indicator.style.left = btnRect.left - wrapRect.left + "px";
+          indicator.style.top = btnRect.top - wrapRect.top + "px";
           indicator.style.width = btnRect.width + "px";
+          indicator.style.height = btnRect.height + "px";
           indicator.style.opacity = "1";
         }
 
@@ -441,13 +445,15 @@ const hasApplyModal = Boolean(
 
         apply();
 
-        // 初始指示条位置（等字体加载完再定位，避免宽度抖动）
-        const activeBtn = filter?.querySelector("button[data-tag][data-active]");
-        moveIndicator(activeBtn);
-        document.fonts?.ready.then(() => moveIndicator(activeBtn));
-        window.addEventListener("resize", () => {
+        // 始终按"当前激活按钮"重新定位，避免持有过期的按钮引用
+        const syncIndicator = () =>
           moveIndicator(filter?.querySelector("button[data-tag][data-active]"));
-        });
+
+        syncIndicator();
+        // 字体加载完宽度会变，需要重算一次
+        document.fonts?.ready.then(syncIndicator);
+        // 换行会随视口宽度变化，resize 后按钮可能落到另一行
+        window.addEventListener("resize", syncIndicator);
       }
 
       // ── 申请弹窗 ──────────────────────────────
