@@ -3,7 +3,7 @@ import type { Live2DWidgetConfig, SpineModelConfig } from "../types/pioConfig";
 // Spine 看板娘配置
 export const spineModelConfig: SpineModelConfig = {
 	// Spine 看板娘开关
-	enable: true,
+	enable: false,
 
 	// Spine模型配置
 	model: {
@@ -85,7 +85,7 @@ export const spineModelConfig: SpineModelConfig = {
 // Live2D 看板娘配置 (使用 l2d-widget 库，文档：https://l2d-widget.hacxy.cn)
 export const live2dWidgetConfig: Live2DWidgetConfig = {
 	// Live2D 看板娘开关
-	enable: false,
+	enable: true,
 	// 模型配置，支持单个模型或数组（多模型切换）
 	model: [
 		{
@@ -102,11 +102,20 @@ export const live2dWidgetConfig: Live2DWidgetConfig = {
 		},
 		{
 			// 外部直连模型
-			path: "https://model.hacxy.cn/cat-black/model.json",
+			path: "https://model.hacxy.cn/HK416-2-normal/model.json",
 			volume: 0,
 			scale: 1,
 			x: 0,
 			y: 0,
+			
+		},
+		{
+			path: "https://model.hacxy.cn/HK416-2-destroy/model.json",
+			volume: 0,
+			scale: 1,
+			x: 0,
+			y: 0,
+			
 		},
 	],
 	// 显示位置：bottom-left 或 bottom-right
@@ -134,6 +143,16 @@ export const live2dWidgetConfig: Live2DWidgetConfig = {
 				action: "scrollToTop",
 			},
 			{
+				icon: "mdi:arrow-down",
+				label: "前往底部",
+				action: "scrollToBottom",
+			},
+			{
+				icon: "mdi:theme-light-dark",
+				label: "切换主题",
+				action: "toggleTheme",
+			},
+			{
 				icon: "mdi:bed",
 				label: "休眠",
 				action: "sleep",
@@ -157,7 +176,7 @@ export const live2dWidgetConfig: Live2DWidgetConfig = {
 		// 气泡开关
 		enable: true,
 		// 初始欢迎消息
-		welcomeMessage: ["你好呀！", "欢迎来到我的世界！"],
+		welcomeMessage: ["你好呀！", "欢迎来到我的博客！"],
 		// 循环提示内容
 		messages: [
 			"有什么需要帮助的吗？",
