@@ -91,7 +91,17 @@ export const friendsConfig: FriendLink[] = [
 		desc: "躬身入局，心为主理，行有尺度，自持本心。",
 		siteurl: "https://blog.fqzlr.top/",
 		tags: ["Blog"],
-		weight: 5, // 权重，数字越大排序越靠前
+		weight: 98, // 权重，数字越大排序越靠前
+		enabled: true, // 是否启用
+	},
+	{
+		title: "LonelyBingの小窝",
+		imgurl:
+			"https://img.lonelybing.top/file/头像/1789400498937.jpg",
+		desc: "一名普普通通の大学生~",
+		siteurl: "https://lonelybing.top",
+		tags: ["Blog"],
+		weight: 97, // 权重，数字越大排序越靠前
 		enabled: true, // 是否启用
 	},
 	{
