@@ -120,7 +120,7 @@ export const friendsConfig: FriendLink[] = [
 		desc: "山水有相逢，来日皆可期",
 		siteurl: "https://chortle.asia",
 		tags: ["Blog"],
-		weight: 4,
+		weight: 96,
 		enabled: true,
 	},
 	{
