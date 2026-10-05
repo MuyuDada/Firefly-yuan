@@ -280,7 +280,7 @@
     </div>
 
     <!-- ⑥ 中分割线 + 备案信息 -->
-    <div class="ftr-rule ftr-rule--mid" aria-hidden="true"></div>
+    <!-- <div class="ftr-rule ftr-rule--mid" aria-hidden="true"></div>
     <div class="ftr-beian">
         <a target="_blank" rel="noopener noreferrer" href="https://beian.miit.gov.cn/">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -297,37 +297,37 @@
             苏公网安备32021302003009号
         </a>
     </div>
-</div>
+</div> -->
 
-<!-- ⑦ 运行计时脚本 -->
-<script is:inline>
-    if (typeof window.__siteStartTime === "undefined") {
-        window.__siteStartTime = "2026-08-24 00:00:00";
-    }
-    (function () {
-        function startRuntime() {
-            var el = document.getElementById("runtime");
-            if (!el) return;
-            function update() {
-                var diff = Date.now() - new Date(window.__siteStartTime).getTime();
-                if (diff < 0) diff = 0;
-                var d = Math.floor(diff / 86400000);
-                var h = Math.floor((diff % 86400000) / 3600000);
-                var m = Math.floor((diff % 3600000) / 60000);
-                var s = Math.floor((diff % 60000) / 1000);
-                el.innerHTML =
-                    "⌛ 小破站已运行 <b class=\"ftr-num ftr-num--day\">" + d + "</b> 天" +
-                    " <b class=\"ftr-num ftr-num--hour\">" + h + "</b> 时" +
-                    " <b class=\"ftr-num ftr-num--min\">" + m + "</b> 分" +
-                    " <b class=\"ftr-num ftr-num--sec\">" + s + "</b> 秒";
+    <!-- ⑦ 运行计时脚本 -->
+    <script is:inline>
+        if (typeof window.__siteStartTime === "undefined") {
+            window.__siteStartTime = "2026-08-24 00:00:00";
+        }
+        (function () {
+            function startRuntime() {
+                var el = document.getElementById("runtime");
+                if (!el) return;
+                function update() {
+                    var diff = Date.now() - new Date(window.__siteStartTime).getTime();
+                    if (diff < 0) diff = 0;
+                    var d = Math.floor(diff / 86400000);
+                    var h = Math.floor((diff % 86400000) / 3600000);
+                    var m = Math.floor((diff % 3600000) / 60000);
+                    var s = Math.floor((diff % 60000) / 1000);
+                    el.innerHTML =
+                        "⌛ 小破站已运行 <b class=\"ftr-num ftr-num--day\">" + d + "</b> 天" +
+                        " <b class=\"ftr-num ftr-num--hour\">" + h + "</b> 时" +
+                        " <b class=\"ftr-num ftr-num--min\">" + m + "</b> 分" +
+                        " <b class=\"ftr-num ftr-num--sec\">" + s + "</b> 秒";
+                }
+                update();
+                setInterval(update, 1000);
             }
-            update();
-            setInterval(update, 1000);
-        }
-        if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", startRuntime);
-        } else {
-            startRuntime();
-        }
-    })();
-</script>
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", startRuntime);
+            } else {
+                startRuntime();
+            }
+        })();
+    </script>
