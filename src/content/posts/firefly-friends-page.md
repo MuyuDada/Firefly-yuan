@@ -94,14 +94,13 @@ export const friendsPageConfig: FriendsPageConfig = {
 
 ```ts
 {
-	title: "池泛の小窝",
-	imgurl: "https://chortle.asia/uploads/image/avater_xxx.jpg",
-	desc: "山水有相逢，来日皆可期",
-	siteurl: "https://chortle.asia",
-	previewurl: "",     // 可选：手动上传的首页截图，优先级高于 autoPreview
-	tags: ["Blog"],
-	weight: 3,
-	enabled: true,
+title: "Muyu の 小窝",
+imgurl:"https://i.imgs.ovh/2026/08/16/d9361d6e012c3125dc8bebbd1a913a92.gif",
+desc: "永远相信美好的事情即将发生",
+siteurl: "https://muyudada.dpdns.org",
+tags: ["本站"],
+weight: 99, // 权重，数字越大排序越靠前
+enabled: true, // 是否启用
 }
 ```
 
