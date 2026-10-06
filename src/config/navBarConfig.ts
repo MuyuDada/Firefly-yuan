@@ -122,6 +122,12 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 				icon: "material-symbols:explore",
 			},
 			{
+				name: "个人网盘",
+				url: "https://muyupan.cc.cd",
+				external: true,
+				icon: "material-symbols:cloud",
+			},
+			{
 				name: "Firefly文档",
 				url: "https://docs-firefly.cuteleaf.cn",
 				external: true,
