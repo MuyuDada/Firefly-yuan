@@ -14,7 +14,14 @@ export type { CommentConfig } from "./commentConfig";
 export type { CoverImageConfig } from "./coverImageConfig";
 export type { DisplaySettingsConfig } from "./displaySettingsConfig";
 export type { DynamicConfig } from "./dynamicConfig";
-export type { SakuraConfig } from "./effectsConfig";
+export type {
+	ClickParticleConfig,
+	CursorConfig,
+	FairyDustConfig,
+	InputFireConfig,
+	NativeCursorMode,
+	SakuraConfig,
+} from "./effectsConfig";
 
 export type {
 	ExpressiveCodeConfig,
@@ -63,5 +70,3 @@ export type ResponsiveImageLayout = "constrained" | "full-width" | "none";
 
 // 图像格式类型
 export type ImageFormat = "avif" | "webp" | "png" | "jpg" | "jpeg" | "gif";
-
-

@@ -1,50 +1,110 @@
-:root {
-	--custom-cursor-size: 32px;
-	--cursor-default: url("/mouse/default.cur"), default;
-	--cursor-pointer: url("/mouse/pointer.cur"), pointer;
-}
+/*
+ * 鼠标与输入特效样式
+ * 由 CursorEffect / ClickParticleEffect / FairyDustEffect / InputFireEffect 四个组件使用。
+ * 所有视觉参数（尺寸、颜色、透明度、层级）通过 CSS 变量从 effectsConfig 注入，
+ * 这样用户改配置后无需改动本文件。
+ */
 
-html,
-body {
-	cursor: none;
-}
-
-* {
-	cursor: none !important;
-}
-
-#custom-cursor {
+/* ── 自定义光标（缓动圆点） ───────────────────────────────────────────── */
+/* 外层只负责位移（transform: translate 由 JS 逐帧写入）， */
+/* 内层负责缩放与透明度过渡，避免两者争抢同一个 transform。 */
+#firefly-cursor {
 	position: fixed;
 	top: 0;
 	left: 0;
-	z-index: 2147483647;
-	width: var(--custom-cursor-size);
-	height: var(--custom-cursor-size);
+	z-index: var(--firefly-cursor-z, 10086);
 	pointer-events: none;
-	background: url("/mouse/default.cur") center / contain no-repeat;
-	transform: translate(-2px, -2px);
 	opacity: 0;
-	transition: opacity 120ms ease;
+	transition: opacity 200ms ease;
 	will-change: transform;
 }
 
-#custom-cursor.is-visible {
+#firefly-cursor.is-visible {
 	opacity: 1;
 }
 
-#custom-cursor.is-pointer {
-	background-image: url("/mouse/pointer.cur");
+.firefly-cursor-dot {
+	width: var(--firefly-cursor-size, 20px);
+	height: var(--firefly-cursor-size, 20px);
+	margin: calc(var(--firefly-cursor-size, 20px) / -2);
+	border-radius: 50%;
+	background: var(--firefly-cursor-color, rgb(57, 197, 187));
+	opacity: var(--firefly-cursor-opacity, 0.25);
+	transition:
+		opacity 200ms ease-in-out,
+		transform 200ms ease-in-out;
 }
 
-@media (pointer: coarse),
-(prefers-reduced-motion: reduce) {
-	#custom-cursor {
+/* 悬停在可点击元素上：放大且更淡 */
+#firefly-cursor.is-hover .firefly-cursor-dot {
+	opacity: var(--firefly-cursor-hover-opacity, 0.1);
+	transform: scale(var(--firefly-cursor-hover-scale, 2.5));
+}
+
+/* 按下：缩小且更实 */
+#firefly-cursor.is-active .firefly-cursor-dot {
+	opacity: var(--firefly-cursor-active-opacity, 0.5);
+	transform: scale(var(--firefly-cursor-active-scale, 0.5));
+}
+
+/* ── 粒子画布（点击粒子 / 星尘拖尾 / 输入火焰共用） ─────────────────────── */
+/* 层级与尺寸由 JS 按配置写入内联样式，这里只约束定位与事件穿透。 */
+.firefly-fx-canvas {
+	position: fixed;
+	top: 0;
+	left: 0;
+	pointer-events: none;
+}
+
+/* ── 原生光标处理 ────────────────────────────────────────────────────── */
+/* 仅在自定义光标真正启用时生效，避免组件未加载/被禁用时出现「没有光标」。 */
+/* nativeCursor = "none"：完全隐藏原生光标 */
+html[data-cursor-enabled="true"][data-native-cursor="none"],
+html[data-cursor-enabled="true"][data-native-cursor="none"] body,
+html[data-cursor-enabled="true"][data-native-cursor="none"] * {
+	cursor: none;
+}
+
+/* nativeCursor = "dot"：用半透明小圆点替换原生光标 */
+/* 好处是即使 JS 执行失败，用户依然能看到一个可见光标，不会「找不到鼠标」。 */
+html[data-cursor-enabled="true"][data-native-cursor="dot"],
+html[data-cursor-enabled="true"][data-native-cursor="dot"] body,
+html[data-cursor-enabled="true"][data-native-cursor="dot"] * {
+	cursor:
+		url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%208%208'%20width='8'%20height='8'%3E%3Ccircle%20cx='4'%20cy='4'%20r='4'%20opacity='0.5'/%3E%3C/svg%3E")
+		4 4,
+		auto;
+}
+
+/* 可点击元素仍保留手型光标，避免削弱「这里能点」的提示 */
+html[data-cursor-enabled="true"][data-native-cursor="dot"]
+	:is(
+		a,
+		button,
+		input[type="button"],
+		input[type="submit"],
+		input[type="reset"],
+		select,
+		label,
+		summary,
+		[role="button"],
+		[role="link"],
+		.cursor-pointer
+	) {
+	cursor: pointer;
+}
+
+/* ── 无障碍与触屏兜底 ───────────────────────────────────────────────── */
+/* 触屏设备没有悬停指针，减少动效偏好者不应被打扰，二者都关闭全部特效。 */
+@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+	#firefly-cursor,
+	.firefly-fx-canvas {
 		display: none;
 	}
 
-	html,
-	body,
-	* {
-		cursor: auto !important;
+	html[data-cursor-enabled="true"],
+	html[data-cursor-enabled="true"] body,
+	html[data-cursor-enabled="true"] * {
+		cursor: auto;
 	}
 }

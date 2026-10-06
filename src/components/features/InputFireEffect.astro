@@ -1,0 +1,391 @@
+---
+// 输入火焰特效:在输入框 / 文本域 / 可编辑区域打字时,从光标位置迸出上升的粒子。
+// 实现要点:
+// - 单张全屏 canvas,粒子存环形缓冲区(上限 500),避免频繁 push/splice 造成 GC 抖动;
+// - 光标位置:input/textarea 用「镜像 div」测量(把输入框前段文字塞进一个同款样式的隐藏元素,
+//   末尾放一个 span 量它的 offsetLeft/offsetTop),contenteditable 用 Selection 的 Range 矩形;
+// - 镜像 div 只在打字瞬间创建并测量,测完立即移除,不常驻 DOM;
+// - 颜色可选随机彩色或取输入框自身文字颜色,后者更适合浅色/深色主题;
+// - 配置见 src/config/effectsConfig.ts 的 inputFireConfig,开关存 inputFireEnabled。
+---
+
+<script>
+	import { inputFireConfig } from "@/config";
+	import type { InputFireManagerLike } from "@/types/mouse-effects";
+
+	interface Particle {
+		x: number;
+		y: number;
+		alpha: number;
+		color: string;
+		vx: number;
+		vy: number;
+		/** 剩余存活帧数,归零即移除 */
+		life: number;
+	}
+
+	/** 环形缓冲区容量:超出后覆盖最旧的粒子,避免数组无限增长 */
+	const MAX_PARTICLES = 500;
+	/** 镜像 div 需要复制的样式属性,漏掉任何一项都会让光标位置算偏 */
+	const MIRRORED_STYLES = [
+		"direction",
+		"boxSizing",
+		"width",
+		"height",
+		"overflowX",
+		"overflowY",
+		"borderTopWidth",
+		"borderRightWidth",
+		"borderBottomWidth",
+		"borderLeftWidth",
+		"borderStyle",
+		"paddingTop",
+		"paddingRight",
+		"paddingBottom",
+		"paddingLeft",
+		"fontStyle",
+		"fontVariant",
+		"fontWeight",
+		"fontStretch",
+		"fontSize",
+		"fontSizeAdjust",
+		"lineHeight",
+		"fontFamily",
+		"textAlign",
+		"textTransform",
+		"textIndent",
+		"textDecoration",
+		"letterSpacing",
+		"wordSpacing",
+		"tabSize",
+		"MozTabSize",
+	] as const;
+
+	function randomBetween(min: number, max: number): number {
+		return Math.random() * (max - min) + min;
+	}
+
+	/**
+	 * MIRRORED_STYLES 用的是 camelCase（为了能直接索引 computed），
+	 * 而 getPropertyValue() 只认 kebab-case，传 camelCase 会静默返回空字符串，
+	 * 导致镜像 div 一个样式都拿不到（padding 丢失、字号退回 16px），
+	 * 光标位置就会整体算偏。必须在这里转换。
+	 */
+	function toKebabCase(prop: string): string {
+		return prop.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
+	}
+
+	class InputFireManager implements InputFireManagerLike {
+		isRunning = false;
+
+		private canvas: HTMLCanvasElement | null = null;
+		private ctx: CanvasRenderingContext2D | null = null;
+		private animationId: number | null = null;
+
+		private particles: Particle[] = [];
+		/** 环形缓冲区写指针,仅在数组写满后使用 */
+		private nextIndex = 0;
+
+		private boundHandleInput: ((e: Event) => void) | null = null;
+		private boundHandleResize: (() => void) | null = null;
+
+		init(): void {
+			if (this.isRunning) return;
+
+			if (
+				window.matchMedia("(pointer: coarse), (prefers-reduced-motion: reduce)")
+					.matches
+			) {
+				return;
+			}
+
+			document.getElementById("firefly-input-fire-canvas")?.remove();
+
+			const canvas = document.createElement("canvas");
+			canvas.id = "firefly-input-fire-canvas";
+			canvas.className = "firefly-fx-canvas";
+			canvas.setAttribute("aria-hidden", "true");
+			canvas.style.zIndex = String(inputFireConfig.zIndex);
+			document.body.appendChild(canvas);
+
+			const ctx = canvas.getContext("2d");
+			if (!ctx) {
+				canvas.remove();
+				return;
+			}
+
+			this.canvas = canvas;
+			this.ctx = ctx;
+			this.resize();
+			this.bindEvents();
+
+			this.isRunning = true;
+			this.animationId = requestAnimationFrame(this.loop);
+		}
+
+		private resize = (): void => {
+			const canvas = this.canvas;
+			const ctx = this.ctx;
+			if (!canvas || !ctx) return;
+
+			const dpr = window.devicePixelRatio || 1;
+			const w = window.innerWidth;
+			const h = window.innerHeight;
+
+			canvas.width = w * dpr;
+			canvas.height = h * dpr;
+			canvas.style.width = `${w}px`;
+			canvas.style.height = `${h}px`;
+
+			// setTransform 而非 scale:重复 resize 时不会累乘缩放系数
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		};
+
+		private bindEvents(): void {
+			// 用 input 事件委托到 body,页面上任意输入框都能触发,无需逐个绑定
+			this.boundHandleInput = (e: Event) => {
+				const target = e.target as HTMLElement | null;
+				if (!target) return;
+
+				const point = this.resolveCaretPoint(target);
+				if (!point) return;
+
+				this.spawn(point.x, point.y, target);
+			};
+
+			this.boundHandleResize = () => this.resize();
+
+			document.body.addEventListener("input", this.boundHandleInput);
+			window.addEventListener("resize", this.boundHandleResize, {
+				passive: true,
+			});
+		}
+
+		/** 解析当前光标在视口中的坐标,无法解析时返回 null */
+		private resolveCaretPoint(
+			target: HTMLElement,
+		): { x: number; y: number } | null {
+			if (
+				target instanceof HTMLTextAreaElement ||
+				(target instanceof HTMLInputElement && target.type === "text")
+			) {
+				return this.resolveInputCaret(target);
+			}
+
+			// contenteditable 等场景:用选区的包围盒
+			const selection = window.getSelection();
+			if (selection && selection.rangeCount > 0) {
+				const range = selection.getRangeAt(0).cloneRange();
+				// 光标是折叠的(range 宽高为 0),插入一个临时节点量出位置
+				const marker = document.createElement("span");
+				marker.textContent = "\u200b";
+				range.insertNode(marker);
+				const rect = marker.getBoundingClientRect();
+				const parent = marker.parentNode;
+				parent?.removeChild(marker);
+				// 合并相邻文本节点,避免反复插入节点把 DOM 切碎
+				parent?.normalize?.();
+				return { x: rect.left, y: rect.top };
+			}
+
+			return null;
+		}
+
+		/**
+		 * 用镜像 div 测量 input/textarea 内光标的像素位置。
+		 * 原理:造一个与输入框样式完全一致的隐藏元素,内容为「光标之前的文本 + 一个 span」,
+		 * 那么 span 的 offsetLeft/offsetTop 就是光标相对输入框内容区的位置。
+		 */
+		private resolveInputCaret(
+			el: HTMLTextAreaElement | HTMLInputElement,
+		): { x: number; y: number } | null {
+			const computed = window.getComputedStyle(el);
+			const isTextarea = el instanceof HTMLTextAreaElement;
+
+			const mirror = document.createElement("div");
+			mirror.id = "firefly-input-fire-mirror";
+			mirror.style.position = "absolute";
+			mirror.style.top = "-9999px";
+			mirror.style.left = "-9999px";
+			mirror.style.visibility = "hidden";
+			// pre-wrap 让换行与空格行为和输入框一致,否则位置会整体偏移
+			mirror.style.whiteSpace = isTextarea ? "pre-wrap" : "nowrap";
+			mirror.style.wordWrap = "break-word";
+			mirror.style.overflow = "hidden";
+
+			// 注意:必须转成 kebab-case 再取/设值,getPropertyValue 不认 camelCase。
+			// 同时写内联样式也用 setProperty,避免 camelCase 索引在部分属性上失效。
+			for (const prop of MIRRORED_STYLES) {
+				const kebab = toKebabCase(prop);
+				mirror.style.setProperty(kebab, computed.getPropertyValue(kebab));
+			}
+
+			// 输入框有滚动时,镜像也要减掉相同偏移
+			const scrollTop = el.scrollTop;
+			const scrollLeft = el.scrollLeft;
+
+			const caretText = el.value.substring(0, el.selectionEnd ?? 0);
+			mirror.textContent = caretText;
+
+			const marker = document.createElement("span");
+			marker.textContent = el.value.substring(el.selectionEnd ?? 0) || ".";
+			mirror.appendChild(marker);
+
+			document.body.appendChild(mirror);
+
+			const borderTop = Number.parseFloat(computed.borderTopWidth) || 0;
+			const borderLeft = Number.parseFloat(computed.borderLeftWidth) || 0;
+
+			const rect = el.getBoundingClientRect();
+
+			// 水平位置两种输入框都一样:镜像里 span 的 offsetLeft 即光标相对内容区左侧的距离。
+			const x = rect.left + marker.offsetLeft + borderLeft - scrollLeft;
+
+			let y: number;
+			if (isTextarea) {
+				// 多行文本域:行位置由镜像给出,顶部对齐
+				y = rect.top + marker.offsetTop + borderTop - scrollTop;
+			} else {
+				// 单行 input 的文字始终在内容区里垂直居中(导航栏搜索框 h-11 就靠这个居中),
+				// 而镜像的 height 被复制成了输入框的固定高度,量不出真实行高。
+				// 这里直接取内容区中线,既准确又不受固定高度影响。
+				const paddingTop = Number.parseFloat(computed.paddingTop) || 0;
+				const paddingBottom = Number.parseFloat(computed.paddingBottom) || 0;
+				const contentHeight = el.clientHeight - paddingTop - paddingBottom;
+				y = rect.top + borderTop + paddingTop + contentHeight / 2;
+			}
+
+			mirror.remove();
+
+			return { x, y };
+		}
+
+		private spawn(x: number, y: number, target: HTMLElement): void {
+			const { count, colorful, frames, velocity } = inputFireConfig;
+			const total = Math.round(randomBetween(count.min, count.max));
+
+			// 非彩色模式取输入框自身的文字颜色,自动适配主题
+			const baseColor = window.getComputedStyle(target).color;
+
+			for (let i = 0; i < total; i++) {
+				const color = colorful
+					? `hsla(${Math.round(randomBetween(0, 360))}, 100%, ${Math.round(
+							randomBetween(50, 80),
+						)}%, 1)`
+					: baseColor;
+
+				const particle: Particle = {
+					x,
+					y,
+					alpha: 1,
+					color,
+					vx: randomBetween(-velocity.x, velocity.x),
+					vy: randomBetween(velocity.y.min, velocity.y.max),
+					life: frames,
+				};
+
+				// 环形缓冲区:满了就覆盖最旧的粒子,避免数组无限增长
+				if (this.particles.length < MAX_PARTICLES) {
+					this.particles.push(particle);
+				} else {
+					this.particles[this.nextIndex % MAX_PARTICLES] = particle;
+					this.nextIndex++;
+				}
+			}
+		}
+
+		private loop = (): void => {
+			if (!this.isRunning) return;
+
+			const ctx = this.ctx;
+			if (!ctx) return;
+
+			const { velocity, alphaDecay, size } = inputFireConfig;
+			const width = window.innerWidth;
+			const height = window.innerHeight;
+
+			ctx.clearRect(0, 0, width, height);
+
+			for (let i = this.particles.length - 1; i >= 0; i--) {
+				const particle = this.particles[i];
+
+				particle.vy += velocity.gravity;
+				particle.x += particle.vx;
+				particle.y += particle.vy;
+				particle.alpha *= alphaDecay;
+				particle.life--;
+
+				if (particle.alpha < 0.02 || particle.life <= 0) {
+					this.particles.splice(i, 1);
+					continue;
+				}
+
+				ctx.globalAlpha = particle.alpha;
+				ctx.fillStyle = particle.color;
+				// 取整绘制,避免半像素模糊
+				ctx.fillRect(
+					Math.round(particle.x - size / 2),
+					Math.round(particle.y - size / 2),
+					size,
+					size,
+				);
+			}
+
+			// globalAlpha 是上下文状态,用完必须还原,否则影响后续绘制
+			ctx.globalAlpha = 1;
+
+			this.animationId = requestAnimationFrame(this.loop);
+		};
+
+		stop(): void {
+			if (this.animationId !== null) {
+				cancelAnimationFrame(this.animationId);
+				this.animationId = null;
+			}
+
+			const onInput = this.boundHandleInput;
+			if (onInput) document.body.removeEventListener("input", onInput);
+			const onResize = this.boundHandleResize;
+			if (onResize) window.removeEventListener("resize", onResize);
+
+			this.boundHandleInput = null;
+			this.boundHandleResize = null;
+
+			this.particles = [];
+			this.nextIndex = 0;
+			document.getElementById("firefly-input-fire-mirror")?.remove();
+			this.canvas?.remove();
+			this.canvas = null;
+			this.ctx = null;
+			this.isRunning = false;
+		}
+	}
+
+	// ===========================================================================
+	// 入口:幂等初始化 + 响应设置面板的开关事件
+	// ===========================================================================
+	(function setupInputFire() {
+		if (window.__fireflyInputFireInitialized) return;
+		window.__fireflyInputFireInitialized = true;
+
+		const manager = new InputFireManager();
+		window.inputFireManager = manager;
+
+		const stored = localStorage.getItem("inputFireEnabled");
+		const enabled =
+			stored === null ? inputFireConfig.enable : stored === "true";
+
+		if (enabled) {
+			manager.init();
+		}
+
+		window.addEventListener("inputFireToggle", (e: Event) => {
+			const detail = (e as CustomEvent<{ enabled: boolean }>).detail;
+			if (detail?.enabled) {
+				manager.init();
+			} else {
+				manager.stop();
+			}
+		});
+	})();
+</script>

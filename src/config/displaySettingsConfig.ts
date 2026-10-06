@@ -69,4 +69,16 @@ export const displaySettingsConfig: DisplaySettingsConfig =
 
 		// 樱花特效开关
 		sakuraSwitchable: true,
+
+		// 自定义光标（缓动圆点）开关
+		cursorSwitchable: true,
+
+		// 点击粒子特效开关
+		clickParticleSwitchable: true,
+
+		// 星尘拖尾特效开关
+		fairyDustSwitchable: true,
+
+		// 输入火焰特效开关
+		inputFireSwitchable: true,
 	});

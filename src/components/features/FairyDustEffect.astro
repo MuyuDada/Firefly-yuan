@@ -1,0 +1,283 @@
+---
+// 星尘拖尾特效:鼠标移动时在指针后方洒落星形粒子,粒子边下落边淡出。
+// 实现要点:
+// - 每种颜色只预渲染一次(离屏 canvas 画一次字形),运行时只做 drawImage 缩放绘制,
+//   避免每帧 fillText(逐帧文字栅格化是这类特效最大的性能陷阱);
+// - 移动距离小于 minDistance 时不生成粒子,鼠标静止不会堆积;
+// - 粒子带初始寿命,逐帧递减并据此计算缩放比例,自然淡出到 0 后移除;
+// - 支持触摸拖动(平板等触屏设备),同样用 passive 监听不阻塞滚动;
+// - 配置见 src/config/effectsConfig.ts 的 fairyDustConfig,开关存 fairyDustEnabled。
+---
+
+<script>
+	import { fairyDustConfig } from "@/config";
+	import type { FairyDustManagerLike } from "@/types/mouse-effects";
+
+	interface Dust {
+		x: number;
+		y: number;
+		vx: number;
+		vy: number;
+		lifeSpan: number;
+		initialLifeSpan: number;
+		/** 预渲染好的字形位图,绘制时按寿命缩放 */
+		glyph: HTMLCanvasElement;
+	}
+
+	/** 在 [min, max] 区间取随机浮点数 */
+	function randomBetween(min: number, max: number): number {
+		return Math.random() * (max - min) + min;
+	}
+
+	class FairyDustManager implements FairyDustManagerLike {
+		isRunning = false;
+
+		private canvas: HTMLCanvasElement | null = null;
+		private ctx: CanvasRenderingContext2D | null = null;
+		private animationId: number | null = null;
+		private dusts: Dust[] = [];
+
+		// 每种颜色一份预渲染字形,索引与 colors 对齐
+		private glyphCache: HTMLCanvasElement[] = [];
+
+		private lastX = 0;
+		private lastY = 0;
+		private hasLast = false;
+
+		private boundHandleMove: ((e: PointerEvent) => void) | null = null;
+		private boundHandleResize: (() => void) | null = null;
+
+		init(): void {
+			if (this.isRunning) return;
+
+			if (
+				window.matchMedia("(pointer: coarse), (prefers-reduced-motion: reduce)")
+					.matches
+			) {
+				return;
+			}
+
+			document.getElementById("firefly-fairy-dust-canvas")?.remove();
+
+			const canvas = document.createElement("canvas");
+			canvas.id = "firefly-fairy-dust-canvas";
+			canvas.className = "firefly-fx-canvas";
+			canvas.setAttribute("aria-hidden", "true");
+			canvas.style.zIndex = String(fairyDustConfig.zIndex);
+			document.body.appendChild(canvas);
+
+			const ctx = canvas.getContext("2d");
+			if (!ctx) {
+				canvas.remove();
+				return;
+			}
+
+			this.canvas = canvas;
+			this.ctx = ctx;
+			this.glyphCache = fairyDustConfig.colors.map((color) =>
+				this.renderGlyph(color),
+			);
+
+			this.resize();
+			this.bindEvents();
+
+			this.isRunning = true;
+			this.animationId = requestAnimationFrame(this.loop);
+		}
+
+		/**
+		 * 把字形预渲染到一张刚好包住它的离屏 canvas。
+		 * 尺寸用 measureText 的宽度 + 实际上下沿(ascent/descent)计算,
+		 * 避免留白导致绘制位置偏移。
+		 */
+		private renderGlyph(color: string): HTMLCanvasElement {
+			const { glyph, fontSize } = fairyDustConfig;
+
+			const canvas = document.createElement("canvas");
+			const ctx = canvas.getContext("2d");
+			if (!ctx) return canvas;
+
+			const font = `${fontSize}px serif`;
+			ctx.font = font;
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+
+			const metrics = ctx.measureText(glyph);
+			const width = Math.ceil(metrics.width) || fontSize;
+			const height = Math.ceil(
+				(metrics.actualBoundingBoxAscent || fontSize * 0.5) +
+					(metrics.actualBoundingBoxDescent || fontSize * 0.5),
+			);
+
+			canvas.width = width;
+			canvas.height = height;
+
+			// 改过尺寸后 canvas 上下文会重置,需重新设置样式再绘制
+			ctx.font = font;
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+			ctx.fillStyle = color;
+			ctx.fillText(glyph, width / 2, height / 2);
+
+			return canvas;
+		}
+
+		private resize = (): void => {
+			const canvas = this.canvas;
+			const ctx = this.ctx;
+			if (!canvas || !ctx) return;
+
+			const dpr = window.devicePixelRatio || 1;
+			const w = window.innerWidth;
+			const h = window.innerHeight;
+
+			canvas.width = w * dpr;
+			canvas.height = h * dpr;
+			canvas.style.width = `${w}px`;
+			canvas.style.height = `${h}px`;
+
+			// setTransform 而非 scale:重复 resize 时不会累乘缩放系数
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		};
+
+		private bindEvents(): void {
+			this.boundHandleMove = (e: PointerEvent) => {
+				const x = e.clientX;
+				const y = e.clientY;
+
+				if (!this.hasLast) {
+					this.lastX = x;
+					this.lastY = y;
+					this.hasLast = true;
+					return;
+				}
+
+				// 移动距离太小时不生成,鼠标静止或微抖不会堆积粒子
+				const distance = Math.hypot(x - this.lastX, y - this.lastY);
+				if (distance < fairyDustConfig.minDistance) return;
+
+				this.lastX = x;
+				this.lastY = y;
+				this.spawn(x, y);
+			};
+
+			this.boundHandleResize = () => this.resize();
+
+			window.addEventListener("pointermove", this.boundHandleMove, {
+				passive: true,
+			});
+			window.addEventListener("resize", this.boundHandleResize, {
+				passive: true,
+			});
+		}
+
+		private spawn(x: number, y: number): void {
+			const { colors, lifeSpan, velocity } = fairyDustConfig;
+
+			const colorIndex = Math.floor(Math.random() * colors.length);
+			const glyph = this.glyphCache[colorIndex];
+			if (!glyph) return;
+
+			const life = randomBetween(lifeSpan.min, lifeSpan.max);
+
+			this.dusts.push({
+				x,
+				y,
+				// 水平方向随机左右飘,垂直方向始终向下
+				vx: (Math.random() < 0.5 ? -1 : 1) * Math.random() * velocity.x,
+				vy: randomBetween(velocity.y.min, velocity.y.max),
+				lifeSpan: life,
+				initialLifeSpan: life,
+				glyph,
+			});
+		}
+
+		private loop = (): void => {
+			if (!this.isRunning) return;
+
+			const ctx = this.ctx;
+			if (!ctx) return;
+
+			const { velocity } = fairyDustConfig;
+			const width = window.innerWidth;
+			const height = window.innerHeight;
+
+			ctx.clearRect(0, 0, width, height);
+
+			for (let i = this.dusts.length - 1; i >= 0; i--) {
+				const dust = this.dusts[i];
+
+				dust.x += dust.vx;
+				dust.y += dust.vy;
+				// 重力让下落逐渐加速
+				dust.vy += velocity.gravity;
+				dust.lifeSpan--;
+
+				if (dust.lifeSpan <= 0) {
+					this.dusts.splice(i, 1);
+					continue;
+				}
+
+				// 按剩余寿命线性缩小,寿命耗尽时 scale 正好为 0
+				const scale = Math.max(dust.lifeSpan / dust.initialLifeSpan, 0);
+				const w = dust.glyph.width * scale;
+				const h = dust.glyph.height * scale;
+
+				ctx.drawImage(dust.glyph, dust.x - w / 2, dust.y - h / 2, w, h);
+			}
+
+			this.animationId = requestAnimationFrame(this.loop);
+		};
+
+		stop(): void {
+			if (this.animationId !== null) {
+				cancelAnimationFrame(this.animationId);
+				this.animationId = null;
+			}
+
+			const onMove = this.boundHandleMove;
+			if (onMove) window.removeEventListener("pointermove", onMove);
+			const onResize = this.boundHandleResize;
+			if (onResize) window.removeEventListener("resize", onResize);
+
+			this.boundHandleMove = null;
+			this.boundHandleResize = null;
+
+			this.dusts = [];
+			this.glyphCache = [];
+			this.hasLast = false;
+			this.canvas?.remove();
+			this.canvas = null;
+			this.ctx = null;
+			this.isRunning = false;
+		}
+	}
+
+	// ===========================================================================
+	// 入口:幂等初始化 + 响应设置面板的开关事件
+	// ===========================================================================
+	(function setupFairyDust() {
+		if (window.__fireflyFairyDustInitialized) return;
+		window.__fireflyFairyDustInitialized = true;
+
+		const manager = new FairyDustManager();
+		window.fairyDustManager = manager;
+
+		const stored = localStorage.getItem("fairyDustEnabled");
+		const enabled =
+			stored === null ? fairyDustConfig.enable : stored === "true";
+
+		if (enabled) {
+			manager.init();
+		}
+
+		window.addEventListener("fairyDustToggle", (e: Event) => {
+			const detail = (e as CustomEvent<{ enabled: boolean }>).detail;
+			if (detail?.enabled) {
+				manager.init();
+			} else {
+				manager.stop();
+			}
+		});
+	})();
+</script>

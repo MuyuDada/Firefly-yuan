@@ -12,9 +12,13 @@ import {
 	getDefaultBannerTitleEnabled,
 	getDefaultCardBorderEnabled,
 	getDefaultCardFollowThemeEnabled,
+	getDefaultClickParticleEnabled,
+	getDefaultCursorEnabled,
+	getDefaultFairyDustEnabled,
 	getDefaultFullscreenLayout,
 	getDefaultGradientEnabled,
 	getDefaultHue,
+	getDefaultInputFireEnabled,
 	getDefaultOverlayBlur,
 	getDefaultOverlayCardOpacity,
 	getDefaultOverlayOpacity,
@@ -25,8 +29,12 @@ import {
 	getStoredBannerTitleEnabled,
 	getStoredCardBorderEnabled,
 	getStoredCardFollowThemeEnabled,
+	getStoredClickParticleEnabled,
+	getStoredCursorEnabled,
+	getStoredFairyDustEnabled,
 	getStoredFullscreenLayout,
 	getStoredGradientEnabled,
+	getStoredInputFireEnabled,
 	getStoredOverlayBlur,
 	getStoredOverlayCardOpacity,
 	getStoredOverlayOpacity,
@@ -37,9 +45,13 @@ import {
 	setBannerTitleEnabled,
 	setCardBorderEnabled,
 	setCardFollowThemeEnabled,
+	setClickParticleEnabled,
+	setCursorEnabled,
+	setFairyDustEnabled,
 	setFullscreenLayout,
 	setGradientEnabled,
 	setHue,
+	setInputFireEnabled,
 	setOverlayBlur,
 	setOverlayCardOpacity,
 	setOverlayOpacity,
@@ -104,6 +116,14 @@ let bannerCarouselEnabled = $state(true);
 const defaultBannerCarouselEnabled = getDefaultBannerCarouselEnabled();
 let sakuraEnabled = $state(true);
 const defaultSakuraEnabled = getDefaultSakuraEnabled();
+let cursorEnabled = $state(true);
+const defaultCursorEnabled = getDefaultCursorEnabled();
+let clickParticleEnabled = $state(true);
+const defaultClickParticleEnabled = getDefaultClickParticleEnabled();
+let fairyDustEnabled = $state(false);
+const defaultFairyDustEnabled = getDefaultFairyDustEnabled();
+let inputFireEnabled = $state(true);
+const defaultInputFireEnabled = getDefaultInputFireEnabled();
 let overlayOpacity = $state(getDefaultOverlayOpacity());
 const defaultOverlayOpacity = getDefaultOverlayOpacity();
 let overlayBlur = $state(getDefaultOverlayBlur());
@@ -135,6 +155,10 @@ const isBannerTitleSwitchable =
 const isBannerCarouselSwitchable =
 	displaySettingsConfig.bannerCarouselSwitchable;
 const isSakuraSwitchable = displaySettingsConfig.sakuraSwitchable;
+const isCursorSwitchable = displaySettingsConfig.cursorSwitchable;
+const isClickParticleSwitchable = displaySettingsConfig.clickParticleSwitchable;
+const isFairyDustSwitchable = displaySettingsConfig.fairyDustSwitchable;
+const isInputFireSwitchable = displaySettingsConfig.inputFireSwitchable;
 const isCardBorderSwitchable = displaySettingsConfig.cardBorderSwitchable;
 const isCardFollowThemeSwitchable =
 	displaySettingsConfig.cardFollowThemeSwitchable;
@@ -431,6 +455,63 @@ function toggleSakuraEnabled() {
 	setSakuraEnabled(sakuraEnabled);
 }
 
+function toggleCursorEnabled() {
+	cursorEnabled = !cursorEnabled;
+	setCursorEnabled(cursorEnabled);
+}
+
+function toggleClickParticleEnabled() {
+	clickParticleEnabled = !clickParticleEnabled;
+	setClickParticleEnabled(clickParticleEnabled);
+}
+
+function toggleFairyDustEnabled() {
+	fairyDustEnabled = !fairyDustEnabled;
+	setFairyDustEnabled(fairyDustEnabled);
+}
+
+function toggleInputFireEnabled() {
+	inputFireEnabled = !inputFireEnabled;
+	setInputFireEnabled(inputFireEnabled);
+}
+
+// 特效设置里任意一项与默认值不同即显示"恢复默认"按钮
+const hasEffectSettingChanged = $derived(
+	(isCursorSwitchable && cursorEnabled !== defaultCursorEnabled) ||
+		(isClickParticleSwitchable &&
+			clickParticleEnabled !== defaultClickParticleEnabled) ||
+		(isFairyDustSwitchable && fairyDustEnabled !== defaultFairyDustEnabled) ||
+		(isInputFireSwitchable && inputFireEnabled !== defaultInputFireEnabled) ||
+		(isSakuraSwitchable && sakuraEnabled !== defaultSakuraEnabled),
+);
+
+// 一键把特效设置全部恢复为配置默认值
+function resetEffectsToDefault() {
+	if (isCursorSwitchable && cursorEnabled !== defaultCursorEnabled) {
+		cursorEnabled = defaultCursorEnabled;
+		setCursorEnabled(defaultCursorEnabled);
+	}
+	if (
+		isClickParticleSwitchable &&
+		clickParticleEnabled !== defaultClickParticleEnabled
+	) {
+		clickParticleEnabled = defaultClickParticleEnabled;
+		setClickParticleEnabled(defaultClickParticleEnabled);
+	}
+	if (isFairyDustSwitchable && fairyDustEnabled !== defaultFairyDustEnabled) {
+		fairyDustEnabled = defaultFairyDustEnabled;
+		setFairyDustEnabled(defaultFairyDustEnabled);
+	}
+	if (isInputFireSwitchable && inputFireEnabled !== defaultInputFireEnabled) {
+		inputFireEnabled = defaultInputFireEnabled;
+		setInputFireEnabled(defaultInputFireEnabled);
+	}
+	if (isSakuraSwitchable && sakuraEnabled !== defaultSakuraEnabled) {
+		sakuraEnabled = defaultSakuraEnabled;
+		setSakuraEnabled(defaultSakuraEnabled);
+	}
+}
+
 function toggleCardBorderEnabled() {
 	cardBorderEnabled = !cardBorderEnabled;
 	setCardBorderEnabled(cardBorderEnabled);
@@ -549,6 +630,12 @@ onMount(() => {
 
 	// 从localStorage读取樱花特效状态
 	sakuraEnabled = getStoredSakuraEnabled();
+
+	// 从localStorage读取鼠标/输入特效状态
+	cursorEnabled = getStoredCursorEnabled();
+	clickParticleEnabled = getStoredClickParticleEnabled();
+	fairyDustEnabled = getStoredFairyDustEnabled();
+	inputFireEnabled = getStoredInputFireEnabled();
 
 	// 从localStorage读取卡片样式状态
 	cardBorderEnabled = getStoredCardBorderEnabled();
@@ -1027,21 +1114,90 @@ $effect(() => {
 		{/if}
 	{/if}
 
-	<!-- Effects Tab: Sakura -->
+	<!-- Effects Tab: 樱花 / 自定义光标 / 点击粒子 / 星尘拖尾 / 输入火焰 -->
 	{#if activeTab === "effects"}
-		{#if isSakuraSwitchable}
+		{#if isSakuraSwitchable || isCursorSwitchable || isClickParticleSwitchable || isFairyDustSwitchable || isInputFireSwitchable}
 		<div class="">
 			<div class="section-title">
 				{i18n(I18nKey.effectsSettings)}
 				<button aria-label="Reset to Default" class="btn-regular rounded-md active:scale-90"
-						class:opacity-0={sakuraEnabled === defaultSakuraEnabled} class:pointer-events-none={sakuraEnabled === defaultSakuraEnabled}
-						disabled={sakuraEnabled === defaultSakuraEnabled} aria-hidden={sakuraEnabled === defaultSakuraEnabled ? "true" : undefined}
-						onclick={() => { sakuraEnabled = defaultSakuraEnabled; setSakuraEnabled(defaultSakuraEnabled); }}>
+						class:opacity-0={!hasEffectSettingChanged} class:pointer-events-none={!hasEffectSettingChanged}
+						disabled={!hasEffectSettingChanged} aria-hidden={!hasEffectSettingChanged ? "true" : undefined}
+						onclick={resetEffectsToDefault}>
 					<div class="text-(--btn-content)">
 						<Icon icon="fa7-solid:arrow-rotate-left" class="text-[0.75rem]"></Icon>
 					</div>
 				</button>
 			</div>
+			{#if isCursorSwitchable}
+			<button
+				class="w-full btn-regular rounded-md py-2 px-3 flex items-center gap-3 text-left active:scale-95 transition-all relative overflow-hidden"
+				class:bg-(--btn-regular-bg-hover)={cursorEnabled}
+				onclick={toggleCursorEnabled}
+			>
+				<Icon icon="mdi:cursor-default-click-outline" class="text-[1.25rem] shrink-0"></Icon>
+				<span class="text-sm flex-1">{i18n(I18nKey.customCursor)}</span>
+				<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+					 class:bg-(--primary)={cursorEnabled}
+					 class:bg-(--btn-regular-bg-active)={!cursorEnabled}>
+					<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+						 class:left-0.5={!cursorEnabled}
+						 class:left-5={cursorEnabled}></div>
+				</div>
+			</button>
+			{/if}
+			{#if isClickParticleSwitchable}
+			<button
+				class="w-full btn-regular rounded-md py-2 px-3 flex items-center gap-3 text-left active:scale-95 transition-all relative overflow-hidden"
+				class:bg-(--btn-regular-bg-hover)={clickParticleEnabled}
+				onclick={toggleClickParticleEnabled}
+			>
+				<Icon icon="mdi:party-popper" class="text-[1.25rem] shrink-0"></Icon>
+				<span class="text-sm flex-1">{i18n(I18nKey.clickParticleEffect)}</span>
+				<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+					 class:bg-(--primary)={clickParticleEnabled}
+					 class:bg-(--btn-regular-bg-active)={!clickParticleEnabled}>
+					<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+						 class:left-0.5={!clickParticleEnabled}
+						 class:left-5={clickParticleEnabled}></div>
+				</div>
+			</button>
+			{/if}
+			{#if isFairyDustSwitchable}
+			<button
+				class="w-full btn-regular rounded-md py-2 px-3 flex items-center gap-3 text-left active:scale-95 transition-all relative overflow-hidden"
+				class:bg-(--btn-regular-bg-hover)={fairyDustEnabled}
+				onclick={toggleFairyDustEnabled}
+			>
+				<Icon icon="mdi:star-four-points-outline" class="text-[1.25rem] shrink-0"></Icon>
+				<span class="text-sm flex-1">{i18n(I18nKey.fairyDustEffect)}</span>
+				<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+					 class:bg-(--primary)={fairyDustEnabled}
+					 class:bg-(--btn-regular-bg-active)={!fairyDustEnabled}>
+					<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+						 class:left-0.5={!fairyDustEnabled}
+						 class:left-5={fairyDustEnabled}></div>
+				</div>
+			</button>
+			{/if}
+			{#if isInputFireSwitchable}
+			<button
+				class="w-full btn-regular rounded-md py-2 px-3 flex items-center gap-3 text-left active:scale-95 transition-all relative overflow-hidden"
+				class:bg-(--btn-regular-bg-hover)={inputFireEnabled}
+				onclick={toggleInputFireEnabled}
+			>
+				<Icon icon="mdi:fire" class="text-[1.25rem] shrink-0"></Icon>
+				<span class="text-sm flex-1">{i18n(I18nKey.inputFireEffect)}</span>
+				<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+					 class:bg-(--primary)={inputFireEnabled}
+					 class:bg-(--btn-regular-bg-active)={!inputFireEnabled}>
+					<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+						 class:left-0.5={!inputFireEnabled}
+						 class:left-5={inputFireEnabled}></div>
+				</div>
+			</button>
+			{/if}
+			{#if isSakuraSwitchable}
 			<button
 				class="w-full btn-regular rounded-md py-2 px-3 flex items-center gap-3 text-left active:scale-95 transition-all relative overflow-hidden"
 				class:bg-(--btn-regular-bg-hover)={sakuraEnabled}
@@ -1057,6 +1213,7 @@ $effect(() => {
 						 class:left-5={sakuraEnabled}></div>
 				</div>
 			</button>
+			{/if}
 		</div>
 		{/if}
 	{/if}

@@ -32,6 +32,10 @@ const DISABLED_SETTINGS: DisplaySettingsConfig = {
 	bannerCarouselSwitchable: false,
 	overlaySwitchable: false,
 	sakuraSwitchable: false,
+	cursorSwitchable: false,
+	clickParticleSwitchable: false,
+	fairyDustSwitchable: false,
+	inputFireSwitchable: false,
 };
 
 // 读取总开关环境变量

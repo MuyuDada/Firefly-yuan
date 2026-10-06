@@ -1,3 +1,9 @@
+import type {
+	ClickParticleManagerLike,
+	CursorManagerLike,
+	FairyDustManagerLike,
+	InputFireManagerLike,
+} from "./types/mouse-effects";
 import type { SakuraManagerLike } from "./types/sakura-worker";
 import type { WavesManagerLike } from "./types/waves";
 
@@ -78,6 +84,22 @@ declare global {
 		wavesManager?: WavesManagerLike;
 		/** 水波纹特效初始化守卫,确保只初始化一次(Swup 切页重跑脚本时复用) */
 		wavesInitialized?: boolean;
+		/** 自定义光标管理器(缓动跟随圆点) */
+		cursorManager?: CursorManagerLike;
+		/** 自定义光标初始化守卫,确保 Swup 切页重跑脚本时只执行一次 */
+		__fireflyCursorInitialized?: boolean;
+		/** 点击粒子特效管理器 */
+		clickParticleManager?: ClickParticleManagerLike;
+		/** 点击粒子特效初始化守卫,确保 Swup 切页重跑脚本时只执行一次 */
+		__fireflyClickParticleInitialized?: boolean;
+		/** 星尘拖尾特效管理器 */
+		fairyDustManager?: FairyDustManagerLike;
+		/** 星尘拖尾特效初始化守卫,确保 Swup 切页重跑脚本时只执行一次 */
+		__fireflyFairyDustInitialized?: boolean;
+		/** 输入火焰特效管理器 */
+		inputFireManager?: InputFireManagerLike;
+		/** 输入火焰特效初始化守卫,确保 Swup 切页重跑脚本时只执行一次 */
+		__fireflyInputFireInitialized?: boolean;
 		/** 布局初始化守卫,确保 Swup 切页重跑模块脚本时只执行一次 */
 		__fireflyLayoutInit?: boolean;
 		/** 打字机特效监听器守卫,确保只注册一次 */

@@ -15,8 +15,12 @@ import type {
 } from "@/types/config";
 import {
 	backgroundWallpaper,
+	clickParticleConfig,
+	cursorConfig,
 	displaySettingsConfig,
 	expressiveCodeConfig,
+	fairyDustConfig,
+	inputFireConfig,
 	sakuraConfig,
 	siteConfig,
 } from "../config";
@@ -955,4 +959,114 @@ export function setCardFollowThemeEnabled(enabled: boolean): void {
 	} else {
 		document.body.classList.remove("card-follow-theme-hue");
 	}
+}
+
+// ── 鼠标/输入特效：自定义光标、点击粒子、星尘拖尾、输入火焰 ──────────────
+// 这四项共用同一套读写模式：默认值取自 effectsConfig，用户选择存 localStorage，
+// 同时把状态写到 <html> 的 data-* 属性上（供 CSS 与首帧脚本读取），
+// 并派发同名 CustomEvent 让已挂载的特效组件实时启停，无需刷新页面。
+
+/** 通用读取：localStorage 无值时回退到配置默认值 */
+function readStoredToggle(key: string, fallback: boolean): boolean {
+	if (
+		typeof localStorage === "undefined" ||
+		typeof localStorage.getItem !== "function"
+	) {
+		return fallback;
+	}
+	const stored = localStorage.getItem(key);
+	return stored === null ? fallback : stored === "true";
+}
+
+/** 通用写入：落盘 + 同步 data-* 属性 + 广播切换事件 */
+function writeStoredToggle(
+	key: string,
+	attr: string,
+	eventName: string,
+	enabled: boolean,
+): void {
+	if (
+		typeof localStorage === "undefined" ||
+		typeof localStorage.setItem !== "function"
+	) {
+		return;
+	}
+	localStorage.setItem(key, String(enabled));
+	document.documentElement.setAttribute(attr, String(enabled));
+	window.dispatchEvent(new CustomEvent(eventName, { detail: { enabled } }));
+}
+
+// Custom cursor functions
+export function getDefaultCursorEnabled(): boolean {
+	return cursorConfig?.enable ?? false;
+}
+
+export function getStoredCursorEnabled(): boolean {
+	return readStoredToggle("cursorEnabled", getDefaultCursorEnabled());
+}
+
+export function setCursorEnabled(enabled: boolean): void {
+	writeStoredToggle(
+		"cursorEnabled",
+		"data-cursor-enabled",
+		"cursorToggle",
+		enabled,
+	);
+}
+
+// Click particle functions
+export function getDefaultClickParticleEnabled(): boolean {
+	return clickParticleConfig?.enable ?? false;
+}
+
+export function getStoredClickParticleEnabled(): boolean {
+	return readStoredToggle(
+		"clickParticleEnabled",
+		getDefaultClickParticleEnabled(),
+	);
+}
+
+export function setClickParticleEnabled(enabled: boolean): void {
+	writeStoredToggle(
+		"clickParticleEnabled",
+		"data-click-particle-enabled",
+		"clickParticleToggle",
+		enabled,
+	);
+}
+
+// Fairy dust functions
+export function getDefaultFairyDustEnabled(): boolean {
+	return fairyDustConfig?.enable ?? false;
+}
+
+export function getStoredFairyDustEnabled(): boolean {
+	return readStoredToggle("fairyDustEnabled", getDefaultFairyDustEnabled());
+}
+
+export function setFairyDustEnabled(enabled: boolean): void {
+	writeStoredToggle(
+		"fairyDustEnabled",
+		"data-fairy-dust-enabled",
+		"fairyDustToggle",
+		enabled,
+	);
+}
+
+// Input fire functions
+export function getDefaultInputFireEnabled(): boolean {
+	return inputFireConfig?.enable ?? false;
+}
+
+export function getStoredInputFireEnabled(): boolean {
+	return readStoredToggle("inputFireEnabled", getDefaultInputFireEnabled());
+}
+
+export function setInputFireEnabled(enabled: boolean): void {
+	writeStoredToggle(
+		"inputFireEnabled",
+		"data-input-fire-enabled",
+		"inputFireToggle",
+		enabled,
+	);
 }

@@ -1,0 +1,316 @@
+---
+// 自定义光标特效:跟随鼠标的缓动圆点。
+// 实现要点:
+// - 位置用 requestAnimationFrame + lerp 缓动跟随,与原生光标形成"拖尾"感;
+// - 缩放/透明度交给 CSS transition(内层元素),避免与外层的 translate 争抢同一个 transform;
+// - 悬停判定用 pointerover/pointerout 的事件委托,不做每帧 getComputedStyle 或 elementsFromPoint,
+//   因此滚动与移动过程中没有额外布局开销;
+// - 触屏与"减少动效"偏好下直接不启动,并把原生光标还原;
+// - 配置见 src/config/effectsConfig.ts 的 cursorConfig,开关存 localStorage 的 cursorEnabled。
+---
+
+<script>
+	import { cursorConfig } from "@/config";
+	import type { CursorManagerLike } from "@/types/mouse-effects";
+
+	const CURSOR_ID = "firefly-cursor";
+
+	/** 触发"悬停放大"的可交互元素选择器 */
+	const INTERACTIVE_SELECTOR = [
+		"a",
+		"button",
+		"input[type='button']",
+		"input[type='submit']",
+		"input[type='reset']",
+		"select",
+		"label",
+		"summary",
+		"[role='button']",
+		"[role='link']",
+		".cursor-pointer",
+	].join(",");
+
+	class CursorManager implements CursorManagerLike {
+		isRunning = false;
+
+		private root: HTMLElement | null = null;
+		private animationId: number | null = null;
+
+		// 目标位置(鼠标真实位置)与当前位置(缓动后的位置)
+		private targetX = 0;
+		private targetY = 0;
+		private currentX = 0;
+		private currentY = 0;
+
+		// 首帧前不显示,避免从 (0,0) 滑入
+		private hasMoved = false;
+
+		private reducedMotionQuery: MediaQueryList | null = null;
+
+		private boundHandleMove: ((e: PointerEvent) => void) | null = null;
+		private boundHandleOver: ((e: PointerEvent) => void) | null = null;
+		private boundHandleOut: ((e: PointerEvent) => void) | null = null;
+		private boundHandleDown: ((e: PointerEvent) => void) | null = null;
+		private boundHandleUp: ((e: PointerEvent) => void) | null = null;
+		private boundHandleLeave: ((e: PointerEvent) => void) | null = null;
+		private boundHandleEnter: ((e: PointerEvent) => void) | null = null;
+		private boundHandleReducedMotion:
+			| ((e: MediaQueryListEvent) => void)
+			| null = null;
+
+		init(): void {
+			if (this.isRunning) return;
+
+			// 触屏设备没有悬停指针,减少动效偏好者不应看到额外动画
+			if (
+				window.matchMedia("(pointer: coarse), (prefers-reduced-motion: reduce)")
+					.matches
+			) {
+				return;
+			}
+
+			// Swup 切页时脚本会重跑,复用已有 DOM 避免叠加多个光标
+			const existing = document.getElementById(CURSOR_ID);
+			existing?.remove();
+
+			const root = document.createElement("div");
+			root.id = CURSOR_ID;
+			root.setAttribute("aria-hidden", "true");
+			root.style.zIndex = String(cursorConfig.zIndex);
+			root.style.setProperty("--firefly-cursor-size", `${cursorConfig.size}px`);
+			root.style.setProperty("--firefly-cursor-color", cursorConfig.color);
+			root.style.setProperty(
+				"--firefly-cursor-opacity",
+				String(cursorConfig.opacity),
+			);
+			root.style.setProperty(
+				"--firefly-cursor-hover-opacity",
+				String(cursorConfig.hoverOpacity),
+			);
+			root.style.setProperty(
+				"--firefly-cursor-hover-scale",
+				String(cursorConfig.hoverScale),
+			);
+			root.style.setProperty(
+				"--firefly-cursor-active-opacity",
+				String(cursorConfig.activeOpacity),
+			);
+			root.style.setProperty(
+				"--firefly-cursor-active-scale",
+				String(cursorConfig.activeScale),
+			);
+
+			const dot = document.createElement("div");
+			dot.className = "firefly-cursor-dot";
+			root.appendChild(dot);
+			document.body.appendChild(root);
+
+			this.root = root;
+
+			// 把原生光标的处理方式暴露给 CSS(见 src/styles/mouse.css)
+			document.documentElement.setAttribute(
+				"data-native-cursor",
+				cursorConfig.nativeCursor,
+			);
+
+			this.bindEvents();
+			this.isRunning = true;
+			this.animationId = requestAnimationFrame(this.render);
+		}
+
+		private bindEvents(): void {
+			this.boundHandleMove = (e: PointerEvent) => {
+				this.targetX = e.clientX;
+				this.targetY = e.clientY;
+				if (!this.hasMoved) {
+					// 首次移动直接对齐,避免从左上角滑过来
+					this.currentX = e.clientX;
+					this.currentY = e.clientY;
+					this.hasMoved = true;
+					this.root?.classList.add("is-visible");
+				}
+			};
+
+			// 用事件委托判定悬停:pointerover/out 会冒泡,无需给每个元素绑事件
+			this.boundHandleOver = (e: PointerEvent) => {
+				const target = e.target as Element | null;
+				if (target?.closest?.(INTERACTIVE_SELECTOR)) {
+					this.root?.classList.add("is-hover");
+				}
+			};
+
+			this.boundHandleOut = (e: PointerEvent) => {
+				const target = e.target as Element | null;
+				const related = e.relatedTarget as Element | null;
+				// 只有当移出的元素本身可交互、且移入的元素不再可交互时才取消悬停
+				if (
+					target?.closest?.(INTERACTIVE_SELECTOR) &&
+					!related?.closest?.(INTERACTIVE_SELECTOR)
+				) {
+					this.root?.classList.remove("is-hover");
+				}
+			};
+
+			this.boundHandleDown = () => {
+				this.root?.classList.add("is-active");
+			};
+
+			this.boundHandleUp = () => {
+				this.root?.classList.remove("is-active");
+			};
+
+			// 指针离开窗口时隐藏,回来后重新显示
+			this.boundHandleLeave = () => {
+				this.root?.classList.remove("is-visible");
+			};
+
+			this.boundHandleEnter = () => {
+				if (this.hasMoved) {
+					this.root?.classList.add("is-visible");
+				}
+			};
+
+			window.addEventListener("pointermove", this.boundHandleMove, {
+				passive: true,
+			});
+			window.addEventListener("pointerover", this.boundHandleOver, {
+				passive: true,
+			});
+			window.addEventListener("pointerout", this.boundHandleOut, {
+				passive: true,
+			});
+			window.addEventListener("pointerdown", this.boundHandleDown, {
+				passive: true,
+			});
+			window.addEventListener("pointerup", this.boundHandleUp, {
+				passive: true,
+			});
+			document.addEventListener("pointerleave", this.boundHandleLeave);
+			document.addEventListener("pointerenter", this.boundHandleEnter);
+
+			// 用户在系统里打开"减少动效"后立刻停用
+			this.reducedMotionQuery = window.matchMedia(
+				"(prefers-reduced-motion: reduce)",
+			);
+			this.boundHandleReducedMotion = (e: MediaQueryListEvent) => {
+				if (e.matches) this.stop();
+			};
+			this.reducedMotionQuery.addEventListener(
+				"change",
+				this.boundHandleReducedMotion,
+			);
+		}
+
+		/** 每帧把当前位置朝目标位置推进 lerpFactor,形成缓动跟随 */
+		private render = (): void => {
+			if (!this.isRunning) return;
+
+			const k = cursorConfig.lerpFactor;
+			this.currentX += (this.targetX - this.currentX) * k;
+			this.currentY += (this.targetY - this.currentY) * k;
+
+			if (this.root) {
+				this.root.style.transform = `translate3d(${this.currentX}px, ${this.currentY}px, 0)`;
+			}
+
+			this.animationId = requestAnimationFrame(this.render);
+		};
+
+		stop(): void {
+			if (this.animationId !== null) {
+				cancelAnimationFrame(this.animationId);
+				this.animationId = null;
+			}
+
+			// 逐个判断后再移除:stop() 必须可重复调用
+			const onMove = this.boundHandleMove;
+			if (onMove) window.removeEventListener("pointermove", onMove);
+			const onOver = this.boundHandleOver;
+			if (onOver) window.removeEventListener("pointerover", onOver);
+			const onOut = this.boundHandleOut;
+			if (onOut) window.removeEventListener("pointerout", onOut);
+			const onDown = this.boundHandleDown;
+			if (onDown) window.removeEventListener("pointerdown", onDown);
+			const onUp = this.boundHandleUp;
+			if (onUp) window.removeEventListener("pointerup", onUp);
+			const onLeave = this.boundHandleLeave;
+			if (onLeave) document.removeEventListener("pointerleave", onLeave);
+			const onEnter = this.boundHandleEnter;
+			if (onEnter) document.removeEventListener("pointerenter", onEnter);
+			const onReducedMotion = this.boundHandleReducedMotion;
+			if (onReducedMotion) {
+				this.reducedMotionQuery?.removeEventListener(
+					"change",
+					onReducedMotion,
+				);
+			}
+
+			this.boundHandleMove = null;
+			this.boundHandleOver = null;
+			this.boundHandleOut = null;
+			this.boundHandleDown = null;
+			this.boundHandleUp = null;
+			this.boundHandleLeave = null;
+			this.boundHandleEnter = null;
+			this.boundHandleReducedMotion = null;
+			this.reducedMotionQuery = null;
+
+			this.root?.remove();
+			this.root = null;
+
+			// 还原原生光标
+			document.documentElement.removeAttribute("data-native-cursor");
+
+			this.hasMoved = false;
+			this.isRunning = false;
+		}
+	}
+
+	// ===========================================================================
+	// 入口:幂等初始化 + 响应设置面板的开关事件
+	// ===========================================================================
+	(function setupCursor() {
+		if (window.__fireflyCursorInitialized) return;
+		window.__fireflyCursorInitialized = true;
+
+		const manager = new CursorManager();
+		window.cursorManager = manager;
+
+		// 默认状态:用户选择 > 配置默认值
+		const stored = localStorage.getItem("cursorEnabled");
+		const enabled =
+			stored === null ? cursorConfig.enable : stored === "true";
+
+		// 把状态写到 <html> 上,CSS 据此决定原生光标的处理方式(见 src/styles/mouse.css)
+		document.documentElement.setAttribute(
+			"data-cursor-enabled",
+			String(enabled),
+		);
+
+		if (enabled) {
+			manager.init();
+		}
+
+		// 设置面板切换时实时启停,无需刷新页面
+		window.addEventListener("cursorToggle", (e: Event) => {
+			const detail = (e as CustomEvent<{ enabled: boolean }>).detail;
+			if (detail?.enabled) {
+				manager.init();
+			} else {
+				manager.stop();
+			}
+		});
+
+		// Swup 切页后若光标 DOM 脱离 body(理论上不会,body 不在容器列表内),则重建
+		try {
+			window.swup?.hooks?.on?.("content:replace", () => {
+				if (manager.isRunning && !document.getElementById(CURSOR_ID)) {
+					manager.stop();
+					manager.init();
+				}
+			});
+		} catch {
+			// swup 未就绪则跳过(仅防御)
+		}
+	})();
+</script>

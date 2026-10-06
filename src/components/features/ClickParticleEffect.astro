@@ -1,0 +1,279 @@
+---
+// 点击粒子特效:单击迸发彩色小球,长按迸发更多、更快的小球。
+// 实现要点:
+// - 单个全屏 canvas 覆盖所有粒子,逐帧只做 clearRect + arc 绘制;
+// - 粒子用数组管理,越界或半径衰减到 0 时原地 splice 移除,不产生内存增长;
+// - canvas 按 devicePixelRatio 放大并 ctx.scale,保证高分屏不模糊;
+// - 长按判定用 pointerdown 起计时器,pointerup 时若超过阈值则按长按参数迸发;
+// - 配置见 src/config/effectsConfig.ts 的 clickParticleConfig,开关存 clickParticleEnabled。
+---
+
+<script>
+	import { clickParticleConfig } from "@/config";
+	import type { ClickParticleManagerLike } from "@/types/mouse-effects";
+
+	interface Ball {
+		x: number;
+		y: number;
+		vx: number;
+		vy: number;
+		radius: number;
+		color: string;
+	}
+
+	/** 在 [min, max] 区间取随机浮点数 */
+	function randomBetween(min: number, max: number): number {
+		return Math.random() * (max - min) + min;
+	}
+
+	/** 在 [min, max] 区间取随机整数 */
+	function randomIntBetween(min: number, max: number): number {
+		return Math.round(randomBetween(min, max));
+	}
+
+	class ClickParticleManager implements ClickParticleManagerLike {
+		isRunning = false;
+
+		private canvas: HTMLCanvasElement | null = null;
+		private ctx: CanvasRenderingContext2D | null = null;
+		private animationId: number | null = null;
+		private balls: Ball[] = [];
+
+		// 长按计时:pointerdown 起计时器,到点标记为长按
+		private longPressTimer: number | null = null;
+		private isLongPress = false;
+
+		private boundHandleDown: ((e: PointerEvent) => void) | null = null;
+		private boundHandleUp: ((e: PointerEvent) => void) | null = null;
+		private boundHandleResize: (() => void) | null = null;
+
+		init(): void {
+			if (this.isRunning) return;
+
+			// 触屏与"减少动效"偏好下不启动
+			if (
+				window.matchMedia("(pointer: coarse), (prefers-reduced-motion: reduce)")
+					.matches
+			) {
+				return;
+			}
+
+			// 清理可能残留的同名 canvas(Swup 切页重跑脚本时)
+			document.getElementById("firefly-click-particle-canvas")?.remove();
+
+			const canvas = document.createElement("canvas");
+			canvas.id = "firefly-click-particle-canvas";
+			canvas.className = "firefly-fx-canvas";
+			canvas.setAttribute("aria-hidden", "true");
+			canvas.style.zIndex = String(clickParticleConfig.zIndex);
+			document.body.appendChild(canvas);
+
+			const ctx = canvas.getContext("2d");
+			if (!ctx) {
+				canvas.remove();
+				return;
+			}
+
+			this.canvas = canvas;
+			this.ctx = ctx;
+			this.resize();
+			this.bindEvents();
+
+			this.isRunning = true;
+			this.animationId = requestAnimationFrame(this.loop);
+		}
+
+		/** 按 DPR 放大 canvas 像素尺寸,再用 setTransform 把绘制坐标拉回 CSS 像素 */
+		private resize = (): void => {
+			const canvas = this.canvas;
+			const ctx = this.ctx;
+			if (!canvas || !ctx) return;
+
+			const dpr = window.devicePixelRatio || 1;
+			const w = window.innerWidth;
+			const h = window.innerHeight;
+
+			canvas.width = w * dpr;
+			canvas.height = h * dpr;
+			canvas.style.width = `${w}px`;
+			canvas.style.height = `${h}px`;
+
+			// setTransform 而非 scale:重复 resize 时不会累乘缩放系数
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		};
+
+		private bindEvents(): void {
+			this.boundHandleDown = (e: PointerEvent) => {
+				// 只响应鼠标左键
+				if (e.button !== 0) return;
+				this.isLongPress = false;
+
+				// 到点后标记为长按,粒子在抬起时才迸发(与按住时长成正比的手感)
+				this.longPressTimer = window.setTimeout(() => {
+					this.isLongPress = true;
+				}, clickParticleConfig.longPress.delay);
+			};
+
+			this.boundHandleUp = (e: PointerEvent) => {
+				if (this.longPressTimer !== null) {
+					clearTimeout(this.longPressTimer);
+					this.longPressTimer = null;
+				}
+
+				// 长按用更大的数量与初速度,单击用默认值
+				const { count, speed } = this.isLongPress
+					? clickParticleConfig.longPress
+					: clickParticleConfig;
+				this.spawn(
+					e.clientX,
+					e.clientY,
+					randomIntBetween(count.min, count.max),
+					speed.min,
+					speed.max,
+				);
+
+				this.isLongPress = false;
+			};
+
+			this.boundHandleResize = () => this.resize();
+
+			window.addEventListener("pointerdown", this.boundHandleDown, {
+				passive: true,
+			});
+			window.addEventListener("pointerup", this.boundHandleUp, {
+				passive: true,
+			});
+			window.addEventListener("resize", this.boundHandleResize, {
+				passive: true,
+			});
+		}
+
+		/** 在 (x, y) 处生成 count 个粒子,初速度在 [speedMin, speedMax] 之间随机 */
+		private spawn(
+			x: number,
+			y: number,
+			count: number,
+			speedMin: number,
+			speedMax: number,
+		): void {
+			const { colors, radius } = clickParticleConfig;
+
+			for (let i = 0; i < count; i++) {
+				// 随机角度 + 随机速度,形成四周迸射效果
+				const angle = Math.random() * Math.PI * 2;
+				const speed = randomBetween(speedMin, speedMax);
+
+				this.balls.push({
+					x,
+					y,
+					vx: Math.cos(angle) * speed,
+					vy: Math.sin(angle) * speed,
+					radius: randomBetween(radius.min, radius.max) + Math.random() * 3,
+					color: colors[Math.floor(Math.random() * colors.length)],
+				});
+			}
+		}
+
+		private loop = (): void => {
+			if (!this.isRunning) return;
+
+			const ctx = this.ctx;
+			const canvas = this.canvas;
+			if (!ctx || !canvas) return;
+
+			const { radius, friction } = clickParticleConfig;
+			const width = window.innerWidth;
+			const height = window.innerHeight;
+
+			ctx.clearRect(0, 0, width, height);
+
+			for (let i = this.balls.length - 1; i >= 0; i--) {
+				const ball = this.balls[i];
+
+				ball.x += ball.vx;
+				ball.y += ball.vy;
+				// 每帧衰减速度,粒子逐渐"刹车"
+				ball.vx *= friction;
+				ball.vy *= friction;
+				// 半径同步缩小,直到消失
+				ball.radius -= radius.shrink;
+
+				// 出界或缩没了的粒子直接移除,避免数组无限增长
+				if (
+					ball.radius <= 0 ||
+					ball.x < -50 ||
+					ball.x > width + 50 ||
+					ball.y < -50 ||
+					ball.y > height + 50
+				) {
+					this.balls.splice(i, 1);
+					continue;
+				}
+
+				ctx.beginPath();
+				ctx.fillStyle = ball.color;
+				ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+				ctx.fill();
+			}
+
+			this.animationId = requestAnimationFrame(this.loop);
+		};
+
+		stop(): void {
+			if (this.animationId !== null) {
+				cancelAnimationFrame(this.animationId);
+				this.animationId = null;
+			}
+			if (this.longPressTimer !== null) {
+				clearTimeout(this.longPressTimer);
+				this.longPressTimer = null;
+			}
+
+			const onDown = this.boundHandleDown;
+			if (onDown) window.removeEventListener("pointerdown", onDown);
+			const onUp = this.boundHandleUp;
+			if (onUp) window.removeEventListener("pointerup", onUp);
+			const onResize = this.boundHandleResize;
+			if (onResize) window.removeEventListener("resize", onResize);
+
+			this.boundHandleDown = null;
+			this.boundHandleUp = null;
+			this.boundHandleResize = null;
+
+			this.balls = [];
+			this.canvas?.remove();
+			this.canvas = null;
+			this.ctx = null;
+			this.isLongPress = false;
+			this.isRunning = false;
+		}
+	}
+
+	// ===========================================================================
+	// 入口:幂等初始化 + 响应设置面板的开关事件
+	// ===========================================================================
+	(function setupClickParticle() {
+		if (window.__fireflyClickParticleInitialized) return;
+		window.__fireflyClickParticleInitialized = true;
+
+		const manager = new ClickParticleManager();
+		window.clickParticleManager = manager;
+
+		const stored = localStorage.getItem("clickParticleEnabled");
+		const enabled =
+			stored === null ? clickParticleConfig.enable : stored === "true";
+
+		if (enabled) {
+			manager.init();
+		}
+
+		window.addEventListener("clickParticleToggle", (e: Event) => {
+			const detail = (e as CustomEvent<{ enabled: boolean }>).detail;
+			if (detail?.enabled) {
+				manager.init();
+			} else {
+				manager.stop();
+			}
+		});
+	})();
+</script>
