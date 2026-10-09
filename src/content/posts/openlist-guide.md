@@ -7,7 +7,7 @@ image: api
 category: 自建服务
 tags: [OpenList, Docker, 美化]
 draft: false
-pinned: true
+pinned: false
 ---
 
 一直想把散落在各家网盘里的文件收拢到一个入口。AList 是这个领域最成熟的方案，但 2025 年年中它的仓库发生了一连串变化，社区里冒出了 OpenList 这个分叉。

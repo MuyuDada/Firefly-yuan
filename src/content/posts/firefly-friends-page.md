@@ -7,7 +7,7 @@ image: api
 category: 页面改造
 tags: [交互]
 draft: false
-pinned: true
+pinned: false
 ---
 
 友链页大概是博客里最"社交"的一个页面 —— 它回答的不是"我做过什么"，而是"我认识谁"。Firefly 自带 `/friends/` 路由和一份基础配置，但默认只把配置里的卡片平铺出来：没有筛选、没有分页、没有懒加载，访客想知道某个站点通不通只能自己点进去。

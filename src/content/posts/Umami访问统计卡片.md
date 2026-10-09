@@ -7,7 +7,7 @@ image: api
 category: 小组件
 tags: [API, 数据]
 draft: false
-pinned: true
+pinned: false
 ---
 
 博客跑了这么久，到底有多少人来看过？除了后台的数据面板，把它直接摆到侧边栏其实更有"存在感"——每次打开首页，游客数、访问数、总浏览量一目了然。本文记录给 Firefly 侧边栏加一个 Umami 访问统计卡片的完整过程：不需要 API Key，只靠一条 Umami 的公开分享链接就能把数据取回来。
