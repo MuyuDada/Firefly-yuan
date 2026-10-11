@@ -42,6 +42,9 @@ export type {
 	MusicPlayerConfig,
 	NavBarConfig,
 	NativeCursorMode,
+	PageLoaderBackdrop,
+	PageLoaderConfig,
+	PageLoaderStyle,
 	PlantUMLConfig,
 	ProfileConfig,
 	SakuraConfig,
@@ -91,6 +94,7 @@ export { mermaidConfig } from "./mermaidConfig"; // Mermaid 图表配置
 export { musicPlayerConfig } from "./musicConfig"; // 音乐播放器配置
 export { navBarConfig, navBarSearchConfig } from "./navBarConfig"; // 导航栏配置与搜索配置
 export { live2dWidgetConfig, spineModelConfig } from "./pioConfig"; // 看板娘配置
+export { pageLoaderConfig } from "./pageLoaderConfig"; // 全屏页面加载动画配置
 export { plantumlConfig } from "./plantumlConfig"; // PlantUML 图表配置
 export { profileConfig } from "./profileConfig"; // 用户资料配置
 // 布局配置

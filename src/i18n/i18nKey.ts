@@ -573,6 +573,10 @@ enum I18nKey {
 	exitImmersiveReading = "exitImmersiveReading",
 	tocExpand = "tocExpand",
 	tocCollapse = "tocCollapse",
+
+	// 全屏页面加载动画 (page loader)
+	pageLoaderLoading = "pageLoaderLoading",
+	pageLoaderHint = "pageLoaderHint",
 }
 
 export default I18nKey;

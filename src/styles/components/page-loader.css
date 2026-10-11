@@ -1,0 +1,377 @@
+/* 全屏页面加载动画（猫咪主题）
+   视觉围绕 public/assets/images/loading-cat.gif 这只像素小猫设计：
+   - 像素对话框：用 4 向 box-shadow 描边做出无圆角的“像素角”，承载小猫 GIF
+   - 对话尾巴：两级台阶，缺口处压住对话框下边框，和气泡连成一体
+   - 进度条就是小猫手里的汉堡：层叠渐变画出面包/芝士/番茄/肉饼/生菜，
+     从左往右“填满”，进度用 transform: scaleX() 驱动（合成线程，不触发回流）
+   - 配色全部取自 GIF 全局调色板，保证遮罩与图片同源
+   参考架构：https://blog.huchao.vip/posts/astro/firefly-page-loader/ */
+
+#page-loader {
+	--pl-cream: #f2ead5;
+	--pl-cream-deep: #e3d7c1;
+	--pl-tan: #bfab93;
+	--pl-brown: #5c3013;
+	--pl-brown-light: #b06825;
+	--pl-brown-deep: #975720;
+	--pl-pink: #ff7c6b;
+	--pl-pink-soft: #ff9e91;
+	--pl-blush: #f8c6b4;
+	--pl-ink: #150b08;
+	--pl-line: #5c3013;
+	/* 对话框底色：必须比小猫身体(#F2EAD5)深一档，否则奶白猫会糊在奶白气泡里 */
+	--pl-bubble: #d9cbb5;
+	/* 文案色不能直接用 --deep-text：它只在亮色定义，暗色下是深色，会糊在深色遮罩上 */
+	--pl-text: var(--deep-text);
+	--pl-text-soft: var(--content-meta);
+	--pl-pixel: 7px;
+	--pl-progress: 0;
+	--pl-z: 10000;
+
+	position: fixed;
+	inset: 0;
+	z-index: var(--pl-z);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	overscroll-behavior: contain;
+	opacity: 1;
+	visibility: visible;
+	will-change: opacity;
+	transition:
+		opacity 320ms var(--ease-standard),
+		visibility 0s linear 0s;
+}
+
+:root.dark #page-loader {
+	/* 深色下压低奶白亮度，避免整屏发白刺眼；描边保持暖棕，与小猫一致 */
+	--pl-cream: #e3d7c1;
+	--pl-cream-deep: #bfab93;
+	--pl-bubble: #a8917a;
+	--pl-text: #f2ead5;
+	--pl-text-soft: rgba(242, 234, 213, 0.62);
+	--pl-line: #43230c;
+}
+
+#page-loader[data-backdrop="solid"] {
+	background: var(--page-bg);
+}
+
+#page-loader[data-backdrop="blur"] {
+	background: color-mix(in oklch, var(--page-bg) 58%, transparent);
+	backdrop-filter: blur(18px) saturate(1.15);
+	-webkit-backdrop-filter: blur(18px) saturate(1.15);
+}
+
+#page-loader[data-backdrop="theme"] {
+	background: color-mix(in oklch, var(--primary) 10%, var(--page-bg));
+}
+
+#page-loader.is-hidden {
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition:
+		opacity 320ms var(--ease-standard),
+		visibility 0s linear 320ms;
+}
+
+/* 首屏若关闭了动画，服务端直接渲染 is-hidden；小屏关闭时用媒体查询彻底移除 */
+#page-loader[data-mobile="off"] {
+	display: none;
+}
+
+@media (min-width: 768px) {
+	#page-loader[data-mobile="off"] {
+		display: flex;
+	}
+}
+
+/* 兜底：脚本没跑起来（被拦截/报错）时，遮罩 8 秒后自行退场，避免整站被盖住 */
+#page-loader:not(.page-loader--js) {
+	animation: pl-failsafe 400ms ease 8s forwards;
+}
+
+@keyframes pl-failsafe {
+	to {
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+	}
+}
+
+.page-loader__stage {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 34px;
+	padding: 24px;
+}
+
+/* ---------- 像素对话框 + 小猫 ---------- */
+
+.page-loader__bubble {
+	position: relative;
+	padding: 20px;
+	background: var(--pl-bubble);
+	box-shadow:
+		calc(var(--pl-pixel) * -1) 0 0 0 var(--pl-line),
+		var(--pl-pixel) 0 0 0 var(--pl-line),
+		0 calc(var(--pl-pixel) * -1) 0 0 var(--pl-line),
+		0 var(--pl-pixel) 0 0 var(--pl-line);
+	animation: pl-bob 2.6s ease-in-out infinite;
+}
+
+.page-loader__cat {
+	display: block;
+	/* 112px 原图直接放大：像素画必须整数倍 + pixelated，否则糊成一团 */
+	width: 168px;
+	height: 168px;
+	image-rendering: pixelated;
+	-ms-interpolation-mode: nearest-neighbor;
+	filter: drop-shadow(0 4px 0 color-mix(in srgb, var(--pl-brown) 16%, transparent));
+}
+
+/* 两级台阶的对话尾巴；顶行气泡色会盖住对话框下边框，形成开口 */
+.page-loader__tail {
+	position: absolute;
+	left: 22px;
+	top: 100%;
+	width: 18px;
+	height: 8px;
+	background: var(--pl-bubble);
+	box-shadow:
+		calc(var(--pl-pixel) * -1) 0 0 0 var(--pl-line),
+		var(--pl-pixel) 0 0 0 var(--pl-line);
+}
+
+.page-loader__tail::before {
+	content: "";
+	position: absolute;
+	left: 6px;
+	top: 8px;
+	width: 12px;
+	height: 8px;
+	background: var(--pl-bubble);
+	box-shadow:
+		calc(var(--pl-pixel) * -1) 0 0 0 var(--pl-line),
+		var(--pl-pixel) 0 0 0 var(--pl-line),
+		0 6px 0 0 var(--pl-line);
+}
+
+/* 像素小星星：steps() 让闪烁是硬切换，保持像素感 */
+.page-loader__sparkle {
+	position: absolute;
+	width: 6px;
+	height: 6px;
+	background: var(--pl-pink-soft);
+	box-shadow:
+		6px 0 0 0 var(--pl-pink-soft),
+		-6px 0 0 0 var(--pl-pink-soft),
+		0 6px 0 0 var(--pl-pink-soft),
+		0 -6px 0 0 var(--pl-pink-soft);
+	animation: pl-blink 1.6s steps(1, end) infinite;
+}
+
+.page-loader__sparkle--a {
+	top: -16px;
+	right: -16px;
+}
+
+.page-loader__sparkle--b {
+	left: -16px;
+	bottom: 6px;
+	animation-delay: 0.7s;
+}
+
+/* ---------- 文案 ---------- */
+
+.page-loader__text {
+	margin: 0;
+	max-width: 260px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.6;
+	letter-spacing: 0.06em;
+	color: var(--pl-text);
+	text-align: center;
+}
+
+.page-loader__hint {
+	margin: 0;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+	font-size: 11px;
+	line-height: 1.5;
+	letter-spacing: 0.1em;
+	color: var(--pl-text-soft);
+}
+
+/* ---------- 汉堡进度条 ---------- */
+
+.page-loader__burger {
+	position: relative;
+	width: min(220px, 64vw);
+	height: 44px;
+	overflow: hidden;
+	background: var(--pl-cream);
+	box-shadow:
+		-4px 0 0 0 var(--pl-line),
+		4px 0 0 0 var(--pl-line),
+		0 -4px 0 0 var(--pl-line),
+		0 4px 0 0 var(--pl-line);
+}
+
+.page-loader__burger-ghost,
+.page-loader__burger-fill {
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		to bottom,
+		#b06825 0 34%,
+		#f8c6b4 34% 43%,
+		#ff7c6b 43% 55%,
+		#5c3013 55% 77%,
+		#bfab93 77% 86%,
+		#975720 86% 100%
+	);
+}
+
+.page-loader__burger-ghost {
+	opacity: 0.22;
+	filter: saturate(0.35);
+}
+
+.page-loader__burger-fill {
+	transform: scaleX(var(--pl-progress));
+	transform-origin: left center;
+	transition: transform 220ms linear;
+	will-change: transform;
+}
+
+/* 重置进度时不要走过渡，否则从 100% 倒着退回去会很明显 */
+#page-loader.page-loader--reset .page-loader__burger-fill {
+	transition: none;
+}
+
+/* 芝麻 + 像素刻度：不参与缩放，所以进度推进时刻度保持不动 */
+.page-loader__burger-ticks {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background-image:
+		radial-gradient(circle at 22% 14%, var(--pl-cream) 0 2px, transparent 2px),
+		radial-gradient(circle at 44% 24%, var(--pl-cream) 0 2px, transparent 2px),
+		radial-gradient(circle at 66% 12%, var(--pl-cream) 0 2px, transparent 2px),
+		radial-gradient(circle at 86% 22%, var(--pl-cream) 0 2px, transparent 2px),
+		repeating-linear-gradient(
+			to right,
+			color-mix(in srgb, var(--pl-brown) 20%, transparent) 0 1px,
+			transparent 1px 11px
+		);
+}
+
+/* ---------- dots 变体 ---------- */
+
+.page-loader__dots {
+	display: none;
+	gap: 10px;
+}
+
+#page-loader[data-style="dots"] .page-loader__bubble {
+	display: none;
+}
+
+#page-loader[data-style="dots"] .page-loader__dots {
+	display: flex;
+}
+
+.page-loader__dots i {
+	width: 12px;
+	height: 12px;
+	background: var(--pl-brown-light);
+	box-shadow: inset 0 0 0 3px var(--pl-line);
+	animation: pl-dot 1.05s steps(1, end) infinite;
+}
+
+.page-loader__dots i:nth-child(2) {
+	animation-delay: 0.18s;
+}
+
+.page-loader__dots i:nth-child(3) {
+	animation-delay: 0.36s;
+}
+
+/* ---------- image 变体：只保留对话框与图片 ---------- */
+
+#page-loader[data-style="image"] .page-loader__tail,
+#page-loader[data-style="image"] .page-loader__sparkle {
+	display: none;
+}
+
+#page-loader[data-style="image"] .page-loader__cat {
+	animation: pl-pulse 1.6s ease-in-out infinite;
+}
+
+/* ---------- 动画 ---------- */
+
+@keyframes pl-bob {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+
+	50% {
+		transform: translateY(-6px);
+	}
+}
+
+@keyframes pl-blink {
+	0%,
+	45% {
+		opacity: 1;
+	}
+
+	46%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes pl-dot {
+	0%,
+	40% {
+		background: var(--pl-brown-light);
+	}
+
+	41%,
+	100% {
+		background: var(--pl-cream-deep);
+	}
+}
+
+@keyframes pl-pulse {
+	0%,
+	100% {
+		transform: scale(1);
+	}
+
+	50% {
+		transform: scale(1.06);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.page-loader__bubble,
+	.page-loader__tail,
+	.page-loader__sparkle,
+	.page-loader__cat,
+	.page-loader__dots i {
+		animation: none;
+	}
+
+	.page-loader__burger-fill {
+		transition: none;
+	}
+}

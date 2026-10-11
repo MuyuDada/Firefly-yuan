@@ -40,6 +40,11 @@ export type {
 	NavBarSearchConfig,
 	NavBarSearchMethod,
 } from "./navBarConfig";
+export type {
+	PageLoaderBackdrop,
+	PageLoaderConfig,
+	PageLoaderStyle,
+} from "./pageLoaderConfig";
 export type { Live2DWidgetConfig, SpineModelConfig } from "./pioConfig";
 export type { PlantUMLConfig } from "./plantumlConfig";
 export type { ProfileConfig } from "./profileConfig";

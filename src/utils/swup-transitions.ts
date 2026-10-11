@@ -11,6 +11,7 @@ import {
 	updateMainGridCols,
 	updateSidebarComponentsVisibility,
 } from "@/utils/grid-layout-utils";
+import { hidePageLoader, showPageLoader } from "@/utils/page-loader";
 import { scrollFunction } from "@/utils/scroll-utils";
 import {
 	syncBannerHomeTextVisibility,
@@ -153,6 +154,8 @@ function registerSwupHooks(): void {
 	window.swup.hooks.on("visit:start", (visit: { to: { url: string } }) => {
 		// Start progress bar（WAAPI 合成线程动画，不强制回流）
 		startProgressBar();
+		// 全屏加载遮罩：与进度条共存，同样受 minDuration 约束（否则只闪一下）
+		showPageLoader("navigate");
 
 		// 先回顶，让后续 FLIP 在 scroll=0 的坐标系内计算：
 		// 若在切页后才回顶，FLIP 的 invert 是按切页前滚动位置校准的，scroll 一复位就会导致
@@ -312,6 +315,8 @@ function registerSwupHooks(): void {
 		document.documentElement.classList.remove("music-page-transition");
 		// Finish progress bar（WAAPI：快速填满后淡出）
 		finishProgressBar();
+		// 全屏加载遮罩：补满进度后淡出（hideDelay 防“闪一下”）
+		hidePageLoader();
 
 		setTimeout(() => {
 			// Just make the transition looks better

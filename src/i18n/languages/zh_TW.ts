@@ -582,4 +582,6 @@ export const zh_TW: Translation = {
 	[Key.exitImmersiveReading]: "退出沉浸閱讀",
 	[Key.tocExpand]: "展開目錄",
 	[Key.tocCollapse]: "摺疊目錄",
+	[Key.pageLoaderLoading]: "小貓正在準備漢堡…",
+	[Key.pageLoaderHint]: "喵～馬上就好",
 };

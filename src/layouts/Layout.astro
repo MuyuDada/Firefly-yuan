@@ -13,6 +13,7 @@ import GithubCardManager from "@components/features/GithubCardManager.astro";
 import InputFireEffect from "@components/features/InputFireEffect.astro";
 import MusicManager from "@components/features/MusicManager.astro";
 import MusicPlayerView from "@components/features/MusicPlayerView.astro";
+import PageLoader from "@components/features/PageLoader.astro";
 import SakuraEffect from "@components/features/SakuraEffect.astro";
 import WelcomeToast from "@components/widget/WelcomeToast.astro";
 import WavesEffect from "@components/features/WavesEffect.astro";
@@ -597,6 +598,8 @@ const ogImageAlt = propsOgImageAlt ?? pageTitle;
     <ClickParticleEffect />
     <FairyDustEffect />
     <InputFireEffect />
+    <!-- 全屏页面加载动画（猫咪主题）：挂在 Swup containers 之外，切页时不被替换 -->
+    <PageLoader />
   </body>
 </html>
 

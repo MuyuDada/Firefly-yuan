@@ -593,4 +593,6 @@ export const ja: Translation = {
 	[Key.exitImmersiveReading]: "没入型リーディングを終了する",
 	[Key.tocExpand]: "目錄を開く",
 	[Key.tocCollapse]: "目錄をたたむ",
+	[Key.pageLoaderLoading]: "子猫がバーガーを準備中…",
+	[Key.pageLoaderHint]: "にゃ～もうすぐだよ",
 };

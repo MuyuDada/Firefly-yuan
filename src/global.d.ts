@@ -4,6 +4,7 @@ import type {
 	FairyDustManagerLike,
 	InputFireManagerLike,
 } from "./types/mouse-effects";
+import type { PageLoaderManagerLike } from "./types/page-loader";
 import type { SakuraManagerLike } from "./types/sakura-worker";
 import type { WavesManagerLike } from "./types/waves";
 
@@ -114,6 +115,10 @@ declare global {
 		__floatingTOCAutoCloseInit?: boolean;
 		/** 文章列表页布局监听器守卫,确保只注册一次 */
 		__postPageInit?: boolean;
+		/** 全屏页面加载动画管理器(首屏与 Swup 切页共用同一个遮罩) */
+		pageLoaderManager?: PageLoaderManagerLike;
+		/** 全屏页面加载动画初始化守卫,确保 Swup 切页重跑脚本时只执行一次 */
+		__fireflyPageLoaderInit?: boolean;
 	}
 
 	interface MediaQueryList {

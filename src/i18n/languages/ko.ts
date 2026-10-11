@@ -593,4 +593,6 @@ export const ko: Translation = {
 	[Key.exitImmersiveReading]: "몰입형 읽기 종료",
 	[Key.tocExpand]: "목차 펼치기",
 	[Key.tocCollapse]: "목차 접기",
+	[Key.pageLoaderLoading]: "고양이가 버거를 준비 중…",
+	[Key.pageLoaderHint]: "야옹~ 거의 다 됐어요",
 };

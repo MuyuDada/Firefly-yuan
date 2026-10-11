@@ -580,4 +580,6 @@ export const zh_CN: Translation = {
 	[Key.exitImmersiveReading]: "退出沉浸阅读",
 	[Key.tocExpand]: "展开目录",
 	[Key.tocCollapse]: "折叠目录",
+	[Key.pageLoaderLoading]: "小猫正在准备汉堡…",
+	[Key.pageLoaderHint]: "喵～马上就好",
 };

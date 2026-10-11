@@ -1,0 +1,92 @@
+---
+/**
+ * 全屏页面加载动画（猫咪主题）
+ *
+ * 参考 https://blog.huchao.vip/posts/astro/firefly-page-loader/ 的架构，
+ * 但视觉完全围绕 public/assets/images/loading-cat.gif 这只像素小猫重做：
+ * 像素对话框 + 对话尾巴 + 汉堡进度条（小猫手里那个汉堡）。
+ *
+ * 关键约定：
+ * - 组件挂在 <body> 末尾、Swup containers 之外，切页时不会被替换；
+ * - 遮罩由服务端渲染，首屏立即可见（避免白屏闪烁），显隐交给 src/utils/page-loader.ts；
+ * - CSS 中的 :not(.page-loader--js) 兜底动画保证脚本失效时遮罩 8 秒后自行退场。
+ */
+import { pageLoaderConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import "@/styles/components/page-loader.css";
+
+const {
+	enable,
+	showOnInitial,
+	showOnMobile,
+	style,
+	image,
+	text,
+	backdrop,
+	zIndex,
+} = pageLoaderConfig;
+
+// 首屏关闭动画时直接以隐藏态渲染，避免“闪一下再消失”
+const initiallyHidden = !showOnInitial;
+const loadingText = text || i18n(I18nKey.pageLoaderLoading);
+const hintText = i18n(I18nKey.pageLoaderHint);
+---
+
+{
+	enable && (
+		<div
+			id="page-loader"
+			data-style={style}
+			data-backdrop={backdrop}
+			data-mobile={showOnMobile ? "on" : "off"}
+			class:list={[{ "is-hidden": initiallyHidden }]}
+			style={`--pl-z: ${zIndex};`}
+			role="status"
+			aria-live="polite"
+			aria-label={loadingText}
+		>
+			<div class="page-loader__stage">
+				<div class="page-loader__bubble">
+					<img
+						class="page-loader__cat"
+						src={image}
+						alt=""
+						width="112"
+						height="112"
+						decoding="sync"
+						aria-hidden="true"
+					/>
+					<span class="page-loader__tail" aria-hidden="true" />
+					<span
+						class="page-loader__sparkle page-loader__sparkle--a"
+						aria-hidden="true"
+					/>
+					<span
+						class="page-loader__sparkle page-loader__sparkle--b"
+						aria-hidden="true"
+					/>
+				</div>
+
+				<div class="page-loader__dots" aria-hidden="true">
+					<i /><i /><i />
+				</div>
+
+				<p class="page-loader__text">{loadingText}</p>
+				<p class="page-loader__hint">{hintText}</p>
+
+				<div class="page-loader__burger" aria-hidden="true">
+					<div class="page-loader__burger-ghost" />
+					<div class="page-loader__burger-fill" />
+					<div class="page-loader__burger-ticks" />
+				</div>
+			</div>
+		</div>
+	)
+}
+
+<script>
+	import { initPageLoader } from "@/utils/page-loader";
+
+	initPageLoader();
+</script>

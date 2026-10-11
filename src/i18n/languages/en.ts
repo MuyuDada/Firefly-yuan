@@ -598,4 +598,6 @@ export const en: Translation = {
 	[Key.exitImmersiveReading]: "Exit Immersive Reading",
 	[Key.tocExpand]: "Expand directory",
 	[Key.tocCollapse]: "Collapse directory",
+	[Key.pageLoaderLoading]: "The kitten is fetching your burger...",
+	[Key.pageLoaderHint]: "Meow~ almost ready",
 };

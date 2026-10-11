@@ -598,4 +598,6 @@ export const ru: Translation = {
 	[Key.exitImmersiveReading]: "Выйти из режима чтения",
 	[Key.tocExpand]: "Развернуть оглавление",
 	[Key.tocCollapse]: "Свернуть оглавление",
+	[Key.pageLoaderLoading]: "Котёнок готовит бургер…",
+	[Key.pageLoaderHint]: "Мяу~ уже почти",
 };
