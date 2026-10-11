@@ -5,6 +5,8 @@ import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import {
 	getColorPreset,
+	LYRIC_MODES,
+	type LyricMode,
 	persistVizSettings,
 	VIZ_COLOR_PRESETS,
 	vizSettings,
@@ -271,6 +273,11 @@ function onIntensityInput(e: Event) {
 
 function toggleRainbow() {
 	vizSettings.rainbow = !vizSettings.rainbow;
+	persistVizSettings();
+}
+
+function selectLyricMode(id: LyricMode) {
+	vizSettings.lyricMode = id;
 	persistVizSettings();
 }
 
@@ -757,6 +764,49 @@ onDestroy(() => {
 						>
 							<span class="music-visualizer__switch-thumb" aria-hidden="true"></span>
 						</button>
+					</section>
+
+					<!-- 歌词动画 -->
+					<section class="music-visualizer__settings-group">
+						<div class="music-visualizer__settings-row-head">
+							<span class="music-visualizer__settings-label">
+								{i18n(I18nKey.vizLyricMode)}
+							</span>
+							<span class="music-visualizer__settings-value">
+								{LYRIC_MODES.find((m) => m.id === vizSettings.lyricMode)?.label ??
+									LYRIC_MODES[0].label}
+							</span>
+						</div>
+						<div
+							class="music-visualizer__settings-modes"
+							role="radiogroup"
+							aria-label={i18n(I18nKey.vizLyricMode)}
+						>
+							{#each LYRIC_MODES as mode (mode.id)}
+								<button
+									type="button"
+									class="music-visualizer__mode-option"
+									class:is-selected={vizSettings.lyricMode === mode.id}
+									onclick={() => selectLyricMode(mode.id)}
+									role="radio"
+									aria-checked={vizSettings.lyricMode === mode.id}
+									aria-label={mode.label}
+									title={mode.label}
+								>
+									<span
+										class="music-visualizer__mode-preview"
+										data-preview={mode.id}
+										aria-hidden="true"
+									>
+										<i></i><i></i><i></i>
+									</span>
+									<span class="music-visualizer__mode-name">{mode.label}</span>
+								</button>
+							{/each}
+						</div>
+						<div class="music-visualizer__settings-hint">
+							{i18n(I18nKey.vizLyricModeHint)}
+						</div>
 					</section>
 				</div>
 			</aside>

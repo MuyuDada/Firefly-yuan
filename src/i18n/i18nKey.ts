@@ -121,6 +121,8 @@ enum I18nKey {
 	vizThemeColor = "vizThemeColor",
 	vizRainbow = "vizRainbow",
 	vizRainbowHint = "vizRainbowHint",
+	vizLyricMode = "vizLyricMode",
+	vizLyricModeHint = "vizLyricModeHint",
 
 	themeColor = "themeColor",
 

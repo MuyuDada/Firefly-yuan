@@ -89,6 +89,8 @@ export const ja: Translation = {
 	[Key.vizThemeColor]: "テーマカラー",
 	[Key.vizRainbow]: "レインボーサイクル",
 	[Key.vizRainbowHint]: "音楽に合わせて色彩が流れ続けます",
+	[Key.vizLyricMode]: "歌詞アニメーション",
+	[Key.vizLyricModeHint]: "一文字ずつの光り方を切り替えます",
 
 	// お知らせ
 	[Key.announcement]: "お知らせ",

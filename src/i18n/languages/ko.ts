@@ -89,6 +89,8 @@ export const ko: Translation = {
 	[Key.vizThemeColor]: "테마 색상",
 	[Key.vizRainbow]: "레인보우 순환",
 	[Key.vizRainbowHint]: "음악에 맞춰 색이 계속 흐릅니다",
+	[Key.vizLyricMode]: "가사 애니메이션",
+	[Key.vizLyricModeHint]: "글자별로 빛나는 방식을 전환합니다",
 
 	// Announcement
 	[Key.announcement]: "공지사항",

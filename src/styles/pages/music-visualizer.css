@@ -526,7 +526,7 @@ html:has(.music-visualizer-page) .footer {
 	text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
 	transform: translateY(2px) scale(1);
 	transform-origin: center bottom;
-	animation: music-lyric-char-glow 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+	animation: var(--lyric-char-anim, music-lyric-char-glow) 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 	transition:
 		color 0.62s cubic-bezier(0.22, 0.8, 0.26, 1),
 		transform 0.62s cubic-bezier(0.22, 0.8, 0.26, 1),
@@ -554,6 +554,264 @@ html:has(.music-visualizer-page) .footer {
 	}
 }
 
+/* ── 歌词动画模式 ──────────────────────────────────────────────
+   四种模式共用同一份 DOM 与时间轴（LyricsOverlay 只算 step / duration），
+   这里通过 --lyric-char-anim 换关键帧、换位移方向来区分观感：
+   scan 逐字扫过 / flow 光带重叠流动 / breathe 整行同呼吸 / cascade 逐字落下。 */
+
+/* flow：不放大，靠加长发光让相邻字互相叠成一条流动的光带 */
+.music-visualizer__lyrics[data-lyric-mode="flow"] .music-visualizer__lyric-char {
+	--lyric-char-anim: music-lyric-char-flow;
+	transform-origin: center center;
+}
+
+@keyframes music-lyric-char-flow {
+	0% {
+		color: rgba(255, 255, 255, 0.3);
+		text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
+		transform: translateY(1px);
+	}
+	40% {
+		color: rgba(255, 255, 255, 0.82);
+		transform: translateY(0);
+		text-shadow:
+			0 0 8px rgba(255, 255, 255, 0.45),
+			0 0 22px var(--mv-accent-glow),
+			0 2px 8px rgba(0, 0, 0, 0.8);
+	}
+	100% {
+		color: #fff;
+		transform: translateY(0);
+		text-shadow:
+			0 0 5px rgba(255, 255, 255, 0.85),
+			0 0 14px rgba(255, 255, 255, 0.4),
+			0 0 26px var(--mv-accent-glow),
+			0 2px 8px rgba(0, 0, 0, 0.82);
+	}
+}
+
+/* breathe：step 为 0，整行同时亮起再回落，像一次呼吸 */
+.music-visualizer__lyrics[data-lyric-mode="breathe"] .music-visualizer__lyric-char {
+	--lyric-char-anim: music-lyric-char-breathe;
+	transform-origin: center center;
+}
+
+@keyframes music-lyric-char-breathe {
+	0% {
+		color: rgba(255, 255, 255, 0.34);
+		text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
+		transform: translateY(1px) scale(1);
+	}
+	38% {
+		color: #fff;
+		transform: translateY(0) scale(1.05);
+		text-shadow:
+			0 0 6px rgba(255, 255, 255, 0.85),
+			0 0 18px var(--mv-accent-glow),
+			0 2px 10px rgba(0, 0, 0, 0.8);
+	}
+	100% {
+		color: rgba(255, 255, 255, 0.94);
+		transform: translateY(0) scale(1.02);
+		text-shadow:
+			0 0 4px rgba(255, 255, 255, 0.7),
+			0 0 12px var(--mv-accent-glow),
+			0 2px 9px rgba(0, 0, 0, 0.8);
+	}
+}
+
+/* cascade：逐字从上方落下并轻微回弹，步长最短所以像一串雨滴 */
+.music-visualizer__lyrics[data-lyric-mode="cascade"] .music-visualizer__lyric-char {
+	--lyric-char-anim: music-lyric-char-cascade;
+	transform-origin: center top;
+}
+
+@keyframes music-lyric-char-cascade {
+	0% {
+		color: rgba(255, 255, 255, 0.22);
+		opacity: 0;
+		transform: translateY(-14px) scale(0.86);
+		text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
+	}
+	62% {
+		color: #fff;
+		opacity: 1;
+		transform: translateY(2px) scale(1.06);
+		text-shadow:
+			0 0 6px rgba(255, 255, 255, 0.8),
+			0 0 16px var(--mv-accent-glow),
+			0 2px 10px rgba(0, 0, 0, 0.8);
+	}
+	100% {
+		color: #fff;
+		opacity: 1;
+		transform: translateY(0) scale(1.04);
+		text-shadow:
+			0 0 4px rgba(255, 255, 255, 0.9),
+			0 0 10px rgba(255, 255, 255, 0.5),
+			0 0 20px var(--mv-accent-glow),
+			0 2px 8px rgba(0, 0, 0, 0.82);
+	}
+}
+
+/* ── 商籁（Sonnet）──────────────────────────────────────────────
+   Folia 的商籁是一套 Pixi/WebGL 文字 PV 导演程序（55 个文件约 488KB），
+   这里用纯 CSS 复刻它最核心的四层观感：
+     1. 词级排版 —— 当前行按词拆开，主词放大、半主词次之；
+     2. 色差（caScale）—— 红/青双向错位的 text-shadow；
+     3. 重影（ghostScale）—— 半透明副本偏移叠在后面；
+     4. 段落转场（transitionBlurScale / transitionGlitchScale）——
+        换段那一行补一次模糊 + 横向错位的入场。
+   逐字时间仍是 LRC 行级时间按字数等分合成的近似值，不跟真实唱词走。 */
+
+.music-visualizer__lyric-text--sonnet {
+	display: block;
+	letter-spacing: 0.01em;
+}
+
+.music-visualizer__lyric-word {
+	display: inline-block;
+	white-space: pre;
+	transform-origin: left bottom;
+	transition:
+		font-size 0.5s cubic-bezier(0.22, 0.9, 0.24, 1),
+		transform 0.5s cubic-bezier(0.22, 0.9, 0.24, 1),
+		letter-spacing 0.5s cubic-bezier(0.22, 0.9, 0.24, 1);
+}
+
+/* 主词：整行最大字号，字重最重，并带上红/青色差与一层重影 */
+.music-visualizer__lyric-word--hero {
+	font-size: 1.62em;
+	font-weight: 750;
+	letter-spacing: 0.015em;
+	transform: translateY(-0.06em) scale(1.02);
+}
+
+.music-visualizer__lyrics--playing
+	.music-visualizer__lyric-line--active
+	.music-visualizer__lyric-word--hero
+	.music-visualizer__lyric-char {
+	color: #fff;
+	text-shadow:
+		0 0 6px rgba(255, 255, 255, 0.92),
+		0 0 20px rgba(255, 255, 255, 0.42),
+		-0.035em 0 0 rgba(255, 62, 108, 0.72),
+		0.035em 0 0 rgba(56, 224, 255, 0.72),
+		0 3px 12px rgba(0, 0, 0, 0.86);
+}
+
+/* 半主词：介于主词与正文之间，只放大不换色差强度 */
+.music-visualizer__lyric-word--semi {
+	font-size: 1.22em;
+	font-weight: 650;
+	transform: translateY(-0.02em);
+}
+
+.music-visualizer__lyrics--playing
+	.music-visualizer__lyric-line--active
+	.music-visualizer__lyric-word--semi
+	.music-visualizer__lyric-char {
+	color: rgba(255, 255, 255, 0.97);
+	text-shadow:
+		0 0 5px rgba(255, 255, 255, 0.8),
+		0 0 14px rgba(255, 255, 255, 0.34),
+		-0.022em 0 0 rgba(255, 62, 108, 0.5),
+		0.022em 0 0 rgba(56, 224, 255, 0.5),
+		0 2px 10px rgba(0, 0, 0, 0.82);
+}
+
+/* 商籁的逐字动效：从下方浮起并轻微拉长，比 scan 更慢更「印刷」 */
+.music-visualizer__lyrics[data-lyric-mode="sonnet"] .music-visualizer__lyric-char {
+	--lyric-char-anim: music-lyric-char-sonnet;
+	transform-origin: left bottom;
+}
+
+@keyframes music-lyric-char-sonnet {
+	0% {
+		color: rgba(255, 255, 255, 0.26);
+		opacity: 0.35;
+		transform: translateY(0.14em) scale(0.96);
+		text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+	}
+	48% {
+		color: #fff;
+		opacity: 1;
+		transform: translateY(-0.02em) scale(1.03);
+		text-shadow:
+			0 0 6px rgba(255, 255, 255, 0.9),
+			-0.03em 0 0 rgba(255, 62, 108, 0.66),
+			0.03em 0 0 rgba(56, 224, 255, 0.66),
+			0 3px 12px rgba(0, 0, 0, 0.84);
+	}
+	100% {
+		color: #fff;
+		opacity: 1;
+		transform: translateY(0) scale(1);
+		text-shadow:
+			0 0 4px rgba(255, 255, 255, 0.88),
+			-0.022em 0 0 rgba(255, 62, 108, 0.46),
+			0.022em 0 0 rgba(56, 224, 255, 0.46),
+			0 2px 9px rgba(0, 0, 0, 0.82);
+	}
+}
+
+/* 主词落定后保持一点常驻色差，避免动画结束后「褪色」回普通行 */
+.music-visualizer__lyrics[data-lyric-mode="sonnet"]
+	.music-visualizer__lyric-line--active
+	.music-visualizer__lyric-word--hero
+	.music-visualizer__lyric-char {
+	animation-fill-mode: both;
+}
+
+/* 段落转场：与上一行间隔超过 SONNET_PARAGRAPH_GAP 的那一行，
+   入场时叠一次模糊 + 横向抖动 + 轻微放大（对应 Folia 的转场滤镜）。 */
+.music-visualizer__lyrics[data-lyric-mode="sonnet"] .music-visualizer__lyric-line--turn {
+	animation: music-lyric-sonnet-turn 0.86s cubic-bezier(0.16, 0.84, 0.24, 1) both;
+}
+
+@keyframes music-lyric-sonnet-turn {
+	0% {
+		opacity: 0;
+		filter: blur(9px);
+		transform: translate3d(-14px, 10px, 0) scale(1.06);
+	}
+	38% {
+		opacity: 0.82;
+		filter: blur(3.2px);
+		transform: translate3d(5px, -2px, 0) scale(1.015);
+	}
+	62% {
+		opacity: 1;
+		filter: blur(0.8px);
+		transform: translate3d(-2px, 1px, 0) scale(1.004);
+	}
+	100% {
+		opacity: 1;
+		filter: none;
+		transform: translate3d(0, 0, 0) scale(1);
+	}
+}
+
+/* 段落转场与逐字发光叠加时，避免 blur 把逐字发光糊掉 */
+.music-visualizer__lyrics[data-lyric-mode="sonnet"]
+	.music-visualizer__lyric-line--turn
+	.music-visualizer__lyric-text {
+	will-change: transform, filter;
+}
+
+/* 当前行整体：不同模式给一点额外的氛围差异（不影响逐字动效） */
+.music-visualizer__lyrics[data-lyric-mode="flow"] .music-visualizer__lyric-line--active .music-visualizer__lyric-text {
+	letter-spacing: 0.012em;
+}
+
+.music-visualizer__lyrics[data-lyric-mode="breathe"] .music-visualizer__lyric-line--active .music-visualizer__lyric-text {
+	letter-spacing: 0.03em;
+}
+
+.music-visualizer__lyrics[data-lyric-mode="cascade"] .music-visualizer__lyric-line--active .music-visualizer__lyric-text {
+	letter-spacing: -0.004em;
+}
+
 @keyframes music-lyric-focus-in {
 	from {
 		filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
@@ -563,7 +821,7 @@ html:has(.music-visualizer-page) .footer {
 	to {
 		filter: drop-shadow(0 5px 7px rgba(0, 0, 0, 0.42));
 		opacity: 1;
-		transform: translateZ(24px) scale(1.4);
+		transform: translateZ(12px) scale(1.28);
 	}
 }
 
@@ -1875,6 +2133,198 @@ html:has(.music-visualizer-page) .footer {
 	outline-offset: 3px;
 }
 
+/* 歌词动画模式选择：五个模式，窄面板下允许自动换行 */
+.music-visualizer__settings-modes {
+	display: grid;
+	/* 五个模式（scan / flow / breathe / cascade / sonnet）要排满一行。
+	   栅格可用宽约 248px，轨道最小 42px 时 5×42 + 4×6 = 234 才放得下；
+	   用 50px 只能排 4 个，第 5 个会孤零零换到第二行。 */
+	grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
+	gap: 6px;
+}
+
+.music-visualizer__mode-option {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 5px;
+	padding: 9px 2px 8px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 12px;
+	background: rgba(255, 255, 255, 0.04);
+	color: rgba(255, 255, 255, 0.72);
+	cursor: pointer;
+	transition:
+		border-color 0.2s ease,
+		background 0.2s ease,
+		color 0.2s ease,
+		transform 0.2s ease;
+}
+
+.music-visualizer__mode-option:hover {
+	border-color: rgba(255, 255, 255, 0.28);
+	background: rgba(255, 255, 255, 0.08);
+	color: #fff;
+	transform: translateY(-1px);
+}
+
+.music-visualizer__mode-option.is-selected {
+	border-color: var(--mv-accent);
+	background: color-mix(in oklch, var(--mv-accent) 16%, transparent);
+	color: #fff;
+	box-shadow: 0 0 12px var(--mv-accent-glow);
+}
+
+.music-visualizer__mode-option:focus-visible {
+	outline: 2px solid var(--mv-accent);
+	outline-offset: 3px;
+}
+
+.music-visualizer__mode-preview {
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	gap: 3px;
+	height: 16px;
+}
+
+.music-visualizer__mode-preview i {
+	display: block;
+	width: 3px;
+	height: 12px;
+	border-radius: 2px;
+	background: currentColor;
+	opacity: 0.4;
+}
+
+.music-visualizer__mode-name {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+}
+
+/* 五种模式的缩略预览：与歌词区逐字动效同构，仅做示意 */
+.music-visualizer__mode-preview[data-preview="scan"] i {
+	animation: mv-mode-preview-scan 1.6s ease-in-out infinite;
+}
+
+.music-visualizer__mode-preview[data-preview="scan"] i:nth-child(2) {
+	animation-delay: 0.18s;
+}
+
+.music-visualizer__mode-preview[data-preview="scan"] i:nth-child(3) {
+	animation-delay: 0.36s;
+}
+
+@keyframes mv-mode-preview-scan {
+	0%,
+	60%,
+	100% {
+		opacity: 0.32;
+		transform: scaleY(0.72);
+	}
+	24% {
+		opacity: 1;
+		transform: scaleY(1);
+	}
+}
+
+.music-visualizer__mode-preview[data-preview="flow"] i {
+	animation: mv-mode-preview-flow 1.6s ease-in-out infinite;
+}
+
+.music-visualizer__mode-preview[data-preview="flow"] i:nth-child(2) {
+	animation-delay: 0.14s;
+}
+
+.music-visualizer__mode-preview[data-preview="flow"] i:nth-child(3) {
+	animation-delay: 0.28s;
+}
+
+@keyframes mv-mode-preview-flow {
+	0%,
+	100% {
+		opacity: 0.36;
+		transform: scaleY(0.8);
+	}
+	50% {
+		opacity: 1;
+		transform: scaleY(1);
+	}
+}
+
+.music-visualizer__mode-preview[data-preview="breathe"] i {
+	animation: mv-mode-preview-breathe 1.9s ease-in-out infinite;
+}
+
+@keyframes mv-mode-preview-breathe {
+	0%,
+	100% {
+		opacity: 0.34;
+		transform: scaleY(0.74);
+	}
+	42% {
+		opacity: 1;
+		transform: scaleY(1);
+	}
+}
+
+.music-visualizer__mode-preview[data-preview="cascade"] i {
+	animation: mv-mode-preview-cascade 1.6s cubic-bezier(0.3, 1.4, 0.5, 1) infinite;
+}
+
+.music-visualizer__mode-preview[data-preview="cascade"] i:nth-child(2) {
+	animation-delay: 0.1s;
+}
+
+.music-visualizer__mode-preview[data-preview="cascade"] i:nth-child(3) {
+	animation-delay: 0.2s;
+}
+
+@keyframes mv-mode-preview-cascade {
+	0% {
+		opacity: 0;
+		transform: translateY(-6px) scaleY(0.6);
+	}
+	55% {
+		opacity: 1;
+		transform: translateY(1px) scaleY(1);
+	}
+	100% {
+		opacity: 0.9;
+		transform: translateY(0) scaleY(0.94);
+	}
+}
+
+/* sonnet：中间那根代表主词，先被压低再猛地拔高，两侧半主词略矮 */
+.music-visualizer__mode-preview[data-preview="sonnet"] i {
+	animation: mv-mode-preview-sonnet 1.9s cubic-bezier(0.22, 0.9, 0.24, 1) infinite;
+}
+
+.music-visualizer__mode-preview[data-preview="sonnet"] i:nth-child(2) {
+	animation-delay: 0.12s;
+}
+
+.music-visualizer__mode-preview[data-preview="sonnet"] i:nth-child(3) {
+	animation-delay: 0.24s;
+}
+
+@keyframes mv-mode-preview-sonnet {
+	0%,
+	100% {
+		opacity: 0.34;
+		transform: scaleY(0.7);
+	}
+	40% {
+		opacity: 1;
+		transform: scaleY(1.5);
+	}
+	68% {
+		opacity: 0.96;
+		transform: scaleY(1.28);
+	}
+}
+
 /* 多彩循环开关 */
 .music-visualizer__switch {
 	position: relative;
@@ -2594,6 +3044,25 @@ html:has(.music-visualizer-page) .footer {
 			0 2px 10px rgba(0, 0, 0, 0.86);
 	}
 
+	/* 商籁的段落转场在降低动效时直接关掉，只保留词级排版（那是静态字号差异） */
+	.music-visualizer__lyrics[data-lyric-mode="sonnet"] .music-visualizer__lyric-line--turn {
+		animation: none;
+		filter: none;
+		opacity: 1;
+		transform: none;
+	}
+
+	/* 模式预览小图标：降低动效时不闪烁，只保留选中态的静态示意 */
+	.music-visualizer__mode-preview i {
+		animation: none;
+		opacity: 0.7;
+		transform: none;
+	}
+
+	.music-visualizer__mode-option.is-selected .music-visualizer__mode-preview i {
+		opacity: 1;
+	}
+
 	.music-visualizer__btn--playlist.music-visualizer__btn--active svg {
 		transform: none;
 	}
@@ -2613,16 +3082,6 @@ html:has(.music-visualizer-page) .footer {
 }
 
 @media (min-width: 769px) and (max-width: 1180px) {
-	.music-visualizer__lyrics {
-		width: min(48vw, 540px);
-	}
-
-	.music-visualizer__side-panel {
-		right: 28px;
-		width: min(38vw, 460px);
-		min-width: 380px;
-	}
-
 	.music-visualizer__playlist-stage {
 		--playlist-cover-size: 44px;
 	}
@@ -2648,16 +3107,17 @@ html:has(.music-visualizer-page) .footer {
 	}
 }
 
+/* 桌面布局参考 Folia：歌词全幅铺开当主角，播放器收成右侧一张窄玻璃浮卡 */
 @media (min-width: 769px) {
 	.music-visualizer__desktop-layout {
 		position: fixed;
 		inset: 0;
 		z-index: 35;
 		display: grid;
-		grid-template-columns: minmax(300px, 0.85fr) clamp(56px, 7vw, 112px) minmax(360px, 1.15fr);
+		grid-template-columns: minmax(0, 1fr) clamp(40px, 4vw, 72px) minmax(288px, 340px);
 		align-items: center;
-		gap: clamp(20px, 3vw, 64px);
-		padding: clamp(96px, 12vh, 144px) clamp(32px, 6vw, 112px) clamp(44px, 7vh, 88px);
+		gap: clamp(12px, 1.6vw, 32px);
+		padding: clamp(92px, 11vh, 132px) clamp(28px, 4.4vw, 84px) clamp(40px, 6vh, 76px);
 		pointer-events: none;
 	}
 
@@ -2668,13 +3128,48 @@ html:has(.music-visualizer-page) .footer {
 	.music-visualizer__card,
 	.music-visualizer__playlist-view,
 	.music-visualizer__settings-view {
-		grid-column: 1;
+		grid-column: 3;
 		grid-row: 1;
-		justify-self: center;
+		justify-self: end;
 		align-self: center;
-		width: min(100%, 520px);
-		height: min(70vh, 720px);
+		width: min(100%, 340px);
+		height: min(76vh, 760px);
 		pointer-events: auto;
+	}
+
+	/* 窄卡里放不下原来那么大的唱片 */
+	.music-visualizer__card {
+		padding: clamp(18px, 1.8vw, 26px) clamp(14px, 1.4vw, 20px);
+		border-radius: 26px;
+	}
+
+	/* 必须写在 __record 上：它自己声明了 --record-cover-size，会盖掉继承值 */
+	.music-visualizer__record {
+		--record-cover-size: clamp(104px, 10vw, 146px);
+	}
+
+	.music-visualizer__toolbar {
+		flex-wrap: nowrap;
+		justify-content: space-between;
+		gap: 2px;
+	}
+
+	.music-visualizer__tool-btn {
+		width: clamp(34px, 2.8vw, 40px);
+		height: clamp(34px, 2.8vw, 40px);
+	}
+
+	.music-visualizer__tool-btn--play {
+		width: clamp(44px, 3.4vw, 52px);
+		height: clamp(44px, 3.4vw, 52px);
+	}
+
+	.music-visualizer__tool-btn .inline-icon {
+		font-size: 1.15rem;
+	}
+
+	.music-visualizer__tool-btn--play .inline-icon {
+		font-size: 1.6rem;
 	}
 
 	.music-visualizer__playlist-view,
@@ -2692,13 +3187,13 @@ html:has(.music-visualizer-page) .footer {
 		justify-self: stretch;
 		align-self: center;
 		width: 100%;
-		height: calc(clamp(198px, 20vw, 300px) + 36px);
+		height: clamp(260px, 34vh, 380px);
 		min-height: 0;
 		color: rgba(255, 255, 255, 0.88);
 		font-weight: 700;
 		text-shadow: 0 2px 12px rgba(0, 0, 0, 0.62);
 		pointer-events: none;
-		transform: translateX(clamp(-48px, -2.5vw, -24px));
+		transform: none;
 	}
 
 	.music-visualizer__divider-meta::before {
@@ -2741,11 +3236,12 @@ html:has(.music-visualizer-page) .footer {
 
 	.music-visualizer__lyrics {
 		position: relative;
-		grid-column: 3;
+		grid-column: 1;
 		grid-row: 1;
 		align-self: center;
+		justify-self: stretch;
 		width: 100%;
-		height: min(70vh, 720px);
+		height: min(76vh, 760px);
 		left: auto;
 		top: auto;
 		transform: none;
@@ -2755,18 +3251,36 @@ html:has(.music-visualizer-page) .footer {
 	}
 
 	.music-visualizer__lyrics-stage {
-		--lyrics-left-gutter: clamp(48px, 4vw, 80px);
-		width: calc(84% - var(--lyrics-left-gutter));
+		--lyrics-left-gutter: clamp(8px, 1.4vw, 28px);
+		width: calc(94% - var(--lyrics-left-gutter));
 		margin-left: var(--lyrics-left-gutter);
 		padding-inline: 0;
-		transform: rotateY(-11deg) translateZ(12px) scale(1.04);
+		transform: rotateY(-9deg) translateZ(12px) scale(1.02);
 		transform-origin: left center;
 	}
 
+	.music-visualizer__lyric-line,
+	.music-visualizer__lyrics--playing .music-visualizer__lyric-line {
+		min-height: 66px;
+		font-size: clamp(20px, 1.5vw, 24px);
+	}
+
+	/* 播放中当前行要明显大于上下文行，歌词才是主角 */
+	.music-visualizer__lyrics--playing .music-visualizer__lyric-line--active {
+		min-height: 104px;
+		margin-block: clamp(6px, 1vh, 14px);
+		font-size: clamp(26px, 2.3vw, 38px);
+		line-height: 1.34;
+	}
+
+	/* 歌词占满整列后，当前行会被放大两次：自身的 scale，加上 stage 的 rotateY + 透视投影
+	   （1440px 下实测投影系数约 1.14）。两者相乘后渲染宽度会超过容器裁剪边界，
+	   长行尾部的字会被切掉。实测 scale(1.12) 时右侧尚余约 148px、scale(1.4) 时已超出约 50px，
+	   故取 1.28 作为上限；下面 @keyframes music-lyric-focus-in 的终态必须与这里保持一致。 */
 	.music-visualizer__lyric-line--active .music-visualizer__lyric-text {
-		width: 65%;
-		max-width: 65%;
-		transform: translateZ(24px) scale(1.4);
+		width: 72%;
+		max-width: 72%;
+		transform: translateZ(12px) scale(1.28);
 		transform-origin: left center;
 		filter: drop-shadow(0 5px 7px rgba(0, 0, 0, 0.42));
 	}

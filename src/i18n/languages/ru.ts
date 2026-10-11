@@ -90,6 +90,8 @@ export const ru: Translation = {
 	[Key.vizThemeColor]: "Цвет темы",
 	[Key.vizRainbow]: "Радужный цикл",
 	[Key.vizRainbowHint]: "Цвета плавно сменяются под музыку",
+	[Key.vizLyricMode]: "Анимация текста",
+	[Key.vizLyricModeHint]: "Способ подсветки каждого символа",
 
 	// Объявление
 	[Key.announcement]: "Объявление",

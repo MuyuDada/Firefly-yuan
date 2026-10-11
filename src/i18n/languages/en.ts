@@ -91,6 +91,8 @@ export const en: Translation = {
 	[Key.vizThemeColor]: "Theme Color",
 	[Key.vizRainbow]: "Rainbow Cycle",
 	[Key.vizRainbowHint]: "Colors keep cycling with the music",
+	[Key.vizLyricMode]: "Lyric Animation",
+	[Key.vizLyricModeHint]: "How each character lights up",
 
 	// Announcement
 	[Key.announcement]: "Announcement",

@@ -88,6 +88,8 @@ export const zh_TW: Translation = {
 	[Key.vizThemeColor]: "主題顏色",
 	[Key.vizRainbow]: "多彩循環",
 	[Key.vizRainbowHint]: "配色隨音樂持續流轉",
+	[Key.vizLyricMode]: "歌詞動畫",
+	[Key.vizLyricModeHint]: "切換逐字動效的表現方式",
 
 	// 公告欄
 	[Key.announcement]: "公告",

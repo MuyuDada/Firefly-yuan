@@ -1,4 +1,4 @@
-// 音乐页可视化的用户设置：律动强度 / 主题颜色 / 多彩循环。
+// 音乐页可视化的用户设置：律动强度 / 主题颜色 / 多彩循环 / 歌词动画。
 // 以 Svelte 5 runes 模块实现全局共享状态，VisualizerControls（菜单 UI）与
 // ThreeScene（渲染）都从这里读写；改动持久化到 localStorage。
 
@@ -90,12 +90,38 @@ export const DEFAULT_PRESET_ID: string = VIZ_COLOR_PRESETS[0].id;
 export const INTENSITY_MIN: number = 0;
 export const INTENSITY_MAX: number = 2.5;
 
+// 歌词动画模式：五种观感，共用同一份 LRC 数据与 DOM 结构，
+// 只切换容器上的 data-lyric-mode，由 CSS 决定逐字动效的表现形式。
+// sonnet（商籁）是唯一的「排版向」模式：除逐字动效外还会重排当前行，
+// 挑出关键词放大，并给整行叠上色差与重影，接近文字 PV 的观感。
+export type LyricMode = "scan" | "flow" | "breathe" | "cascade" | "sonnet";
+
+export interface LyricModeOption {
+	id: LyricMode;
+	label: string;
+}
+
+export const LYRIC_MODES: LyricModeOption[] = [
+	{ id: "scan", label: "Scan" },
+	{ id: "flow", label: "Flow" },
+	{ id: "breathe", label: "Breathe" },
+	{ id: "cascade", label: "Cascade" },
+	{ id: "sonnet", label: "Sonnet" },
+];
+
+// 商籁的段落切分阈值：相邻两行间隔超过这个秒数就视为换段，
+// 用来给段落交界处补一次「转场」动画（模糊 + 错位抖动）。
+export const SONNET_PARAGRAPH_GAP: number = 2.4;
+
+export const DEFAULT_LYRIC_MODE: LyricMode = "scan";
+
 const STORAGE_KEY = "firefly-mv-settings";
 
 function loadPersisted(): {
 	intensity: number;
 	presetId: string;
 	rainbow: boolean;
+	lyricMode: string;
 } | null {
 	if (typeof localStorage === "undefined") return null;
 	try {
@@ -122,14 +148,22 @@ function normalizePresetId(v: unknown): string {
 		: DEFAULT_PRESET_ID;
 }
 
+function normalizeLyricMode(v: unknown): LyricMode {
+	return LYRIC_MODES.some((m) => m.id === v)
+		? (v as LyricMode)
+		: DEFAULT_LYRIC_MODE;
+}
+
 export const vizSettings: {
 	intensity: number;
 	presetId: string;
 	rainbow: boolean;
+	lyricMode: LyricMode;
 } = $state({
 	intensity: clampIntensity(persisted?.intensity),
 	presetId: normalizePresetId(persisted?.presetId),
 	rainbow: persisted?.rainbow === true,
+	lyricMode: normalizeLyricMode(persisted?.lyricMode),
 });
 
 export function persistVizSettings(): void {
@@ -140,6 +174,7 @@ export function persistVizSettings(): void {
 				intensity: vizSettings.intensity,
 				presetId: vizSettings.presetId,
 				rainbow: vizSettings.rainbow,
+				lyricMode: vizSettings.lyricMode,
 			}),
 		);
 	} catch {
