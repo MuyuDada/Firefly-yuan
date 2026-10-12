@@ -364,79 +364,122 @@ onDestroy(() => {
 </script>
 
 <div class="music-visualizer__side-panel" data-panel-mode={rightPanelMode}>
-	<div class="music-visualizer__divider-meta" aria-label={i18n(I18nKey.currentTrack)}>
-		<span class="music-visualizer__divider-title">
-			{currentTrack?.name || i18n(I18nKey.musicNoPlaying)}
-		</span>
-		<span class="music-visualizer__divider-artist">
-			{currentTrack?.artist || "—"}
-		</span>
-	</div>
-	{#if rightPanelMode === "tools"}
-		<section class="music-visualizer__card" aria-label={i18n(I18nKey.musicPlayerLabel)}>
-			<!-- 层 1 · 胶片旋转动效（点击跳转歌单） -->
-			<button
-				type="button"
-				class="music-visualizer__record"
-				class:music-visualizer__record--playing={isPlaying}
-				class:music-visualizer__record--loading={!initialized}
-				onclick={openPlaylist}
-				title={i18n(I18nKey.viewPlaylist)}
-				aria-label={i18n(I18nKey.viewPlaylist)}
-				aria-controls="music-visualizer-playlist-panel"
-			>
-				<span class="music-visualizer__record-disc-shell" aria-hidden="true">
-					<span class="music-visualizer__record-disc">
-						<span class="music-visualizer__record-grooves"></span>
-						<span class="music-visualizer__record-label">
-							{#if currentTrack?.pic}
-								<img
-									class="music-visualizer__record-image"
-									src={currentTrack.pic}
-									alt=""
-								/>
-							{:else}
-								<span class="music-visualizer__record-placeholder">
-									<Icon icon="material-symbols:music-note-rounded" size="2xl" />
-								</span>
-							{/if}
-						</span>
-						<span class="music-visualizer__record-hole"></span>
-						<span class="music-visualizer__record-shine"></span>
+	<!-- ── 桌面 · 左：大封面 / 唱片（点击展开歌单） ─────────────── -->
+	<section class="music-visualizer__cover-area">
+		<button
+			type="button"
+			class="music-visualizer__record"
+			class:music-visualizer__record--playing={isPlaying}
+			class:music-visualizer__record--loading={!initialized}
+			onclick={openPlaylist}
+			title={i18n(I18nKey.viewPlaylist)}
+			aria-label={i18n(I18nKey.viewPlaylist)}
+			aria-controls="music-visualizer-playlist-panel"
+		>
+			<span class="music-visualizer__record-disc-shell" aria-hidden="true">
+				<span class="music-visualizer__record-disc">
+					<span class="music-visualizer__record-grooves"></span>
+					<span class="music-visualizer__record-label">
+						{#if currentTrack?.pic}
+							<img class="music-visualizer__record-image" src={currentTrack.pic} alt="" />
+						{:else}
+							<span class="music-visualizer__record-placeholder">
+								<Icon icon="material-symbols:music-note-rounded" size="2xl" />
+							</span>
+						{/if}
 					</span>
+					<span class="music-visualizer__record-hole"></span>
+					<span class="music-visualizer__record-shine"></span>
 				</span>
-				<span class="music-visualizer__record-cover">
-					{#if currentTrack?.pic}
-						<img class="music-visualizer__record-cover-image" src={currentTrack.pic} alt="" />
-					{:else}
-						<span class="music-visualizer__record-cover-placeholder">
-							<Icon icon="material-symbols:music-note-rounded" size="2xl" />
-						</span>
-					{/if}
-				</span>
-				<span class="music-visualizer__record-overlay" aria-hidden="true">
-					<Icon icon="material-symbols:queue-music-rounded" size="2xl" />
-					<span class="music-visualizer__record-overlay-text">{i18n(I18nKey.musicPlaylist)}</span>
-				</span>
-			</button>
+			</span>
+			<span class="music-visualizer__record-cover">
+				{#if currentTrack?.pic}
+					<img class="music-visualizer__record-cover-image" src={currentTrack.pic} alt="" />
+				{:else}
+					<span class="music-visualizer__record-cover-placeholder">
+						<Icon icon="material-symbols:music-note-rounded" size="2xl" />
+					</span>
+				{/if}
+			</span>
+			<span class="music-visualizer__record-overlay" aria-hidden="true">
+				<Icon icon="material-symbols:queue-music-rounded" size="2xl" />
+				<span class="music-visualizer__record-overlay-text">{i18n(I18nKey.musicPlaylist)}</span>
+			</span>
+		</button>
 
-			<!-- 移动端保留：曲目标题（桌面隐藏） -->
-			<div class="music-visualizer__mobile-track">
-				<span class="music-visualizer__record-title">
-					{currentTrack?.name || i18n(I18nKey.musicNoPlaying)}
-				</span>
+		<div class="music-visualizer__cover-meta">
+			<span class="music-visualizer__cover-title">
+				{currentTrack?.name || i18n(I18nKey.musicNoPlaying)}
+			</span>
+			<span class="music-visualizer__cover-artist">{currentTrack?.artist || "—"}</span>
+		</div>
+	</section>
+
+	<!-- ── 桌面 · 底：贯穿式播放控制栏 ─────────────────────────── -->
+	<div class="music-visualizer__player-bar" aria-label={i18n(I18nKey.playbackControls)}>
+		<div class="music-visualizer__player-bar-inner">
+			<!-- 正在播放 -->
+			<div class="music-visualizer__bar-now">
+				<div class="music-visualizer__bar-cover">
+					{#if currentTrack?.pic}
+						<img src={currentTrack.pic} alt="" />
+					{:else}
+						<Icon icon="material-symbols:music-note-rounded" size="md" />
+					{/if}
+				</div>
+				<div class="music-visualizer__bar-meta">
+					<span class="music-visualizer__bar-title">
+						{currentTrack?.name || i18n(I18nKey.musicNoPlaying)}
+					</span>
+					<span class="music-visualizer__bar-artist">{currentTrack?.artist || "—"}</span>
+				</div>
 			</div>
 
-			<!-- 层 2 · 进度条（桌面） -->
-			<div class="music-visualizer__progress-block">
-				<span class="music-visualizer__progress-time">{currentTimeStr}</span>
+			<!-- 传输控制 -->
+			<div class="music-visualizer__bar-transport">
+				<button
+					type="button"
+					class="music-visualizer__bar-btn"
+					onclick={playPrev}
+					title={i18n(I18nKey.musicPrev)}
+					aria-label={i18n(I18nKey.musicPrev)}
+				>
+					<Icon icon="material-symbols:skip-previous-rounded" size="xl" />
+				</button>
+
+				<button
+					type="button"
+					class="music-visualizer__bar-btn music-visualizer__bar-btn--play"
+					onclick={togglePlay}
+					title={isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay)}
+					aria-label={isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay)}
+				>
+					{#if isPlaying}
+						<Icon icon="material-symbols:pause-rounded" size="2xl" />
+					{:else}
+						<Icon icon="material-symbols:play-arrow-rounded" size="2xl" />
+					{/if}
+				</button>
+
+				<button
+					type="button"
+					class="music-visualizer__bar-btn"
+					onclick={playNext}
+					title={i18n(I18nKey.musicNext)}
+					aria-label={i18n(I18nKey.musicNext)}
+				>
+					<Icon icon="material-symbols:skip-next-rounded" size="xl" />
+				</button>
+			</div>
+
+			<!-- 进度 -->
+			<div class="music-visualizer__bar-progress">
+				<span class="music-visualizer__bar-time">{currentTimeStr}</span>
 				<div
-					class="music-visualizer__progress-track"
+					class="music-visualizer__bar-track"
 					class:is-hover={progressTrackHover}
 					class:is-dragging={isDraggingProgress}
 					class:is-disabled={progressDisabled}
-					class:is-playing={isPlaying}
-					style={`--mv-progress: ${progress}%`}
 					onpointerdown={onDesktopProgressPointerDown}
 					onpointermove={onProgressPointerMove}
 					onpointerup={onProgressPointerUp}
@@ -451,19 +494,16 @@ onDestroy(() => {
 					aria-valuenow={Math.round(progress)}
 					aria-disabled={progressDisabled}
 				>
-					<div class="music-visualizer__progress-rail">
-						<div class="music-visualizer__progress-aurora"></div>
+					<div class="music-visualizer__bar-rail">
+						<div class="music-visualizer__bar-fill" style={`width: ${progress}%`}></div>
 					</div>
-					<div
-						class="music-visualizer__progress-thumb"
-						style={`left: ${progress}%`}
-					></div>
+					<div class="music-visualizer__bar-thumb" style={`left: ${progress}%`}></div>
 				</div>
-				<span class="music-visualizer__progress-time">{durationStr}</span>
+				<span class="music-visualizer__bar-time">{durationStr}</span>
 			</div>
 
-			<!-- 层 3 · 工具栏（桌面） -->
-			<div class="music-visualizer__toolbar" aria-label={i18n(I18nKey.playbackControls)}>
+			<!-- 工具 -->
+			<div class="music-visualizer__bar-tools">
 				<div class="music-visualizer__tool-wrap" role="group">
 					<span
 						class="music-visualizer__tool-hint"
@@ -474,7 +514,7 @@ onDestroy(() => {
 					</span>
 					<button
 						type="button"
-						class="music-visualizer__tool-btn"
+						class="music-visualizer__bar-btn music-visualizer__bar-btn--sm"
 						class:is-active={playMode !== 0}
 						onclick={cycleMode}
 						title={MODE_LABELS[playMode]}
@@ -490,48 +530,8 @@ onDestroy(() => {
 					</button>
 				</div>
 
-				<button
-					type="button"
-					class="music-visualizer__tool-btn"
-					onclick={playPrev}
-					title={i18n(I18nKey.musicPrev)}
-					aria-label={i18n(I18nKey.musicPrev)}
-				>
-					<Icon icon="material-symbols:skip-previous-rounded" size="xl" />
-				</button>
-
-				<button
-					type="button"
-					class="music-visualizer__tool-btn music-visualizer__tool-btn--play"
-					onclick={togglePlay}
-					title={isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay)}
-					aria-label={isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay)}
-				>
-					{#if isPlaying}
-						<Icon icon="material-symbols:pause-rounded" size="2xl" />
-					{:else}
-						<Icon icon="material-symbols:play-arrow-rounded" size="2xl" />
-					{/if}
-				</button>
-
-				<button
-					type="button"
-					class="music-visualizer__tool-btn"
-					onclick={playNext}
-					title={i18n(I18nKey.musicNext)}
-					aria-label={i18n(I18nKey.musicNext)}
-				>
-					<Icon icon="material-symbols:skip-next-rounded" size="xl" />
-				</button>
-
-				<div
-					class="music-visualizer__tool-wrap music-visualizer__volume-wrap"
-					role="group"
-				>
-					<div
-						class="music-visualizer__volume-pop"
-						class:is-visible={isDraggingVolume}
-					>
+				<div class="music-visualizer__tool-wrap music-visualizer__volume-wrap" role="group">
+					<div class="music-visualizer__volume-pop" class:is-visible={isDraggingVolume}>
 						<span class="music-visualizer__volume-value">{volumePercent}</span>
 						<div
 							class="music-visualizer__volume-vtrack"
@@ -560,7 +560,7 @@ onDestroy(() => {
 					</div>
 					<button
 						type="button"
-						class="music-visualizer__tool-btn"
+						class="music-visualizer__bar-btn music-visualizer__bar-btn--sm"
 						onclick={toggleMute}
 						title={i18n(I18nKey.musicVolume)}
 						aria-label={i18n(I18nKey.musicVolume)}
@@ -575,7 +575,20 @@ onDestroy(() => {
 
 				<button
 					type="button"
-					class="music-visualizer__tool-btn"
+					class="music-visualizer__bar-btn music-visualizer__bar-btn--sm"
+					class:is-active={rightPanelMode === "playlist"}
+					onclick={togglePlaylist}
+					title={i18n(I18nKey.musicPlaylist)}
+					aria-label={i18n(I18nKey.musicPlaylist)}
+					aria-controls="music-visualizer-playlist-panel"
+					aria-expanded={rightPanelMode === "playlist"}
+				>
+					<Icon icon="material-symbols:queue-music-rounded" size="lg" />
+				</button>
+
+				<button
+					type="button"
+					class="music-visualizer__bar-btn music-visualizer__bar-btn--sm"
 					class:is-active={rightPanelMode === "settings"}
 					onclick={toggleSettings}
 					title={i18n(I18nKey.vizSettings)}
@@ -585,9 +598,19 @@ onDestroy(() => {
 					<Icon icon="material-symbols:tune-rounded" size="lg" />
 				</button>
 			</div>
+		</div>
+	</div>
 
-			<!-- 移动端保留：紧凑工具行（桌面隐藏） -->
-				<div class="music-visualizer__tool-row">
+	<!-- ── 移动端 · 紧凑卡片（桌面隐藏） ───────────────────────── -->
+	{#if rightPanelMode === "tools"}
+		<section class="music-visualizer__card" aria-label={i18n(I18nKey.musicPlayerLabel)}>
+			<div class="music-visualizer__mobile-track">
+				<span class="music-visualizer__record-title">
+					{currentTrack?.name || i18n(I18nKey.musicNoPlaying)}
+				</span>
+			</div>
+
+			<div class="music-visualizer__tool-row">
 				<button
 					type="button"
 					class="music-visualizer__btn music-visualizer__btn--mobile-play"
@@ -655,162 +678,168 @@ onDestroy(() => {
 				>
 					<Icon icon="material-symbols:tune-rounded" size="md" />
 				</button>
-				</div>
-			</section>
-		{:else if rightPanelMode === "settings"}
-			<aside
-				id="music-visualizer-settings-panel"
-				class="music-visualizer__settings-view"
-				aria-label={i18n(I18nKey.vizSettings)}
-			>
-				<div class="music-visualizer__settings-stage">
-					<div class="music-visualizer__settings-header">
-						<div>
-							<div class="music-visualizer__settings-kicker">VISUALIZER</div>
-							<div class="music-visualizer__settings-title">
-								{i18n(I18nKey.vizSettings)}
-							</div>
+			</div>
+		</section>
+	{/if}
+
+	<!-- ── 浮层 · 可视化设置 ───────────────────────────────────── -->
+	{#if rightPanelMode === "settings"}
+		<aside
+			id="music-visualizer-settings-panel"
+			class="music-visualizer__settings-view"
+			aria-label={i18n(I18nKey.vizSettings)}
+		>
+			<div class="music-visualizer__settings-stage">
+				<div class="music-visualizer__settings-header">
+					<div>
+						<div class="music-visualizer__settings-kicker">VISUALIZER</div>
+						<div class="music-visualizer__settings-title">
+							{i18n(I18nKey.vizSettings)}
 						</div>
-						<button
-							type="button"
-							class="music-visualizer__playlist-back"
-							onclick={toggleSettings}
-							title={i18n(I18nKey.backToPlayer)}
-							aria-label={i18n(I18nKey.backToPlayer)}
-							aria-controls="music-visualizer-settings-panel"
-							aria-expanded={rightPanelMode === "settings"}
-						>
-							<Icon icon="material-symbols:close-rounded" size="md" />
-						</button>
 					</div>
-
-					<!-- 律动强度 -->
-					<section class="music-visualizer__settings-group">
-						<div class="music-visualizer__settings-row-head">
-							<span class="music-visualizer__settings-label">
-								{i18n(I18nKey.vizIntensity)}
-							</span>
-							<span class="music-visualizer__settings-value">{intensityPercent}%</span>
-						</div>
-						<input
-							class="music-visualizer__settings-slider"
-							type="range"
-							min="0"
-							max="2.5"
-							step="0.05"
-							value={vizSettings.intensity}
-							style={`--mv-fill: ${(vizSettings.intensity / 2.5) * 100}%`}
-							oninput={onIntensityInput}
-							onchange={persistVizSettings}
-							aria-label={i18n(I18nKey.vizIntensity)}
-							aria-valuemin="0"
-							aria-valuemax="250"
-							aria-valuenow={intensityPercent}
-						/>
-					</section>
-
-					<!-- 主题颜色 -->
-					<section class="music-visualizer__settings-group">
-						<div class="music-visualizer__settings-row-head">
-							<span class="music-visualizer__settings-label">
-								{i18n(I18nKey.vizThemeColor)}
-							</span>
-							<span class="music-visualizer__settings-value">
-								{vizSettings.rainbow ? i18n(I18nKey.vizRainbow) : getColorPreset(vizSettings.presetId).label}
-							</span>
-						</div>
-						<div
-							class="music-visualizer__settings-swatches"
-							role="radiogroup"
-							aria-label={i18n(I18nKey.vizThemeColor)}
-						>
-							{#each VIZ_COLOR_PRESETS as preset (preset.id)}
-								<button
-									type="button"
-									class="music-visualizer__swatch"
-									class:is-selected={vizSettings.presetId === preset.id &&
-										!vizSettings.rainbow}
-									style={`--swatch-a: ${preset.coolCore}; --swatch-b: ${preset.accent}; --swatch-c: ${preset.warmEdge};`}
-									onclick={() => selectColorPreset(preset.id)}
-									role="radio"
-									aria-checked={vizSettings.presetId === preset.id && !vizSettings.rainbow}
-									aria-label={preset.label}
-									title={preset.label}
-								></button>
-							{/each}
-						</div>
-					</section>
-
-					<!-- 多彩循环 -->
-					<section
-						class="music-visualizer__settings-group music-visualizer__settings-group--row"
+					<button
+						type="button"
+						class="music-visualizer__playlist-back"
+						onclick={toggleSettings}
+						title={i18n(I18nKey.backToPlayer)}
+						aria-label={i18n(I18nKey.backToPlayer)}
+						aria-controls="music-visualizer-settings-panel"
+						aria-expanded={rightPanelMode === "settings"}
 					>
-						<div class="music-visualizer__settings-row-text">
-							<div class="music-visualizer__settings-label">
-								{i18n(I18nKey.vizRainbow)}
-							</div>
-							<div class="music-visualizer__settings-hint">
-								{i18n(I18nKey.vizRainbowHint)}
-							</div>
-						</div>
-						<button
-							type="button"
-							class="music-visualizer__switch"
-							class:is-on={vizSettings.rainbow}
-							role="switch"
-							aria-checked={vizSettings.rainbow}
-							aria-label={i18n(I18nKey.vizRainbow)}
-							onclick={toggleRainbow}
-						>
-							<span class="music-visualizer__switch-thumb" aria-hidden="true"></span>
-						</button>
-					</section>
+						<Icon icon="material-symbols:close-rounded" size="md" />
+					</button>
+				</div>
 
-					<!-- 歌词动画 -->
-					<section class="music-visualizer__settings-group">
-						<div class="music-visualizer__settings-row-head">
-							<span class="music-visualizer__settings-label">
-								{i18n(I18nKey.vizLyricMode)}
-							</span>
-							<span class="music-visualizer__settings-value">
-								{LYRIC_MODES.find((m) => m.id === vizSettings.lyricMode)?.label ??
-									LYRIC_MODES[0].label}
-							</span>
-						</div>
-						<div
-							class="music-visualizer__settings-modes"
-							role="radiogroup"
-							aria-label={i18n(I18nKey.vizLyricMode)}
-						>
-							{#each LYRIC_MODES as mode (mode.id)}
-								<button
-									type="button"
-									class="music-visualizer__mode-option"
-									class:is-selected={vizSettings.lyricMode === mode.id}
-									onclick={() => selectLyricMode(mode.id)}
-									role="radio"
-									aria-checked={vizSettings.lyricMode === mode.id}
-									aria-label={mode.label}
-									title={mode.label}
-								>
-									<span
-										class="music-visualizer__mode-preview"
-										data-preview={mode.id}
-										aria-hidden="true"
-									>
-										<i></i><i></i><i></i>
-									</span>
-									<span class="music-visualizer__mode-name">{mode.label}</span>
-								</button>
-							{/each}
+				<!-- 律动强度 -->
+				<section class="music-visualizer__settings-group">
+					<div class="music-visualizer__settings-row-head">
+						<span class="music-visualizer__settings-label">
+							{i18n(I18nKey.vizIntensity)}
+						</span>
+						<span class="music-visualizer__settings-value">{intensityPercent}%</span>
+					</div>
+					<input
+						class="music-visualizer__settings-slider"
+						type="range"
+						min="0"
+						max="2.5"
+						step="0.05"
+						value={vizSettings.intensity}
+						style={`--mv-fill: ${(vizSettings.intensity / 2.5) * 100}%`}
+						oninput={onIntensityInput}
+						onchange={persistVizSettings}
+						aria-label={i18n(I18nKey.vizIntensity)}
+						aria-valuemin="0"
+						aria-valuemax="250"
+						aria-valuenow={intensityPercent}
+					/>
+				</section>
+
+				<!-- 主题颜色 -->
+				<section class="music-visualizer__settings-group">
+					<div class="music-visualizer__settings-row-head">
+						<span class="music-visualizer__settings-label">
+							{i18n(I18nKey.vizThemeColor)}
+						</span>
+						<span class="music-visualizer__settings-value">
+							{vizSettings.rainbow ? i18n(I18nKey.vizRainbow) : getColorPreset(vizSettings.presetId).label}
+						</span>
+					</div>
+					<div
+						class="music-visualizer__settings-swatches"
+						role="radiogroup"
+						aria-label={i18n(I18nKey.vizThemeColor)}
+					>
+						{#each VIZ_COLOR_PRESETS as preset (preset.id)}
+							<button
+								type="button"
+								class="music-visualizer__swatch"
+								class:is-selected={vizSettings.presetId === preset.id &&
+									!vizSettings.rainbow}
+								style={`--swatch-a: ${preset.coolCore}; --swatch-b: ${preset.accent}; --swatch-c: ${preset.warmEdge};`}
+								onclick={() => selectColorPreset(preset.id)}
+								role="radio"
+								aria-checked={vizSettings.presetId === preset.id && !vizSettings.rainbow}
+								aria-label={preset.label}
+								title={preset.label}
+							></button>
+						{/each}
+					</div>
+				</section>
+
+				<!-- 多彩循环 -->
+				<section
+					class="music-visualizer__settings-group music-visualizer__settings-group--row"
+				>
+					<div class="music-visualizer__settings-row-text">
+						<div class="music-visualizer__settings-label">
+							{i18n(I18nKey.vizRainbow)}
 						</div>
 						<div class="music-visualizer__settings-hint">
-							{i18n(I18nKey.vizLyricModeHint)}
+							{i18n(I18nKey.vizRainbowHint)}
 						</div>
-					</section>
-				</div>
-			</aside>
-		{:else}
+					</div>
+					<button
+						type="button"
+						class="music-visualizer__switch"
+						class:is-on={vizSettings.rainbow}
+						role="switch"
+						aria-checked={vizSettings.rainbow}
+						aria-label={i18n(I18nKey.vizRainbow)}
+						onclick={toggleRainbow}
+					>
+						<span class="music-visualizer__switch-thumb" aria-hidden="true"></span>
+					</button>
+				</section>
+
+				<!-- 歌词动画 -->
+				<section class="music-visualizer__settings-group">
+					<div class="music-visualizer__settings-row-head">
+						<span class="music-visualizer__settings-label">
+							{i18n(I18nKey.vizLyricMode)}
+						</span>
+						<span class="music-visualizer__settings-value">
+							{LYRIC_MODES.find((m) => m.id === vizSettings.lyricMode)?.label ??
+								LYRIC_MODES[0].label}
+						</span>
+					</div>
+					<div
+						class="music-visualizer__settings-modes"
+						role="radiogroup"
+						aria-label={i18n(I18nKey.vizLyricMode)}
+					>
+						{#each LYRIC_MODES as mode (mode.id)}
+							<button
+								type="button"
+								class="music-visualizer__mode-option"
+								class:is-selected={vizSettings.lyricMode === mode.id}
+								onclick={() => selectLyricMode(mode.id)}
+								role="radio"
+								aria-checked={vizSettings.lyricMode === mode.id}
+								aria-label={mode.label}
+								title={mode.label}
+							>
+								<span
+									class="music-visualizer__mode-preview"
+									data-preview={mode.id}
+									aria-hidden="true"
+								>
+									<i></i><i></i><i></i>
+								</span>
+								<span class="music-visualizer__mode-name">{mode.label}</span>
+							</button>
+						{/each}
+					</div>
+					<div class="music-visualizer__settings-hint">
+						{i18n(I18nKey.vizLyricModeHint)}
+					</div>
+				</section>
+			</div>
+		</aside>
+	{/if}
+
+	<!-- ── 浮层 · 歌单 ─────────────────────────────────────────── -->
+	{#if rightPanelMode === "playlist"}
 		<aside
 			id="music-visualizer-playlist-panel"
 			class="music-visualizer__playlist-view"

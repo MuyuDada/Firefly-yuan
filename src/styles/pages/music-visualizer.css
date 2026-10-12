@@ -3107,17 +3107,276 @@ html:has(.music-visualizer-page) .footer {
 	}
 }
 
-/* 桌面布局参考 Folia：歌词全幅铺开当主角，播放器收成右侧一张窄玻璃浮卡 */
+/* ── SPlayer 式全屏播放布局 ──────────────────────────────────────
+   桌面端（≥769px）：左侧大封面 / 唱片，右侧歌词，底部一条贯穿的播放控制栏；
+   歌单与设置作为右侧浮层由底栏呼出。封面区与播放栏在移动端隐藏，
+   移动端沿用原有的紧凑卡片 + 底部控制条。 */
+.music-visualizer__cover-area,
+.music-visualizer__player-bar {
+	display: none;
+}
+
+.music-visualizer__cover-meta {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	max-width: min(90%, 440px);
+	text-align: center;
+}
+
+.music-visualizer__cover-title {
+	max-width: 100%;
+	overflow: hidden;
+	color: #fff;
+	font-size: clamp(18px, 1.6vw, 24px);
+	font-weight: 700;
+	letter-spacing: 0.01em;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+.music-visualizer__cover-artist {
+	max-width: 100%;
+	overflow: hidden;
+	color: rgba(255, 255, 255, 0.56);
+	font-size: clamp(12px, 1vw, 14px);
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* ── 底部播放控制栏 ── */
+.music-visualizer__player-bar-inner {
+	display: grid;
+	grid-template-columns: minmax(150px, 1fr) auto minmax(220px, 1.5fr) auto;
+	align-items: center;
+	gap: clamp(14px, 1.8vw, 32px);
+	max-width: min(1440px, 96vw);
+	margin-inline: auto;
+	padding: 10px clamp(14px, 1.6vw, 24px);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 20px;
+	background:
+		linear-gradient(165deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02) 46%, rgba(0, 0, 0, 0.16)),
+		rgba(8, 12, 22, 0.44);
+	backdrop-filter: blur(20px) saturate(1.3);
+	-webkit-backdrop-filter: blur(20px) saturate(1.3);
+	box-shadow:
+		0 18px 44px rgba(0, 0, 0, 0.42),
+		inset 0 1px 0 rgba(255, 255, 255, 0.07);
+	pointer-events: auto;
+}
+
+.music-visualizer__bar-now {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-width: 0;
+}
+
+.music-visualizer__bar-cover {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	overflow: hidden;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.1);
+	color: rgba(255, 255, 255, 0.6);
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.music-visualizer__bar-cover img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.music-visualizer__bar-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+
+.music-visualizer__bar-title {
+	overflow: hidden;
+	color: rgba(255, 255, 255, 0.94);
+	font-size: 14px;
+	font-weight: 700;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.music-visualizer__bar-artist {
+	overflow: hidden;
+	color: rgba(255, 255, 255, 0.5);
+	font-size: 12px;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.music-visualizer__bar-transport {
+	display: flex;
+	align-items: center;
+	gap: clamp(6px, 0.8vw, 14px);
+}
+
+.music-visualizer__bar-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border: none;
+	border-radius: 9999px;
+	background: transparent;
+	color: rgba(255, 255, 255, 0.62);
+	cursor: pointer;
+	transition:
+		color 0.2s ease,
+		background-color 0.2s ease,
+		transform 0.2s ease;
+}
+
+.music-visualizer__bar-btn--sm {
+	width: 38px;
+	height: 38px;
+}
+
+.music-visualizer__bar-btn:hover {
+	color: #fff;
+	background: rgba(255, 255, 255, 0.12);
+	transform: translateY(-1px);
+}
+
+.music-visualizer__bar-btn.is-active {
+	color: var(--mv-accent);
+}
+
+.music-visualizer__bar-btn--play {
+	width: 48px;
+	height: 48px;
+	background: var(--mv-accent);
+	color: #04121a;
+	box-shadow: 0 0 18px var(--mv-accent-glow);
+}
+
+.music-visualizer__bar-btn--play:hover {
+	background: var(--mv-accent);
+	color: #04121a;
+	transform: scale(1.06);
+}
+
+.music-visualizer__bar-progress {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+.music-visualizer__bar-time {
+	flex: 0 0 auto;
+	width: 40px;
+	color: rgba(255, 255, 255, 0.5);
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+}
+
+.music-visualizer__bar-track {
+	position: relative;
+	display: flex;
+	flex: 1;
+	align-items: center;
+	min-width: 60px;
+	height: 26px;
+	cursor: pointer;
+	touch-action: none;
+}
+
+.music-visualizer__bar-track.is-disabled {
+	cursor: default;
+}
+
+.music-visualizer__bar-rail {
+	position: absolute;
+	inset: auto 0;
+	height: 4px;
+	overflow: hidden;
+	border-radius: 9999px;
+	background: rgba(255, 255, 255, 0.16);
+}
+
+.music-visualizer__bar-fill {
+	position: absolute;
+	inset: 0 auto 0 0;
+	border-radius: 9999px;
+	background: linear-gradient(
+		90deg,
+		var(--mv-accent),
+		color-mix(in oklch, var(--mv-accent), #fff 40%)
+	);
+	box-shadow: 0 0 10px var(--mv-accent-glow);
+}
+
+.music-visualizer__bar-thumb {
+	position: absolute;
+	top: 50%;
+	left: 0;
+	z-index: 1;
+	width: 12px;
+	height: 12px;
+	border: 2px solid var(--mv-accent);
+	border-radius: 50%;
+	background: rgba(0, 12, 22, 0.85);
+	box-shadow: 0 0 10px var(--mv-accent-glow);
+	transform: translate(-50%, -50%);
+	transition:
+		width 0.2s ease,
+		height 0.2s ease;
+	pointer-events: none;
+}
+
+.music-visualizer__bar-track.is-hover .music-visualizer__bar-thumb,
+.music-visualizer__bar-track.is-dragging .music-visualizer__bar-thumb {
+	width: 16px;
+	height: 16px;
+}
+
+.music-visualizer__bar-tools {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.music-visualizer__bar-btn:focus-visible,
+.music-visualizer__bar-track:focus-visible {
+	outline: 2px solid rgba(39, 226, 255, 0.72);
+	outline-offset: 3px;
+}
+
+/* 桌面布局参考 SPlayer：左侧大封面 / 唱片，右侧歌词，底部贯穿播放栏 */
 @media (min-width: 769px) {
 	.music-visualizer__desktop-layout {
 		position: fixed;
 		inset: 0;
 		z-index: 35;
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) clamp(40px, 4vw, 72px) minmax(288px, 340px);
+		grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+		grid-template-rows: minmax(0, 1fr) auto;
+		grid-template-areas:
+			"cover lyrics"
+			"bar bar";
 		align-items: center;
-		gap: clamp(12px, 1.6vw, 32px);
-		padding: clamp(92px, 11vh, 132px) clamp(28px, 4.4vw, 84px) clamp(40px, 6vh, 76px);
+		column-gap: clamp(20px, 3.4vw, 72px);
+		row-gap: clamp(12px, 2vh, 28px);
+		padding: clamp(84px, 10vh, 120px) clamp(24px, 4vw, 76px) clamp(20px, 3vh, 36px);
 		pointer-events: none;
 	}
 
@@ -3125,123 +3384,46 @@ html:has(.music-visualizer-page) .footer {
 		display: contents;
 	}
 
-	.music-visualizer__card,
-	.music-visualizer__playlist-view,
-	.music-visualizer__settings-view {
-		grid-column: 3;
-		grid-row: 1;
-		justify-self: end;
+	/* ── 左：大封面 ── */
+	.music-visualizer__cover-area {
+		grid-area: cover;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-self: center;
 		align-self: center;
-		width: min(100%, 340px);
-		height: min(76vh, 760px);
+		gap: clamp(14px, 2vh, 26px);
+		width: 100%;
+		min-width: 0;
 		pointer-events: auto;
 	}
 
-	/* 窄卡里放不下原来那么大的唱片 */
-	.music-visualizer__card {
-		padding: clamp(18px, 1.8vw, 26px) clamp(14px, 1.4vw, 20px);
-		border-radius: 26px;
-	}
-
 	/* 必须写在 __record 上：它自己声明了 --record-cover-size，会盖掉继承值 */
-	.music-visualizer__record {
-		--record-cover-size: clamp(104px, 10vw, 146px);
+	.music-visualizer__cover-area .music-visualizer__record {
+		--record-cover-size: clamp(190px, 21vw, 330px);
 	}
 
-	.music-visualizer__toolbar {
-		flex-wrap: nowrap;
-		justify-content: space-between;
-		gap: 2px;
-	}
-
-	.music-visualizer__tool-btn {
-		width: clamp(34px, 2.8vw, 40px);
-		height: clamp(34px, 2.8vw, 40px);
-	}
-
-	.music-visualizer__tool-btn--play {
-		width: clamp(44px, 3.4vw, 52px);
-		height: clamp(44px, 3.4vw, 52px);
-	}
-
-	.music-visualizer__tool-btn .inline-icon {
-		font-size: 1.15rem;
-	}
-
-	.music-visualizer__tool-btn--play .inline-icon {
-		font-size: 1.6rem;
-	}
-
-	.music-visualizer__playlist-view,
-	.music-visualizer__settings-view {
-		position: relative;
-		inset: auto;
-		transform: none;
-	}
-
-	.music-visualizer__divider-meta {
-		position: relative;
-		grid-column: 2;
-		grid-row: 1;
-		z-index: 4;
-		justify-self: stretch;
-		align-self: center;
-		width: 100%;
-		height: clamp(260px, 34vh, 380px);
-		min-height: 0;
-		color: rgba(255, 255, 255, 0.88);
-		font-weight: 700;
-		text-shadow: 0 2px 12px rgba(0, 0, 0, 0.62);
-		pointer-events: none;
-		transform: none;
-	}
-
-	.music-visualizer__divider-meta::before {
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		left: 50%;
-		width: 1px;
-		background: rgba(255, 255, 255, 0.42);
-		box-shadow: 0 0 14px rgba(39, 226, 255, 0.18);
-		content: "";
-	}
-
-	.music-visualizer__divider-title,
-	.music-visualizer__divider-artist {
-		position: absolute;
+	/* ── 底：贯穿式播放控制栏 ── */
+	.music-visualizer__player-bar {
+		grid-area: bar;
 		display: block;
-		max-height: 42%;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		writing-mode: vertical-rl;
+		width: 100%;
+		pointer-events: none;
 	}
 
-	.music-visualizer__divider-title {
-		top: 8%;
-		left: calc(50% - clamp(30px, 3.1vw, 52px));
-		font-size: clamp(18px, 1.65vw, 28px);
-		letter-spacing: 0;
+	/* 桌面不再使用紧凑卡片（那是移动端的形态） */
+	.music-visualizer__card {
+		display: none;
 	}
 
-	.music-visualizer__divider-artist {
-		right: calc(50% - clamp(16px, 2vw, 30px));
-		bottom: 8%;
-		color: rgba(255, 255, 255, 0.56);
-		font-size: clamp(13px, 1.1vw, 18px);
-		font-weight: 600;
-		letter-spacing: 0;
-	}
-
+	/* ── 右：歌词 ── */
 	.music-visualizer__lyrics {
 		position: relative;
-		grid-column: 1;
-		grid-row: 1;
+		grid-area: lyrics;
 		align-self: center;
 		justify-self: stretch;
 		width: 100%;
-		height: min(76vh, 760px);
+		height: min(56vh, 600px);
 		left: auto;
 		top: auto;
 		transform: none;
@@ -3261,22 +3443,19 @@ html:has(.music-visualizer-page) .footer {
 
 	.music-visualizer__lyric-line,
 	.music-visualizer__lyrics--playing .music-visualizer__lyric-line {
-		min-height: 66px;
-		font-size: clamp(20px, 1.5vw, 24px);
+		min-height: 62px;
+		font-size: clamp(19px, 1.45vw, 23px);
 	}
 
 	/* 播放中当前行要明显大于上下文行，歌词才是主角 */
 	.music-visualizer__lyrics--playing .music-visualizer__lyric-line--active {
-		min-height: 104px;
+		min-height: 98px;
 		margin-block: clamp(6px, 1vh, 14px);
-		font-size: clamp(26px, 2.3vw, 38px);
+		font-size: clamp(25px, 2.2vw, 36px);
 		line-height: 1.34;
 	}
 
-	/* 歌词占满整列后，当前行会被放大两次：自身的 scale，加上 stage 的 rotateY + 透视投影
-	   （1440px 下实测投影系数约 1.14）。两者相乘后渲染宽度会超过容器裁剪边界，
-	   长行尾部的字会被切掉。实测 scale(1.12) 时右侧尚余约 148px、scale(1.4) 时已超出约 50px，
-	   故取 1.28 作为上限；下面 @keyframes music-lyric-focus-in 的终态必须与这里保持一致。 */
+	/* 与 @keyframes music-lyric-focus-in 的终态保持一致，避免放大后右侧被裁切 */
 	.music-visualizer__lyric-line--active .music-visualizer__lyric-text {
 		width: 72%;
 		max-width: 72%;
@@ -3296,6 +3475,19 @@ html:has(.music-visualizer-page) .footer {
 
 	.music-visualizer__lyrics-empty {
 		padding-inline: 0;
+	}
+
+	/* ── 浮层：歌单 / 设置（右侧抽屉） ── */
+	.music-visualizer__playlist-view,
+	.music-visualizer__settings-view {
+		position: fixed;
+		top: clamp(84px, 10vh, 120px);
+		right: clamp(20px, 3vw, 56px);
+		bottom: clamp(104px, 14vh, 140px);
+		z-index: 60;
+		width: min(420px, 34vw);
+		height: auto;
+		pointer-events: auto;
 	}
 
 	.music-visualizer__playlist-item {
