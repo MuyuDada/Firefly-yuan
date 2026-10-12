@@ -147,6 +147,13 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 			showOnPostPage: false,
 		},
 		{
+			// 组件类型：电脑状态组件（本机上报 → Cloudflare Worker → 只读展示）
+			type: "deviceStatus",
+			enable: true,
+			position: "top",
+			showOnPostPage: false,
+		},
+		{
 			// 组件类型：最新动态组件
 			type: "dynamic",
 			// 是否启用该组件

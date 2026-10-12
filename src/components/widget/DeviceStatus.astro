@@ -1,0 +1,337 @@
+---
+import WidgetLayout from "@/components/common/WidgetLayout.astro";
+import { deviceStatusConfig } from "@/config";
+import "@/styles/components/device-status.css";
+
+interface Props {
+	class?: string;
+	style?: string;
+}
+
+const { class: className, style } = Astro.props;
+
+// 配置在构建期序列化后交给客户端脚本，避免把 126 条映射写死在模板里
+const configJson = JSON.stringify(deviceStatusConfig);
+---
+
+<WidgetLayout
+	id="device-status-widget"
+	name="电脑状态"
+	class:list={["device-status-widget", className]}
+	style={style}
+>
+	<span slot="title-icon" class="device-status__badge" data-device-badge>
+		<span class="device-status__dot"></span>
+		<span data-device-badge-text>连接中</span>
+	</span>
+
+	<div class="device-status__body">
+		<span class="device-status__icon">
+			<iconify-icon data-device-glyph icon="fa7-solid:desktop"></iconify-icon>
+		</span>
+		<div class="device-status__meta">
+			<div class="device-status__app" data-device-app>正在获取…</div>
+			<div class="device-status__quip" data-device-quip>正在读取本机状态</div>
+		</div>
+	</div>
+
+	<div class="device-status__title" data-device-title hidden></div>
+
+	<div class="device-status__foot">
+		<span class="device-status__updated" data-device-updated>--</span>
+		<button
+			type="button"
+			class="device-status__refresh"
+			data-device-refresh
+			aria-label="刷新电脑状态"
+			title="刷新"
+		>
+			<iconify-icon icon="fa7-solid:rotate-right"></iconify-icon>
+		</button>
+	</div>
+</WidgetLayout>
+
+<script is:inline define:vars={{ configJson }}>
+	(function () {
+		var CONFIG = {};
+		try {
+			CONFIG = JSON.parse(configJson);
+		} catch (e) {
+			CONFIG = {};
+		}
+
+		// 只读接口。留空 = 功能未启用，卡片整块隐藏，不留空白。
+		if (!CONFIG.endpoint) {
+			document.querySelectorAll(".device-status-widget").forEach(function (el) {
+				el.hidden = true;
+			});
+			return;
+		}
+
+		// 按需加载 Iconify 运行时（动态切换图标用），与 Weather.astro 同一套做法
+		function ensureIconifyLoaded() {
+			if (
+				typeof customElements !== "undefined" &&
+				customElements.get("iconify-icon")
+			) {
+				return Promise.resolve();
+			}
+			if (window.__iconifyLoading) return window.__iconifyLoading;
+			window.__iconifyLoading = new Promise(function (resolve) {
+				var s = document.createElement("script");
+				s.src =
+					"https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js";
+				s.onload = function () {
+					resolve();
+				};
+				s.onerror = function () {
+					resolve(); // 加载失败也不阻塞状态显示
+				};
+				document.head.appendChild(s);
+			});
+			return window.__iconifyLoading;
+		}
+
+		var TONES = {
+			online: { text: "在线", tone: "ok" },
+			away: { text: "离开", tone: "warn" },
+			locked: { text: "锁屏", tone: "idle" },
+		};
+
+		function iconFor(processName, appName) {
+			var map = CONFIG.iconMap || {};
+			var key = String(processName || "").toLowerCase();
+			if (key && map[key]) return map[key];
+			var name = String(appName || "");
+			var keywords = CONFIG.keywordIcons || [];
+			for (var i = 0; i < keywords.length; i++) {
+				if (name.indexOf(keywords[i].match) !== -1) return keywords[i].icon;
+			}
+			return "fa7-solid:desktop";
+		}
+
+		function formatAge(reportedAt) {
+			if (!reportedAt) return "--";
+			var diff = Math.max(0, Date.now() - Number(reportedAt)) / 1000;
+			if (diff < 60) return "刚刚更新";
+			if (diff < 3600) return Math.floor(diff / 60) + " 分钟前更新";
+			var d = new Date(Number(reportedAt));
+			var hh = String(d.getHours()).padStart(2, "0");
+			var mm = String(d.getMinutes()).padStart(2, "0");
+			return hh + ":" + mm + " 更新";
+		}
+
+		function defaultQuip(state, idleSeconds) {
+			if (state === "locked") return "电脑锁屏了，人不在跟前。";
+			if (state === "away") {
+				var mins = Math.floor((Number(idleSeconds) || 0) / 60);
+				return mins > 0
+					? "已经 " + mins + " 分钟没有操作了。"
+					: "暂时离开了一下。";
+			}
+			if (state === "online") return "正在使用中。";
+			return "状态未知。";
+		}
+
+		function initWidget(container) {
+			// 幂等守卫：swup 切页后侧栏会被整体替换，脚本需要能重新挂载
+			if (!container || container.dataset.deviceInited === "true") return;
+			container.dataset.deviceInited = "true";
+
+			var root = container.closest("widget-layout") || container;
+			var badge = container.querySelector("[data-device-badge]");
+			var badgeText = container.querySelector("[data-device-badge-text]");
+			var glyph = container.querySelector("[data-device-glyph]");
+			var appEl = container.querySelector("[data-device-app]");
+			var quipEl = container.querySelector("[data-device-quip]");
+			var titleEl = container.querySelector("[data-device-title]");
+			var updatedEl = container.querySelector("[data-device-updated]");
+			var refreshBtn = container.querySelector("[data-device-refresh]");
+
+			var timer = null;
+			var inFlight = false;
+			var lastSuccessAt = 0;
+
+			function setBadge(text, tone) {
+				if (badgeText) badgeText.textContent = text;
+				if (badge) {
+					badge.classList.remove(
+						"is-ok",
+						"is-warn",
+						"is-idle",
+						"is-unknown",
+						"is-off",
+					);
+					badge.classList.add("is-" + tone);
+				}
+			}
+
+			function setIcon(name) {
+				if (!glyph) return;
+				// iconify-icon 只在 icon 属性变化时重渲染，所以必须写属性而不是类名
+				glyph.setAttribute("icon", name || "fa7-solid:desktop");
+			}
+
+			function setState(state) {
+				root.dataset.state = state || "unknown";
+			}
+
+			function renderOffline(reason, record) {
+				setState("offline");
+				setBadge("离线", "off");
+				setIcon("fa7-solid:power-off");
+				if (appEl) appEl.textContent = "电脑已离线";
+				if (quipEl) {
+					quipEl.textContent =
+						reason || "本机上报已中断，可能关机或断网。";
+				}
+				if (titleEl) {
+					titleEl.textContent = "";
+					titleEl.hidden = true;
+				}
+				if (updatedEl) {
+					// 显示「本机上次上报」的时间，而不是我们上次请求成功的时间，
+					// 否则离线时会出现「刚刚更新」这种看起来数据很新的误导文案
+					updatedEl.textContent =
+						record && record.reportedAt
+							? formatAge(record.reportedAt)
+							: "暂无数据";
+				}
+			}
+
+			function renderStatus(payload) {
+				if (!payload || payload.success === false) {
+					renderOffline("暂时读不到状态，稍后自动重试。", null);
+					return;
+				}
+				if (payload.reason === "no_report_yet") {
+					renderOffline("本机还没有上报过状态。", null);
+					return;
+				}
+				if (!payload.online || !payload.record) {
+					renderOffline(
+						"本机上报已中断，可能关机或断网。",
+						payload.record,
+					);
+					return;
+				}
+
+				var record = payload.record;
+				var state = record.state || "unknown";
+				var meta = TONES[state];
+				setState(state);
+				if (meta) setBadge(meta.text, meta.tone);
+				else setBadge("未知", "unknown");
+
+				var appName = record.app || record.process || "未知应用";
+				setIcon(iconFor(record.process, appName));
+				if (appEl) appEl.textContent = appName;
+				if (quipEl) {
+					quipEl.textContent =
+						record.quip ||
+						defaultQuip(state, record.idleSeconds);
+				}
+				if (titleEl) {
+					if (record.title) {
+						titleEl.textContent = record.title;
+						titleEl.hidden = false;
+					} else {
+						titleEl.textContent = "";
+						titleEl.hidden = true;
+					}
+				}
+				if (updatedEl) updatedEl.textContent = formatAge(record.reportedAt);
+			}
+
+			function fetchStatus(manual) {
+				if (inFlight) return;
+				inFlight = true;
+				if (manual && refreshBtn) refreshBtn.classList.add("is-spinning");
+
+				var url =
+					CONFIG.endpoint +
+					(CONFIG.endpoint.indexOf("?") === -1 ? "?" : "&") +
+					"t=" +
+					Date.now();
+
+				var controller =
+					typeof AbortController !== "undefined"
+						? new AbortController()
+						: null;
+				var timeoutId = controller
+					? setTimeout(function () {
+							controller.abort();
+						}, CONFIG.requestTimeoutMs || 8000)
+					: null;
+
+				fetch(url, {
+					cache: "no-store",
+					signal: controller ? controller.signal : undefined,
+				})
+					.then(function (res) {
+						if (!res.ok) throw new Error("HTTP " + res.status);
+						return res.json();
+					})
+					.then(function (payload) {
+						lastSuccessAt = Date.now();
+						renderStatus(payload);
+					})
+					.catch(function (err) {
+						console.warn("[DeviceStatus] 获取失败：" + err.message);
+						// 失败只改角标，保留上次内容，避免网络抖动把卡片闪成空白
+						renderOffline("暂时读不到状态，稍后自动重试。", null);
+					})
+					.finally(function () {
+						if (timeoutId) clearTimeout(timeoutId);
+						inFlight = false;
+						if (refreshBtn) {
+							refreshBtn.classList.remove("is-spinning");
+						}
+					});
+			}
+
+			function startPolling() {
+				if (timer) clearInterval(timer);
+				var interval = Math.max(
+					10,
+					Number(CONFIG.refreshIntervalSeconds) || 30,
+				);
+				timer = setInterval(function () {
+					// 后台标签页的定时器会被浏览器降频，这里再兜一层
+					if (document.visibilityState === "visible") fetchStatus(false);
+				}, interval * 1000);
+			}
+
+			if (refreshBtn) {
+				refreshBtn.addEventListener("click", function () {
+					fetchStatus(true);
+				});
+			}
+
+			// 切回前台时若距上次成功太久，立刻补一次
+			document.addEventListener("visibilitychange", function () {
+				if (document.visibilityState !== "visible") return;
+				var gap = Date.now() - lastSuccessAt;
+				var threshold =
+					(Number(CONFIG.visibilityRefreshAfterSeconds) || 20) * 1000;
+				if (lastSuccessAt === 0 || gap >= threshold) fetchStatus(false);
+			});
+
+			fetchStatus(false);
+			startPolling();
+		}
+
+		function initAll() {
+			document.querySelectorAll(".device-status-widget").forEach(function (el) {
+				initWidget(el);
+			});
+		}
+
+		ensureIconifyLoaded().then(initAll);
+
+		// 侧栏是 swup 容器（#left-sidebar-dynamic / #right-sidebar-dynamic），
+		// 切页时 DOM 被整体替换且内联脚本不会重跑，所以必须重新挂载
+		document.addEventListener("swup:contentReplaced", initAll);
+		document.addEventListener("swup:content:replace", initAll);
+	})();
+</script>

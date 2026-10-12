@@ -1,0 +1,285 @@
+/* 电脑状态组件
+ *
+ * 数据来自本机 PowerShell 上报 → Cloudflare Worker + KV，页面只读。
+ * 状态色统一收在 --device-tone，由 data-state 一次性下发给角标、图标底衬、标题竖条三处，
+ * 扫一眼颜色就知道状态，不用读文字。
+ */
+
+.device-status-widget {
+	/* 亮色状态色 */
+	--device-ok: oklch(0.62 0.14 155);
+	--device-warn: oklch(0.7 0.14 65);
+	--device-idle: oklch(0.6 0.03 250);
+	--device-off: oklch(0.6 0.17 25);
+	--device-tone: var(--device-idle);
+}
+
+:root.dark .device-status-widget {
+	/* 暗色下提亮，保证在深色卡片上可读 */
+	--device-ok: oklch(0.78 0.16 155);
+	--device-warn: oklch(0.8 0.14 70);
+	--device-idle: oklch(0.72 0.03 250);
+	--device-off: oklch(0.75 0.16 25);
+}
+
+.device-status-widget[data-state="online"] {
+	--device-tone: var(--device-ok);
+}
+.device-status-widget[data-state="away"] {
+	--device-tone: var(--device-warn);
+}
+.device-status-widget[data-state="locked"] {
+	--device-tone: var(--device-idle);
+}
+.device-status-widget[data-state="offline"] {
+	--device-tone: var(--device-off);
+}
+
+/* —— 标题右侧的状态角标 —— */
+.device-status__badge {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px 3px 8px;
+	border-radius: 999px;
+	color: var(--device-tone);
+	background: color-mix(in oklch, var(--device-tone) 14%, transparent);
+	border: 1px solid color-mix(in oklch, var(--device-tone) 26%, transparent);
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.5;
+	letter-spacing: 0.5px;
+	transition:
+		color 150ms ease,
+		background-color 150ms ease,
+		border-color 150ms ease;
+}
+
+/* 角标自带兜底色：脚本只切 class 也能正确上色 */
+.device-status__badge.is-ok {
+	--device-tone: var(--device-ok);
+}
+.device-status__badge.is-warn {
+	--device-tone: var(--device-warn);
+}
+.device-status__badge.is-idle,
+.device-status__badge.is-unknown {
+	--device-tone: var(--device-idle);
+}
+.device-status__badge.is-off {
+	--device-tone: var(--device-off);
+}
+
+.device-status__dot {
+	position: relative;
+	flex: none;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: currentColor;
+	animation: device-status-pulse 2s ease-in-out infinite;
+}
+
+@keyframes device-status-pulse {
+	0%,
+	100% {
+		opacity: 1;
+		box-shadow: 0 0 0 0 currentColor;
+	}
+	50% {
+		opacity: 0.65;
+		box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 22%, transparent);
+	}
+}
+
+/* —— 应用主体 —— */
+.device-status__body {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.75rem 0 0.25rem;
+}
+
+.device-status__icon {
+	position: relative;
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	border-radius: 14px;
+	color: var(--device-tone);
+	background: linear-gradient(
+		150deg,
+		color-mix(in oklch, var(--device-tone) 24%, transparent),
+		color-mix(in oklch, var(--device-tone) 7%, transparent)
+	);
+	border: 1px solid color-mix(in oklch, var(--device-tone) 24%, transparent);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	font-size: 19px;
+	line-height: 1;
+	transition:
+		color 200ms ease,
+		background-color 200ms ease,
+		border-color 200ms ease;
+}
+
+.device-status__icon iconify-icon {
+	display: inline-flex;
+	width: 1em;
+	height: 1em;
+}
+
+.device-status__meta {
+	flex: 1;
+	min-width: 0;
+}
+
+.device-status__app {
+	overflow: hidden;
+	color: var(--deep-text);
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 20px;
+	letter-spacing: 0.2px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+:root.dark .device-status__app {
+	/* --deep-text 在暗色主题下没有被重定义，这里补上 */
+	color: oklch(0.93 0.01 var(--hue));
+}
+
+.device-status__quip {
+	margin-top: 3px;
+	overflow: hidden;
+	color: var(--content-meta);
+	font-size: 12px;
+	line-height: 17px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* —— 窗口标题：左侧一道状态色竖线，不用整块灰底 —— */
+.device-status__title {
+	position: relative;
+	margin-top: 0.5rem;
+	padding: 1px 0 1px 10px;
+	overflow: hidden;
+	color: var(--content-meta);
+	font-size: 11.5px;
+	line-height: 16px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	opacity: 0.8;
+}
+
+.device-status__title::before {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 0;
+	width: 2px;
+	height: 12px;
+	margin-top: -6px;
+	border-radius: 1px;
+	background: var(--device-tone);
+	opacity: 0.6;
+}
+
+.device-status__title[hidden] {
+	display: none;
+}
+
+/* —— 底部：更新时间 + 刷新 —— */
+.device-status__foot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 0.75rem;
+	padding-top: 0.5rem;
+	border-top: 1px solid var(--line-divider);
+}
+
+.device-status__updated {
+	color: var(--content-meta);
+	font-size: 11px;
+	letter-spacing: 0.3px;
+	opacity: 0.8;
+}
+
+.device-status__refresh {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--content-meta);
+	font-size: 12px;
+	cursor: pointer;
+	opacity: 0.7;
+	transition:
+		color 150ms ease,
+		background-color 150ms ease,
+		opacity 150ms ease;
+}
+
+.device-status__refresh iconify-icon {
+	display: inline-flex;
+	width: 1em;
+	height: 1em;
+}
+
+.device-status__refresh:hover {
+	color: var(--primary);
+	background: var(--btn-regular-bg);
+	opacity: 1;
+}
+
+.device-status__refresh.is-spinning iconify-icon {
+	animation: device-status-spin 0.8s linear infinite;
+}
+
+@keyframes device-status-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* —— 离线时整体降噪 —— */
+.device-status-widget[data-state="offline"] .device-status__app {
+	color: var(--content-meta);
+}
+
+.device-status-widget[data-state="offline"] .device-status__icon {
+	background: linear-gradient(
+		150deg,
+		color-mix(in oklch, var(--device-tone) 14%, transparent),
+		transparent
+	);
+}
+
+@media (max-width: 480px) {
+	.device-status__icon {
+		width: 40px;
+		height: 40px;
+		border-radius: 13px;
+		font-size: 17px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.device-status__dot {
+		animation: none;
+	}
+	.device-status__refresh.is-spinning iconify-icon {
+		animation: none;
+	}
+}

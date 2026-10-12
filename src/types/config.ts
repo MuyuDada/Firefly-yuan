@@ -12,6 +12,11 @@ export type {
 } from "./booknavConfig";
 export type { CommentConfig } from "./commentConfig";
 export type { CoverImageConfig } from "./coverImageConfig";
+export type {
+	DeviceStatusConfig,
+	DeviceStatusKeywordIcon,
+	DeviceStatusState,
+} from "./deviceStatusConfig";
 export type { DisplaySettingsConfig } from "./displaySettingsConfig";
 export type { DynamicConfig } from "./dynamicConfig";
 export type {
