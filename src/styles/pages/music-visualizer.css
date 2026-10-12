@@ -1298,96 +1298,6 @@ html:has(.music-visualizer-page) .footer {
 	transform: translate(-50%, 0);
 }
 
-/* 音量悬停竖向拖拽（弹层紧贴按钮，避免悬停缝隙丢失） */
-.music-visualizer__volume-pop {
-	position: absolute;
-	bottom: 100%;
-	left: 50%;
-	z-index: 6;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 8px;
-	padding: 12px 8px 14px;
-	border-radius: 12px;
-	background: rgba(10, 14, 20, 0.82);
-	box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
-	opacity: 0;
-	transform: translate(-50%, 6px);
-	transition:
-		opacity 0.2s ease,
-		transform 0.2s ease;
-	pointer-events: none;
-}
-
-.music-visualizer__volume-wrap:hover .music-visualizer__volume-pop,
-.music-visualizer__volume-pop.is-visible {
-	opacity: 1;
-	transform: translate(-50%, 0);
-	pointer-events: auto;
-}
-
-.music-visualizer__volume-value {
-	font-size: 11px;
-	font-variant-numeric: tabular-nums;
-	color: rgba(255, 255, 255, 0.7);
-}
-
-.music-visualizer__volume-vtrack {
-	position: relative;
-	width: 26px;
-	height: 96px;
-	cursor: pointer;
-	touch-action: none;
-}
-
-.music-visualizer__volume-vrail {
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 50%;
-	width: 3px;
-	border-radius: 9999px;
-	background: var(--mv-rail);
-	transform: translateX(-50%);
-}
-
-.music-visualizer__volume-vfill {
-	position: absolute;
-	bottom: 0;
-	left: 50%;
-	width: 3px;
-	border-radius: 9999px;
-	background: var(--mv-accent);
-	box-shadow: 0 0 10px var(--mv-accent-glow);
-	transform: translateX(-50%);
-}
-
-.music-visualizer__volume-vthumb {
-	position: absolute;
-	left: 50%;
-	width: 12px;
-	height: 12px;
-	border: 2px solid var(--mv-accent);
-	border-radius: 50%;
-	background: rgba(0, 12, 22, 0.85);
-	box-shadow:
-		0 0 0 4px rgba(39, 226, 255, 0.08),
-		0 0 12px var(--mv-accent-glow);
-	transform: translate(-50%, 50%);
-	transition:
-		width 0.2s ease,
-		height 0.2s ease;
-}
-
-.music-visualizer__volume-vtrack.is-dragging .music-visualizer__volume-vthumb {
-	width: 16px;
-	height: 16px;
-}
-
-.music-visualizer__tool-btn:focus-visible,
-.music-visualizer__progress-track:focus-visible,
-.music-visualizer__volume-vtrack:focus-visible,
 .music-visualizer__playlist-back:focus-visible {
 	outline: 2px solid rgba(39, 226, 255, 0.72);
 	outline-offset: 3px;
@@ -2096,41 +2006,64 @@ html:has(.music-visualizer-page) .footer {
 	outline-offset: 4px;
 }
 
-/* 主题色色板 */
-.music-visualizer__settings-swatches {
+/* 主题色：三种取色来源（封面取色 / 跟随主题 / 彩虹渐变） */
+.music-visualizer__color-modes {
 	display: grid;
-	grid-template-columns: repeat(6, 1fr);
-	gap: 10px;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 8px;
 }
 
-.music-visualizer__swatch {
-	position: relative;
-	height: 34px;
+.music-visualizer__color-mode {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 10px 6px;
 	border: 1px solid rgba(255, 255, 255, 0.14);
 	border-radius: 12px;
-	background: linear-gradient(135deg, var(--swatch-a), var(--swatch-b) 55%, var(--swatch-c));
+	background: rgba(255, 255, 255, 0.04);
+	color: rgba(255, 255, 255, 0.62);
 	cursor: pointer;
 	transition:
-		transform 0.2s ease,
-		box-shadow 0.2s ease,
-		border-color 0.2s ease;
+		color 0.2s ease,
+		background-color 0.2s ease,
+		border-color 0.2s ease,
+		transform 0.2s ease;
 }
 
-.music-visualizer__swatch:hover {
-	transform: translateY(-2px) scale(1.04);
-	box-shadow: 0 0 14px var(--swatch-b);
+.music-visualizer__color-mode:hover {
+	transform: translateY(-1px);
+	border-color: rgba(255, 255, 255, 0.26);
+	background: rgba(255, 255, 255, 0.09);
+	color: #fff;
 }
 
-.music-visualizer__swatch.is-selected {
-	border-color: rgba(255, 255, 255, 0.9);
-	box-shadow:
-		0 0 0 2px var(--swatch-b),
-		0 0 16px var(--swatch-b);
+.music-visualizer__color-mode.is-selected {
+	border-color: var(--mv-accent);
+	background: color-mix(in oklch, var(--mv-accent) 14%, transparent);
+	color: var(--mv-accent);
+	box-shadow: 0 0 14px var(--mv-accent-glow);
 }
 
-.music-visualizer__swatch:focus-visible {
+.music-visualizer__color-mode:focus-visible {
 	outline: 2px solid var(--mv-accent);
 	outline-offset: 3px;
+}
+
+.music-visualizer__color-mode-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 20px;
+	line-height: 1;
+}
+
+.music-visualizer__color-mode-name {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	white-space: nowrap;
 }
 
 /* 歌词动画模式选择：五个模式，窄面板下允许自动换行 */
@@ -2902,9 +2835,17 @@ html:has(.music-visualizer-page) .footer {
 		font-size: 11px;
 	}
 
-	.music-visualizer__swatch {
-		height: 28px;
+	.music-visualizer__color-mode {
+		padding: 8px 4px;
 		border-radius: 10px;
+	}
+
+	.music-visualizer__color-mode-icon {
+		font-size: 18px;
+	}
+
+	.music-visualizer__color-mode-name {
+		font-size: 10px;
 	}
 
 	.music-visualizer__playlist-stage {
@@ -3148,14 +3089,15 @@ html:has(.music-visualizer-page) .footer {
 }
 
 /* ── 底部播放控制栏 ── */
+/* ── 底部播放控制栏 ──
+   结构参考 SPlayer：进度条独占一行贯穿，下方是「左信息 · 中传输 · 右工具」控制行。 */
 .music-visualizer__player-bar-inner {
-	display: grid;
-	grid-template-columns: minmax(150px, 1fr) auto minmax(220px, 1.5fr) auto;
-	align-items: center;
-	gap: clamp(14px, 1.8vw, 32px);
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
 	max-width: min(1440px, 96vw);
 	margin-inline: auto;
-	padding: 10px clamp(14px, 1.6vw, 24px);
+	padding: 12px clamp(14px, 1.6vw, 24px) 10px;
 	border: 1px solid rgba(255, 255, 255, 0.08);
 	border-radius: 20px;
 	background:
@@ -3167,6 +3109,13 @@ html:has(.music-visualizer-page) .footer {
 		0 18px 44px rgba(0, 0, 0, 0.42),
 		inset 0 1px 0 rgba(255, 255, 255, 0.07);
 	pointer-events: auto;
+}
+
+.music-visualizer__bar-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+	align-items: center;
+	gap: clamp(14px, 1.8vw, 32px);
 }
 
 .music-visualizer__bar-now {
@@ -3352,12 +3301,74 @@ html:has(.music-visualizer-page) .footer {
 .music-visualizer__bar-tools {
 	display: flex;
 	align-items: center;
-	gap: 2px;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+/* ── 音量：图标 + 横向滑块（参考 SPlayer，hover 时轨道变粗） ── */
+.music-visualizer__volume-inline {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.music-visualizer__volume-btn {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	padding: 0;
+	border: none;
+	border-radius: 8px;
+	background: transparent;
+	color: rgba(255, 255, 255, 0.6);
+	cursor: pointer;
+	transition:
+		color 0.2s ease,
+		background-color 0.2s ease;
+}
+
+.music-visualizer__volume-btn:hover {
+	background: rgba(255, 255, 255, 0.1);
+	color: #fff;
+}
+
+.music-visualizer__volume-slider {
+	position: relative;
+	flex: 0 1 auto;
+	width: clamp(72px, 7vw, 108px);
+	min-width: 56px;
+	height: 6px;
+	border-radius: 9999px;
+	background: rgba(255, 255, 255, 0.16);
+	overflow: hidden;
+	cursor: pointer;
+	touch-action: none;
+	transition: height 0.15s ease;
+}
+
+.music-visualizer__volume-slider:hover,
+.music-visualizer__volume-slider.is-dragging {
+	height: 9px;
+}
+
+.music-visualizer__volume-slider-fill {
+	height: 100%;
+	border-radius: inherit;
+	background: var(--mv-accent);
+	box-shadow: 0 0 10px var(--mv-accent-glow);
+	transition: width 0.1s linear;
 }
 
 .music-visualizer__bar-btn:focus-visible,
-.music-visualizer__bar-track:focus-visible {
-	outline: 2px solid rgba(39, 226, 255, 0.72);
+.music-visualizer__bar-track:focus-visible,
+.music-visualizer__volume-slider:focus-visible,
+.music-visualizer__volume-btn:focus-visible {
+	outline: 2px solid var(--mv-accent);
 	outline-offset: 3px;
 }
 

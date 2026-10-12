@@ -2,10 +2,20 @@
 import { onDestroy, onMount } from "svelte";
 import { musicPlayerConfig } from "@/config/musicConfig";
 import { AudioAnalyzer } from "./AudioAnalyzer";
+import {
+	css,
+	extractCoverColor,
+	hexToRgb,
+	hslToRgb,
+	paletteFromBase,
+	paletteFromHue,
+	type Rgb,
+	type VizPalette,
+} from "./colorUtils";
 import LyricsOverlay from "./LyricsOverlay.svelte";
 import ThreeScene from "./ThreeScene.svelte";
 import VisualizerControls from "./VisualizerControls.svelte";
-import { getColorPreset, vizSettings } from "./visualizerSettings.svelte";
+import { vizPalette, vizSettings } from "./visualizerSettings.svelte";
 
 const audioAnalyzer = new AudioAnalyzer();
 let sceneReady = $state(false);
@@ -16,34 +26,8 @@ let backgroundColor = $state(
 let rootEl: HTMLDivElement | undefined;
 let accentRaf = 0;
 
-type Rgb = [number, number, number];
-
-function hexToRgb(hex: string): Rgb {
-	const value = hex.replace("#", "");
-	const num = Number.parseInt(
-		value.length === 3 ? value.replace(/./g, "$&$&") : value,
-		16,
-	);
-	if (Number.isNaN(num)) return [39, 226, 255];
-	return [(num >> 16) & 0xff, (num >> 8) & 0xff, num & 0xff];
-}
-
-function hslToRgb(h: number, s: number, l: number): Rgb {
-	const a = s * Math.min(l, 1 - l);
-	const f = (n: number) => {
-		const k = (n + h * 12) % 12;
-		return l - a * Math.max(-1, Math.min(Math.min(k - 3, 9 - k), 1));
-	};
-	return [
-		Math.round(f(0) * 255),
-		Math.round(f(8) * 255),
-		Math.round(f(4) * 255),
-	];
-}
-
-function css(rgb: Rgb, alpha: number) {
-	return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
-}
+// 当前曲目封面，cover 取色模式的输入
+let coverUrl = $state<string | null>(null);
 
 // 把主题强调色同步到 CSS 变量，进度条 / 滑块 / 描边等 UI 跟随主题色。
 // 多彩循环时每帧更新（只写这一个元素的行内样式，不走 Svelte 重渲染）。
@@ -54,14 +38,24 @@ function applyAccentVars(rgb: Rgb) {
 	rootEl.style.setProperty("--mv-accent-glow", css(rgb, 0.52));
 }
 
-$effect(() => {
-	const preset = getColorPreset(vizSettings.presetId);
-	if (!vizSettings.rainbow) {
-		cancelAnimationFrame(accentRaf);
-		accentRaf = 0;
-		applyAccentVars(hexToRgb(preset.accent));
-		return;
-	}
+// 统一出口：更新共享调色板（ThreeScene 消费）+ 同步 CSS 变量
+function applyPalette(palette: VizPalette) {
+	vizPalette.palette = palette;
+	applyAccentVars(hexToRgb(palette.accent));
+}
+
+// 读取博客全局主题色相（Layout.astro / setting-utils 写在 :root 上）
+function readGlobalHue(): number {
+	if (typeof document === "undefined") return 250;
+	const raw = getComputedStyle(document.documentElement).getPropertyValue(
+		"--hue",
+	);
+	const n = Number.parseFloat(raw);
+	return Number.isFinite(n) ? n : 250;
+}
+
+function startRainbowAccent() {
+	if (accentRaf) return;
 	const start = performance.now();
 	const tick = () => {
 		const hue = (((performance.now() - start) / 1000) * 0.04) % 1;
@@ -69,9 +63,52 @@ $effect(() => {
 		accentRaf = requestAnimationFrame(tick);
 	};
 	accentRaf = requestAnimationFrame(tick);
+}
+
+function stopRainbowAccent() {
+	if (!accentRaf) return;
+	cancelAnimationFrame(accentRaf);
+	accentRaf = 0;
+}
+
+// ── 调色板解析器 ────────────────────────────────────────────────
+// 三种模式统一在这里收敛成一份调色板：
+//   rainbow 交给 rAF 逐帧改 CSS 变量，同时把 rainbow 标志交给 ThreeScene
+//   theme   直接由 --hue 推导
+//   cover   异步从封面取色；取不到就退回主题色，保证永远有可用配色
+$effect(() => {
+	const mode = vizSettings.colorMode;
+	const cover = coverUrl;
+
+	if (mode === "rainbow") {
+		vizPalette.rainbow = true;
+		startRainbowAccent();
+		return () => stopRainbowAccent();
+	}
+
+	vizPalette.rainbow = false;
+	stopRainbowAccent();
+
+	if (mode === "theme") {
+		applyPalette(paletteFromHue(readGlobalHue()));
+		return;
+	}
+
+	// cover：没有封面时先用主题色顶上，避免等待期间闪默认青蓝
+	if (!cover) {
+		applyPalette(paletteFromHue(readGlobalHue()));
+		return;
+	}
+
+	let cancelled = false;
+	void extractCoverColor(cover).then((hex) => {
+		if (cancelled) return;
+		applyPalette(
+			hex ? paletteFromBase(hex) : paletteFromHue(readGlobalHue()),
+		);
+	});
 	return () => {
-		cancelAnimationFrame(accentRaf);
-		accentRaf = 0;
+		cancelled = true;
 	};
 });
 
@@ -122,6 +159,26 @@ onMount(() => {
 		connectAudio();
 	}
 
+	// 跟踪当前封面，喂给 cover 取色模式
+	const syncTrack = () => {
+		coverUrl = window.__fireflyMusic?.getState().track?.pic ?? null;
+	};
+	syncTrack();
+	window.addEventListener("fm:init", syncTrack);
+	window.addEventListener("fm:track", syncTrack);
+
+	// 主题色相写在 :root 的行内样式上，用户改主题色时重新推导。
+	// applyPalette 只写 .music-visualizer 的行内样式，不会触发这里的回环。
+	const themeObserver = new MutationObserver(() => {
+		if (vizSettings.colorMode === "theme") {
+			applyPalette(paletteFromHue(readGlobalHue()));
+		}
+	});
+	themeObserver.observe(document.documentElement, {
+		attributes: true,
+		attributeFilter: ["style", "class"],
+	});
+
 	const handleAudioGesture = () => {
 		resumeAudioContext();
 	};
@@ -140,6 +197,10 @@ onMount(() => {
 		document.removeEventListener("pointerdown", handleAudioGesture);
 		document.removeEventListener("touchstart", handleAudioGesture);
 		audio?.removeEventListener("playing", resumeAudioContext);
+		window.removeEventListener("fm:init", syncTrack);
+		window.removeEventListener("fm:track", syncTrack);
+		themeObserver.disconnect();
+		stopRainbowAccent();
 	};
 });
 

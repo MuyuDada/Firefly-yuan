@@ -4,11 +4,11 @@ import { onDestroy, onMount } from "svelte";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import {
-	getColorPreset,
+	COLOR_MODES,
+	type ColorMode,
 	LYRIC_MODES,
 	type LyricMode,
 	persistVizSettings,
-	VIZ_COLOR_PRESETS,
 	vizSettings,
 } from "./visualizerSettings.svelte";
 
@@ -57,6 +57,28 @@ const MODE_LABELS = [
 	i18n(I18nKey.playModeShuffle),
 ];
 
+// 三种主题色来源的展示信息：图标 + 标题 + 一句说明
+const COLOR_MODE_META: Record<
+	ColorMode,
+	{ icon: string; labelKey: I18nKey; hintKey: I18nKey }
+> = {
+	cover: {
+		icon: "material-symbols:image-outline-rounded",
+		labelKey: I18nKey.vizColorCover,
+		hintKey: I18nKey.vizColorCoverHint,
+	},
+	theme: {
+		icon: "material-symbols:palette-outline",
+		labelKey: I18nKey.vizColorTheme,
+		hintKey: I18nKey.vizColorThemeHint,
+	},
+	rainbow: {
+		icon: "material-symbols:gradient-rounded",
+		labelKey: I18nKey.vizColorRainbow,
+		hintKey: I18nKey.vizColorRainbowHint,
+	},
+};
+
 let currentTrack: Track | null = $state(null);
 let playlist: Track[] = $state([]);
 let currentIndex = $state(0);
@@ -85,11 +107,6 @@ const progressDisabled = $derived(!initialized || !currentTrack || !isPlaying);
 function getPercentFromPointerX(track: HTMLElement, clientX: number) {
 	const rect = track.getBoundingClientRect();
 	return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-}
-
-function getPercentFromPointerY(track: HTMLElement, clientY: number) {
-	const rect = track.getBoundingClientRect();
-	return Math.max(0, Math.min(1, 1 - (clientY - rect.top) / rect.height));
 }
 
 // ── Progress (seek) — shared by desktop wave + mobile timeline ──
@@ -130,6 +147,7 @@ function onProgressPointerUp(e: PointerEvent) {
 }
 
 // ── Volume (horizontal) — mobile bottom dock ──
+// ── Volume (horizontal) — 底栏内联滑块 + 移动端卡片 ──
 function setVolumeFromX(track: HTMLElement, clientX: number) {
 	const val = getPercentFromPointerX(track, clientX);
 	volume = val;
@@ -150,38 +168,6 @@ function onVolumePointerMove(e: PointerEvent) {
 }
 
 function onVolumePointerUp(e: PointerEvent) {
-	if (!isDraggingVolume) return;
-	isDraggingVolume = false;
-	if (e.currentTarget instanceof HTMLElement) {
-		try {
-			e.currentTarget.releasePointerCapture(e.pointerId);
-		} catch {
-			/* already released */
-		}
-	}
-}
-
-// ── Volume (vertical) — desktop hover popover ──
-function setVolumeFromY(track: HTMLElement, clientY: number) {
-	const val = getPercentFromPointerY(track, clientY);
-	volume = val;
-	isMuted = false;
-	window.__fireflyMusic?.setVolume(val);
-}
-
-function onVolumeVPointerDown(e: PointerEvent) {
-	const track = e.currentTarget as HTMLElement;
-	track.setPointerCapture(e.pointerId);
-	isDraggingVolume = true;
-	setVolumeFromY(track, e.clientY);
-}
-
-function onVolumeVPointerMove(e: PointerEvent) {
-	if (!isDraggingVolume) return;
-	setVolumeFromY(e.currentTarget as HTMLElement, e.clientY);
-}
-
-function onVolumeVPointerUp(e: PointerEvent) {
 	if (!isDraggingVolume) return;
 	isDraggingVolume = false;
 	if (e.currentTarget instanceof HTMLElement) {
@@ -260,19 +246,14 @@ function toggleSettings() {
 	rightPanelMode = rightPanelMode === "settings" ? "tools" : "settings";
 }
 
-function selectColorPreset(id: string) {
-	vizSettings.presetId = id;
+function selectColorMode(id: ColorMode) {
+	vizSettings.colorMode = id;
 	persistVizSettings();
 }
 
 function onIntensityInput(e: Event) {
 	const value = (e.currentTarget as HTMLInputElement).valueAsNumber;
 	vizSettings.intensity = Number.isFinite(value) ? value : 1;
-	persistVizSettings();
-}
-
-function toggleRainbow() {
-	vizSettings.rainbow = !vizSettings.rainbow;
 	persistVizSettings();
 }
 
@@ -418,61 +399,7 @@ onDestroy(() => {
 	<!-- ── 桌面 · 底：贯穿式播放控制栏 ─────────────────────────── -->
 	<div class="music-visualizer__player-bar" aria-label={i18n(I18nKey.playbackControls)}>
 		<div class="music-visualizer__player-bar-inner">
-			<!-- 正在播放 -->
-			<div class="music-visualizer__bar-now">
-				<div class="music-visualizer__bar-cover">
-					{#if currentTrack?.pic}
-						<img src={currentTrack.pic} alt="" />
-					{:else}
-						<Icon icon="material-symbols:music-note-rounded" size="md" />
-					{/if}
-				</div>
-				<div class="music-visualizer__bar-meta">
-					<span class="music-visualizer__bar-title">
-						{currentTrack?.name || i18n(I18nKey.musicNoPlaying)}
-					</span>
-					<span class="music-visualizer__bar-artist">{currentTrack?.artist || "—"}</span>
-				</div>
-			</div>
-
-			<!-- 传输控制 -->
-			<div class="music-visualizer__bar-transport">
-				<button
-					type="button"
-					class="music-visualizer__bar-btn"
-					onclick={playPrev}
-					title={i18n(I18nKey.musicPrev)}
-					aria-label={i18n(I18nKey.musicPrev)}
-				>
-					<Icon icon="material-symbols:skip-previous-rounded" size="xl" />
-				</button>
-
-				<button
-					type="button"
-					class="music-visualizer__bar-btn music-visualizer__bar-btn--play"
-					onclick={togglePlay}
-					title={isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay)}
-					aria-label={isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay)}
-				>
-					{#if isPlaying}
-						<Icon icon="material-symbols:pause-rounded" size="2xl" />
-					{:else}
-						<Icon icon="material-symbols:play-arrow-rounded" size="2xl" />
-					{/if}
-				</button>
-
-				<button
-					type="button"
-					class="music-visualizer__bar-btn"
-					onclick={playNext}
-					title={i18n(I18nKey.musicNext)}
-					aria-label={i18n(I18nKey.musicNext)}
-				>
-					<Icon icon="material-symbols:skip-next-rounded" size="xl" />
-				</button>
-			</div>
-
-			<!-- 进度 -->
+			<!-- 进度：独占一行，贯穿整条播放栏 -->
 			<div class="music-visualizer__bar-progress">
 				<span class="music-visualizer__bar-time">{currentTimeStr}</span>
 				<div
@@ -502,44 +429,124 @@ onDestroy(() => {
 				<span class="music-visualizer__bar-time">{durationStr}</span>
 			</div>
 
-			<!-- 工具 -->
-			<div class="music-visualizer__bar-tools">
-				<div class="music-visualizer__tool-wrap" role="group">
-					<span
-						class="music-visualizer__tool-hint"
-						class:is-visible={modeHintPulse}
-						aria-hidden="true"
+			<!-- 控制行：左信息 · 中传输 · 右工具 -->
+			<div class="music-visualizer__bar-row">
+				<!-- 正在播放 -->
+				<div class="music-visualizer__bar-now">
+					<div class="music-visualizer__bar-cover">
+						{#if currentTrack?.pic}
+							<img src={currentTrack.pic} alt="" />
+						{:else}
+							<Icon icon="material-symbols:music-note-rounded" size="md" />
+						{/if}
+					</div>
+					<div class="music-visualizer__bar-meta">
+						<span class="music-visualizer__bar-title">
+							{currentTrack?.name || i18n(I18nKey.musicNoPlaying)}
+						</span>
+						<span class="music-visualizer__bar-artist">{currentTrack?.artist || "—"}</span>
+					</div>
+				</div>
+
+				<!-- 传输控制：模式 · 上一首 · 播放 · 下一首 · 歌单 -->
+				<div class="music-visualizer__bar-transport">
+					<div class="music-visualizer__tool-wrap" role="group">
+						<span
+							class="music-visualizer__tool-hint"
+							class:is-visible={modeHintPulse}
+							aria-hidden="true"
+						>
+							{MODE_LABELS[playMode]}
+						</span>
+						<button
+							type="button"
+							class="music-visualizer__bar-btn music-visualizer__bar-btn--sm"
+							class:is-active={playMode !== 0}
+							onclick={cycleMode}
+							title={MODE_LABELS[playMode]}
+							aria-label={MODE_LABELS[playMode]}
+						>
+							{#if playMode === 0}
+								<Icon icon="material-symbols:repeat-rounded" size="lg" />
+							{:else if playMode === 1}
+								<Icon icon="material-symbols:repeat-one-rounded" size="lg" />
+							{:else}
+								<Icon icon="material-symbols:shuffle-rounded" size="lg" />
+							{/if}
+						</button>
+					</div>
+
+					<button
+						type="button"
+						class="music-visualizer__bar-btn"
+						onclick={playPrev}
+						title={i18n(I18nKey.musicPrev)}
+						aria-label={i18n(I18nKey.musicPrev)}
 					>
-						{MODE_LABELS[playMode]}
-					</span>
+						<Icon icon="material-symbols:skip-previous-rounded" size="xl" />
+					</button>
+
+					<button
+						type="button"
+						class="music-visualizer__bar-btn music-visualizer__bar-btn--play"
+						onclick={togglePlay}
+						title={isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay)}
+						aria-label={isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay)}
+					>
+						{#if isPlaying}
+							<Icon icon="material-symbols:pause-rounded" size="2xl" />
+						{:else}
+							<Icon icon="material-symbols:play-arrow-rounded" size="2xl" />
+						{/if}
+					</button>
+
+					<button
+						type="button"
+						class="music-visualizer__bar-btn"
+						onclick={playNext}
+						title={i18n(I18nKey.musicNext)}
+						aria-label={i18n(I18nKey.musicNext)}
+					>
+						<Icon icon="material-symbols:skip-next-rounded" size="xl" />
+					</button>
+
 					<button
 						type="button"
 						class="music-visualizer__bar-btn music-visualizer__bar-btn--sm"
-						class:is-active={playMode !== 0}
-						onclick={cycleMode}
-						title={MODE_LABELS[playMode]}
-						aria-label={MODE_LABELS[playMode]}
+						class:is-active={rightPanelMode === "playlist"}
+						onclick={togglePlaylist}
+						title={i18n(I18nKey.musicPlaylist)}
+						aria-label={i18n(I18nKey.musicPlaylist)}
+						aria-controls="music-visualizer-playlist-panel"
+						aria-expanded={rightPanelMode === "playlist"}
 					>
-						{#if playMode === 0}
-							<Icon icon="material-symbols:repeat-rounded" size="lg" />
-						{:else if playMode === 1}
-							<Icon icon="material-symbols:repeat-one-rounded" size="lg" />
-						{:else}
-							<Icon icon="material-symbols:shuffle-rounded" size="lg" />
-						{/if}
+						<Icon icon="material-symbols:queue-music-rounded" size="lg" />
 					</button>
 				</div>
 
-				<div class="music-visualizer__tool-wrap music-visualizer__volume-wrap" role="group">
-					<div class="music-visualizer__volume-pop" class:is-visible={isDraggingVolume}>
-						<span class="music-visualizer__volume-value">{volumePercent}</span>
+				<!-- 音量（横向滑块）+ 设置 -->
+				<div class="music-visualizer__bar-tools">
+					<div class="music-visualizer__volume-inline" role="group">
+						<button
+							type="button"
+							class="music-visualizer__volume-btn"
+							onclick={toggleMute}
+							title={i18n(I18nKey.musicVolume)}
+							aria-label={i18n(I18nKey.musicVolume)}
+						>
+							{#if isMuted || volume === 0}
+								<Icon icon="material-symbols:volume-off-rounded" size="md" />
+							{:else}
+								<Icon icon="material-symbols:volume-up-rounded" size="md" />
+							{/if}
+						</button>
 						<div
-							class="music-visualizer__volume-vtrack"
+							class="music-visualizer__volume-slider"
 							class:is-dragging={isDraggingVolume}
-							onpointerdown={onVolumeVPointerDown}
-							onpointermove={onVolumeVPointerMove}
-							onpointerup={onVolumeVPointerUp}
-							onpointercancel={onVolumeVPointerUp}
+							onpointerdown={onVolumePointerDown}
+							onpointermove={onVolumePointerMove}
+							onpointerup={onVolumePointerUp}
+							onpointercancel={onVolumePointerUp}
 							role="slider"
 							tabindex="0"
 							aria-label={i18n(I18nKey.musicVolume)}
@@ -547,56 +554,25 @@ onDestroy(() => {
 							aria-valuemax="100"
 							aria-valuenow={volumePercent}
 						>
-							<div class="music-visualizer__volume-vrail"></div>
 							<div
-								class="music-visualizer__volume-vfill"
-								style={`height: ${volumePercent}%`}
-							></div>
-							<div
-								class="music-visualizer__volume-vthumb"
-								style={`bottom: ${volumePercent}%`}
+								class="music-visualizer__volume-slider-fill"
+								style={`width: ${volumePercent}%`}
 							></div>
 						</div>
 					</div>
+
 					<button
 						type="button"
 						class="music-visualizer__bar-btn music-visualizer__bar-btn--sm"
-						onclick={toggleMute}
-						title={i18n(I18nKey.musicVolume)}
-						aria-label={i18n(I18nKey.musicVolume)}
+						class:is-active={rightPanelMode === "settings"}
+						onclick={toggleSettings}
+						title={i18n(I18nKey.vizSettings)}
+						aria-label={i18n(I18nKey.vizSettings)}
+						aria-expanded={rightPanelMode === "settings"}
 					>
-						{#if isMuted || volume === 0}
-							<Icon icon="material-symbols:volume-off-rounded" size="lg" />
-						{:else}
-							<Icon icon="material-symbols:volume-up-rounded" size="lg" />
-						{/if}
+						<Icon icon="material-symbols:tune-rounded" size="lg" />
 					</button>
 				</div>
-
-				<button
-					type="button"
-					class="music-visualizer__bar-btn music-visualizer__bar-btn--sm"
-					class:is-active={rightPanelMode === "playlist"}
-					onclick={togglePlaylist}
-					title={i18n(I18nKey.musicPlaylist)}
-					aria-label={i18n(I18nKey.musicPlaylist)}
-					aria-controls="music-visualizer-playlist-panel"
-					aria-expanded={rightPanelMode === "playlist"}
-				>
-					<Icon icon="material-symbols:queue-music-rounded" size="lg" />
-				</button>
-
-				<button
-					type="button"
-					class="music-visualizer__bar-btn music-visualizer__bar-btn--sm"
-					class:is-active={rightPanelMode === "settings"}
-					onclick={toggleSettings}
-					title={i18n(I18nKey.vizSettings)}
-					aria-label={i18n(I18nKey.vizSettings)}
-					aria-expanded={rightPanelMode === "settings"}
-				>
-					<Icon icon="material-symbols:tune-rounded" size="lg" />
-				</button>
 			</div>
 		</div>
 	</div>
@@ -735,61 +711,45 @@ onDestroy(() => {
 					/>
 				</section>
 
-				<!-- 主题颜色 -->
+				<!-- 主题颜色：三种取色来源 -->
 				<section class="music-visualizer__settings-group">
 					<div class="music-visualizer__settings-row-head">
 						<span class="music-visualizer__settings-label">
 							{i18n(I18nKey.vizThemeColor)}
 						</span>
 						<span class="music-visualizer__settings-value">
-							{vizSettings.rainbow ? i18n(I18nKey.vizRainbow) : getColorPreset(vizSettings.presetId).label}
+							{i18n(COLOR_MODE_META[vizSettings.colorMode].labelKey)}
 						</span>
 					</div>
 					<div
-						class="music-visualizer__settings-swatches"
+						class="music-visualizer__color-modes"
 						role="radiogroup"
 						aria-label={i18n(I18nKey.vizThemeColor)}
 					>
-						{#each VIZ_COLOR_PRESETS as preset (preset.id)}
+						{#each COLOR_MODES as mode (mode)}
+							{@const meta = COLOR_MODE_META[mode]}
 							<button
 								type="button"
-								class="music-visualizer__swatch"
-								class:is-selected={vizSettings.presetId === preset.id &&
-									!vizSettings.rainbow}
-								style={`--swatch-a: ${preset.coolCore}; --swatch-b: ${preset.accent}; --swatch-c: ${preset.warmEdge};`}
-								onclick={() => selectColorPreset(preset.id)}
+								class="music-visualizer__color-mode"
+								class:is-selected={vizSettings.colorMode === mode}
+								onclick={() => selectColorMode(mode)}
 								role="radio"
-								aria-checked={vizSettings.presetId === preset.id && !vizSettings.rainbow}
-								aria-label={preset.label}
-								title={preset.label}
-							></button>
+								aria-checked={vizSettings.colorMode === mode}
+								aria-label={i18n(meta.labelKey)}
+								title={i18n(meta.hintKey)}
+							>
+								<span class="music-visualizer__color-mode-icon" aria-hidden="true">
+									<Icon icon={meta.icon} size="lg" />
+								</span>
+								<span class="music-visualizer__color-mode-name">
+									{i18n(meta.labelKey)}
+								</span>
+							</button>
 						{/each}
 					</div>
-				</section>
-
-				<!-- 多彩循环 -->
-				<section
-					class="music-visualizer__settings-group music-visualizer__settings-group--row"
-				>
-					<div class="music-visualizer__settings-row-text">
-						<div class="music-visualizer__settings-label">
-							{i18n(I18nKey.vizRainbow)}
-						</div>
-						<div class="music-visualizer__settings-hint">
-							{i18n(I18nKey.vizRainbowHint)}
-						</div>
+					<div class="music-visualizer__settings-hint">
+						{i18n(COLOR_MODE_META[vizSettings.colorMode].hintKey)}
 					</div>
-					<button
-						type="button"
-						class="music-visualizer__switch"
-						class:is-on={vizSettings.rainbow}
-						role="switch"
-						aria-checked={vizSettings.rainbow}
-						aria-label={i18n(I18nKey.vizRainbow)}
-						onclick={toggleRainbow}
-					>
-						<span class="music-visualizer__switch-thumb" aria-hidden="true"></span>
-					</button>
 				</section>
 
 				<!-- 歌词动画 -->

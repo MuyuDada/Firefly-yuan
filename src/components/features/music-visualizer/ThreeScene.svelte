@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { musicPlayerConfig } from "@/config/musicConfig";
 import { AudioAnalyzer, type AudioData } from "./AudioAnalyzer";
-import { getColorPreset, vizSettings } from "./visualizerSettings.svelte";
+import { vizPalette, vizSettings } from "./visualizerSettings.svelte";
 
 interface Props {
 	audioAnalyzer: AudioAnalyzer;
@@ -125,12 +125,11 @@ function getThemeColors() {
 const themeColors = getThemeColors();
 const heightConfig = musicPlayerConfig.visualizer?.height;
 
-// 将用户设置（主题预设 / 多彩循环）同步到渲染目标色。
-// 每帧调用：普通模式下是几次廉价的 Color.set；多彩循环下按时间旋转色相，
+// 将解析好的调色板（封面取色 / 跟随主题 / 彩虹）同步到渲染目标色。
+// 每帧调用：普通模式下是几次廉价的 Color.set；彩虹模式下按时间旋转色相，
 // 渲染循环里已有 lerp 会把 uniform 颜色平滑地过渡过去。
 function applyThemeSettings(elapsed: number) {
-	const preset = getColorPreset(vizSettings.presetId);
-	if (vizSettings.rainbow) {
+	if (vizPalette.rainbow) {
 		const hue = (elapsed * 0.04) % 1;
 		themeColors.coolCore.setHSL(hue, 0.85, 0.5);
 		themeColors.coolEdge.setHSL((hue + 0.04) % 1, 0.9, 0.65);
@@ -139,12 +138,13 @@ function applyThemeSettings(elapsed: number) {
 		themeColors.rippleCool.setHSL(hue, 0.85, 0.6);
 		themeColors.rippleWarm.setHSL((hue + 0.1) % 1, 0.9, 0.72);
 	} else {
-		themeColors.coolCore.set(preset.coolCore);
-		themeColors.coolEdge.set(preset.coolEdge);
-		themeColors.warmCore.set(preset.warmCore);
-		themeColors.warmEdge.set(preset.warmEdge);
-		themeColors.rippleCool.set(preset.rippleCool);
-		themeColors.rippleWarm.set(preset.rippleWarm);
+		const palette = vizPalette.palette;
+		themeColors.coolCore.set(palette.coolCore);
+		themeColors.coolEdge.set(palette.coolEdge);
+		themeColors.warmCore.set(palette.warmCore);
+		themeColors.warmEdge.set(palette.warmEdge);
+		themeColors.rippleCool.set(palette.rippleCool);
+		themeColors.rippleWarm.set(palette.rippleWarm);
 	}
 }
 
