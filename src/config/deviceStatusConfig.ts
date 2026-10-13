@@ -2,11 +2,11 @@ import type { DeviceStatusConfig } from "@/types/deviceStatusConfig";
 
 // 电脑状态组件配置
 //
-// 数据链路：本机 PowerShell 定时上报 → Cloudflare Worker + KV → 访客浏览器只读。
+// 数据链路：本机 PowerShell 变化驱动上报 → Cloudflare Worker + KV → 访客浏览器只读。
 // 纯静态博客读不到本机信息，所以只能由本机主动上报、页面被动读取。
 //
 // 想加新应用：只需要在本机上报脚本的映射表里加，这里不用动。
-// 这里只负责「进程名 → 图标」，映射表是按主页（muyudada.github.io）的 126 条抄过来的。
+// 这里负责「进程名 → 图标名」与「进程名 → 品牌色」，与上报脚本的 104 条进程名零缺口。
 export const deviceStatusConfig: DeviceStatusConfig = {
 	enable: true,
 
@@ -14,19 +14,37 @@ export const deviceStatusConfig: DeviceStatusConfig = {
 	// 注意：不要用 *.workers.dev 那个地址，部分网络下该域名不可达，已改为自有域名。
 	endpoint: "https://muyuhome.cc.cd/api/device/status",
 
-	// 轮询间隔比本机上报间隔（30 秒）略长，避免刚好卡在上报边界上读到旧数据
-	refreshIntervalSeconds: 30,
+	// 前端轮询间隔（秒）。
+	// 本机侧是「变化驱动 + 心跳」：前台应用一换就立刻上报，没换时在线 5 分钟才发
+	// 一次心跳（离开/锁屏 10 分钟）。所以这里没必要跟着 30 秒跑，60 秒足够。
+	refreshIntervalSeconds: 60,
 	requestTimeoutMs: 8000,
-	// 与 Worker 侧的离线判定保持一致：超过 180 秒没有新上报就是离线
-	staleAfterSeconds: 180,
+	// 离线判定的权威值在 Worker 侧：它按上报的 heartbeatSeconds 动态推算
+	// （阈值 = max(心跳 × 2, 心跳 + 60s)，夹在 [120s, 2 天]），并以 staleAfterSeconds
+	// 字段随响应回传。这里仅作兜底说明，不参与判断。
+	staleAfterSeconds: 300,
 	// 后台标签页的定时器会被浏览器降频，切回前台时距上次成功超过这个值就立刻补一次
 	visibilityRefreshAfterSeconds: 20,
+
+	// 备用通道：主通道取不到新鲜数据时的兜底来源。
+	// 本机上报脚本会把同一份记录再写一份到 GitHub Gist，这里指向它的 raw 地址。
+	//
+	// 为什么需要它：主通道整条链路都压在 Cloudflare 上（域名被污染、Worker 故障、
+	// KV 额度耗尽都会失效），而 GitHub raw 是完全独立的另一套链路，同时挂掉概率很低。
+	//
+	// 代价：GitHub raw 的 CDN 缓存是 300 秒，直接读可能拿到旧副本。实测给 URL 挂一个
+	// 随机查询串就能让 CDN 回 MISS（缓存键含 query string），所以请求时会加 cache-bust
+	// 参数。即便如此，仍要按快照里的 reportedAt 在本地判一次时效 —— 万一 CDN 还是发了
+	// 旧副本，也不会把「早就离线」显示成「在线」。
+	fallbackEndpoint:
+		"https://gist.githubusercontent.com/MuyuDada/ddca5e9cfef3026b2503b56486cbb365/raw/device.json",
 
 	// 进程名（小写）→ Iconify 图标名。
 	// 进程名优先命中，其次按应用名关键词兜底，最后给通用显示器图标。
 	iconMap: {
 		// —— 编辑器 / IDE ——
 		code: "fa7-solid:code",
+		"code - insiders": "fa7-solid:code",
 		cursor: "fa7-solid:code",
 		devenv: "fa7-solid:code",
 		idea64: "fa7-solid:code",
@@ -46,6 +64,7 @@ export const deviceStatusConfig: DeviceStatusConfig = {
 		conhost: "fa7-solid:terminal",
 		"git-bash": "fa7-solid:terminal",
 		mintty: "fa7-solid:terminal",
+		wsl: "fa7-solid:terminal",
 		// —— 浏览器 ——
 		msedge: "fa7-brands:edge",
 		msedgewebview2: "fa7-brands:edge",
@@ -55,6 +74,8 @@ export const deviceStatusConfig: DeviceStatusConfig = {
 		opera: "fa7-brands:opera",
 		safari: "fa7-brands:safari",
 		iexplore: "fa7-brands:internet-explorer",
+		"360se": "fa7-solid:globe",
+		"360chrome": "fa7-solid:globe",
 		// —— 通讯 ——
 		wechat: "fa7-brands:weixin",
 		weixin: "fa7-brands:weixin",
@@ -97,6 +118,12 @@ export const deviceStatusConfig: DeviceStatusConfig = {
 		dota2: "fa7-solid:gamepad",
 		cs2: "fa7-solid:gamepad",
 		tslgame: "fa7-solid:gamepad",
+		"league of legends": "fa7-solid:gamepad",
+		"deltaforceclient-win64-shipping": "fa7-solid:crosshairs",
+		delta_force_launcher: "fa7-solid:crosshairs",
+		nzmclient: "fa7-solid:gun",
+		nzm_launcher: "fa7-solid:gun",
+		wegame: "fa7-solid:gamepad",
 		unity: "fa7-brands:unity",
 		// fa7-brands 里没有 blender，退回 simple-icons
 		blender: "simple-icons:blender",
@@ -164,7 +191,76 @@ export const deviceStatusConfig: DeviceStatusConfig = {
 		mstsc: "fa7-solid:desktop",
 		calculator: "fa7-solid:calculator",
 		control: "fa7-solid:sliders",
+		regedit: "fa7-solid:pen-ruler",
+		mmc: "fa7-solid:screwdriver-wrench",
 		windbg: "fa7-solid:bug",
+	},
+
+	// 进程名（小写）→ 品牌色。
+	// Iconify 的图标本身是单色的，不配颜色的话 Edge 也会被染成状态色。
+	// 只列常用应用，没命中的回落到状态色（在线绿/离开橙/锁屏灰/离线红）。
+	iconColors: {
+		// —— 浏览器 ——
+		msedge: "#0f7ac0",
+		msedgewebview2: "#0f7ac0",
+		chrome: "#d93025",
+		firefox: "#e66000",
+		brave: "#e04a2f",
+		opera: "#c0392b",
+		safari: "#1a9de0",
+		// —— 通讯 ——
+		wechat: "#07c160",
+		weixin: "#07c160",
+		qq: "#12b7f5",
+		tim: "#12b7f5",
+		telegram: "#229ed9",
+		discord: "#5865f2",
+		skype: "#00aff0",
+		whatsapp: "#25d366",
+		line: "#06c755",
+		// —— 音乐 / 影音 ——
+		cloudmusic: "#c20c0c",
+		qqmusic: "#31c27c",
+		spotify: "#1db954",
+		bilibili: "#00a1d6",
+		youtube: "#ff0000",
+		twitch: "#9146ff",
+		vlc: "#ff8800",
+		// —— 游戏 ——
+		steam: "#1b2838",
+		steamwebhelper: "#1b2838",
+		epicgameslauncher: "#2a2a2a",
+		unity: "#4a4a4a",
+		blender: "#ea7600",
+		xbox: "#107c10",
+		// —— 办公 / 设计 ——
+		winword: "#2b579a",
+		excel: "#217346",
+		powerpnt: "#d24726",
+		wps: "#e8443a",
+		acrobat: "#dc2b21",
+		acrord32: "#dc2b21",
+		notion: "#2f2f2f",
+		figma: "#a259ff",
+		photoshop: "#31a8ff",
+		illustrator: "#ff9a00",
+		afterfx: "#9999ff",
+		premiere: "#9999ff",
+		// —— 开发工具 ——
+		"github desktop": "#6e5494",
+		docker: "#2496ed",
+		postman: "#ff6c37",
+		// —— 服务器 / 网络 ——
+		openlist: "#3b82f6",
+		alist: "#3b82f6",
+		clash: "#5b6ee1",
+		"clash-verge": "#5b6ee1",
+		v2rayn: "#5b6ee1",
+		// —— 下载 ——
+		qbittorrent: "#2f67b2",
+		thunder: "#2e8ae6",
+		idman: "#1c7ed6",
+		motrix: "#5b8def",
 	},
 
 	keywordIcons: [

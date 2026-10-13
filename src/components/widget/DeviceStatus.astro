@@ -10,46 +10,69 @@ interface Props {
 
 const { class: className, style } = Astro.props;
 
-// 配置在构建期序列化后交给客户端脚本，避免把 126 条映射写死在模板里
+// 配置在构建期序列化后交给客户端脚本，避免把 100+ 条映射写死在模板里
 const configJson = JSON.stringify(deviceStatusConfig);
+
+// 关掉开关、或者主备两条通道都没配时整块不渲染，页面上不会留一块空白区域
+const enabled =
+	deviceStatusConfig.enable &&
+	Boolean(deviceStatusConfig.endpoint || deviceStatusConfig.fallbackEndpoint);
 ---
 
-<WidgetLayout
-	id="device-status-widget"
-	name="我在干嘛"
-	class:list={["device-status-widget", className]}
-	style={style}
->
-	<span slot="title-icon" class="device-status__badge" data-device-badge>
-		<span class="device-status__dot"></span>
-		<span data-device-badge-text>连接中</span>
-	</span>
-
-	<div class="device-status__body">
-		<span class="device-status__icon">
-			<iconify-icon data-device-glyph icon="fa7-solid:desktop"></iconify-icon>
-		</span>
-		<div class="device-status__meta">
-			<div class="device-status__app" data-device-app>正在获取…</div>
-			<div class="device-status__quip" data-device-quip>正在读取本机状态</div>
-		</div>
-	</div>
-
-	<div class="device-status__title" data-device-title hidden></div>
-
-	<div class="device-status__foot">
-		<span class="device-status__updated" data-device-updated>--</span>
-		<button
-			type="button"
-			class="device-status__refresh"
-			data-device-refresh
-			aria-label="刷新电脑状态"
-			title="刷新"
+{
+	enabled && (
+		<WidgetLayout
+			id="device-status-widget"
+			name="我在干嘛"
+			class:list={["device-status-widget", className]}
+			style={style}
 		>
-			<iconify-icon icon="fa7-solid:rotate-right"></iconify-icon>
-		</button>
-	</div>
-</WidgetLayout>
+			<span slot="title-icon" class="device-status__badge" data-device-badge>
+				<span class="device-status__dot" />
+				<span data-device-badge-text>连接中</span>
+			</span>
+
+			<div class="device-status__body">
+				<span class="device-status__icon" data-device-icon>
+					<iconify-icon data-device-glyph icon="fa7-solid:desktop" />
+				</span>
+				<div class="device-status__meta">
+					<div class="device-status__app" data-device-app>
+						正在获取…
+					</div>
+					<div class="device-status__quip" data-device-quip>
+						正在读取本机状态
+					</div>
+				</div>
+			</div>
+
+			<div class="device-status__title" data-device-title hidden />
+
+			<div class="device-status__foot">
+				<span class="device-status__host" data-device-host hidden>
+					<iconify-icon icon="fa7-solid:display" />
+					<span data-device-host-text />
+				</span>
+				<span class="device-status__updated" data-device-updated>
+					--
+				</span>
+				<span class="device-status__source" data-device-source hidden>
+					<iconify-icon icon="fa7-solid:cloud-arrow-down" />
+					<span data-device-source-text>备用通道</span>
+				</span>
+				<button
+					type="button"
+					class="device-status__refresh"
+					data-device-refresh
+					aria-label="刷新电脑状态"
+					title="刷新"
+				>
+					<iconify-icon icon="fa7-solid:rotate-right" />
+				</button>
+			</div>
+		</WidgetLayout>
+	)
+}
 
 <script is:inline define:vars={{ configJson }}>
 	(function () {
@@ -60,8 +83,11 @@ const configJson = JSON.stringify(deviceStatusConfig);
 			CONFIG = {};
 		}
 
-		// 只读接口。留空 = 功能未启用，卡片整块隐藏，不留空白。
-		if (!CONFIG.endpoint) {
+		// 主备两条通道都没配时组件在构建期就不会渲染，这里只兜底 swup 替换后的旧 DOM
+		if (
+			CONFIG.enable === false ||
+			(!CONFIG.endpoint && !CONFIG.fallbackEndpoint)
+		) {
 			document.querySelectorAll(".device-status-widget").forEach(function (el) {
 				el.hidden = true;
 			});
@@ -110,6 +136,13 @@ const configJson = JSON.stringify(deviceStatusConfig);
 			return "fa7-solid:desktop";
 		}
 
+		// 品牌色只按进程名查，查不到返回空串，由 CSS 回落到状态色
+		function colorFor(processName) {
+			var map = CONFIG.iconColors || {};
+			var key = String(processName || "").toLowerCase();
+			return (key && map[key]) || "";
+		}
+
 		function formatAge(reportedAt) {
 			if (!reportedAt) return "--";
 			var diff = Math.max(0, Date.now() - Number(reportedAt)) / 1000;
@@ -141,16 +174,27 @@ const configJson = JSON.stringify(deviceStatusConfig);
 			var root = container.closest("widget-layout") || container;
 			var badge = container.querySelector("[data-device-badge]");
 			var badgeText = container.querySelector("[data-device-badge-text]");
+			var iconEl = container.querySelector("[data-device-icon]");
 			var glyph = container.querySelector("[data-device-glyph]");
 			var appEl = container.querySelector("[data-device-app]");
 			var quipEl = container.querySelector("[data-device-quip]");
 			var titleEl = container.querySelector("[data-device-title]");
+			var hostEl = container.querySelector("[data-device-host]");
+			var hostTextEl = container.querySelector("[data-device-host-text]");
 			var updatedEl = container.querySelector("[data-device-updated]");
+			var sourceEl = container.querySelector("[data-device-source]");
+			var sourceTextEl = container.querySelector("[data-device-source-text]");
 			var refreshBtn = container.querySelector("[data-device-refresh]");
 
 			var timer = null;
 			var inFlight = false;
 			var lastSuccessAt = 0;
+			var hostHasText = false;
+			var sourceVisible = false;
+			// 是否成功渲染过内容。两条通道都失败时要区分两种情况：
+			// 之前有内容 → 保留它，只降级角标；从来没拿到过 → 老实说明读不到，
+			// 否则卡片会一直挂着「正在获取…」这种占位文案，像是还在加载。
+			var hasRendered = false;
 
 			function setBadge(text, tone) {
 				if (badgeText) badgeText.textContent = text;
@@ -166,19 +210,64 @@ const configJson = JSON.stringify(deviceStatusConfig);
 				}
 			}
 
-			function setIcon(name) {
+			// 图标分「形状」和「颜色」两件事：形状说明在用什么应用，
+			// 颜色尽量还原品牌色；没配品牌色的回落状态色，状态仍由角标兜底。
+			function setIcon(name, brandColor) {
 				if (!glyph) return;
 				// iconify-icon 只在 icon 属性变化时重渲染，所以必须写属性而不是类名
 				glyph.setAttribute("icon", name || "fa7-solid:desktop");
+				if (!iconEl) return;
+				if (brandColor) iconEl.style.setProperty("--device-brand", brandColor);
+				else iconEl.style.removeProperty("--device-brand");
+			}
+
+			function setHost(host) {
+				if (!hostEl) return;
+				var text = String(host || "").trim();
+				if (hostTextEl) hostTextEl.textContent = text;
+				hostHasText = !!text;
+				syncHostVisibility();
+			}
+
+			// 底部这一行要装「机器名 + 更新时间 + 来源 + 刷新」四件东西，宽度不够。
+			// 来源关系到数据新不新鲜、优先级最高；机器名只在多机上报时才有意义，
+			// 所以走备用通道时让机器名先让位。
+			function syncHostVisibility() {
+				if (!hostEl) return;
+				hostEl.hidden = !hostHasText || sourceVisible;
+			}
+
+			// 走备用通道时单独标一个 chip：更新时间的宽度本来就不够，
+			// 把来源接在它后面会被 ellipsis 吃掉，读者根本看不到。
+			//
+			// 代价是底部这一行装不下「机器名 + 更新时间 + 来源 + 刷新」四件东西，
+			// 所以来源出现时让机器名先让位 —— 来源关系到数据新不新鲜，
+			// 机器名只在多机上报时才有意义，优先级更低。
+			function setSource(label) {
+				if (!sourceEl) return;
+				var text = String(label || "").trim();
+				if (sourceTextEl) sourceTextEl.textContent = text || "备用通道";
+				sourceEl.hidden = !text;
+				sourceVisible = !!text;
+				syncHostVisibility();
 			}
 
 			function setState(state) {
 				root.dataset.state = state || "unknown";
 			}
 
-			function renderOffline(reason, record) {
+			function renderOffline(reason, record, keepContent, sourceLabel) {
 				setState("offline");
 				setBadge("离线", "off");
+				if (keepContent) {
+					// 网络抖一下就把卡片清空太粗暴：保留上一次的内容，只把角标降级，
+					// 并在时间旁边标一下「读取失败」，读者仍能看到最近一次的状态
+					if (updatedEl) {
+						var last = updatedEl.dataset.deviceText || "";
+						updatedEl.textContent = last ? last + " · 读取失败" : "读取失败";
+					}
+					return;
+				}
 				setIcon("fa7-solid:power-off");
 				if (appEl) appEl.textContent = "电脑已离线";
 				if (quipEl) {
@@ -187,34 +276,53 @@ const configJson = JSON.stringify(deviceStatusConfig);
 				}
 				if (titleEl) {
 					titleEl.textContent = "";
+					titleEl.removeAttribute("title");
 					titleEl.hidden = true;
 				}
+				// 离线时机器名反而更有用（哪台机器掉线了），所以保留
+				setHost(record && record.host);
 				if (updatedEl) {
 					// 显示「本机上次上报」的时间，而不是我们上次请求成功的时间，
 					// 否则离线时会出现「刚刚更新」这种看起来数据很新的误导文案
-					updatedEl.textContent =
+					var text =
 						record && record.reportedAt
 							? formatAge(record.reportedAt)
 							: "暂无数据";
+					updatedEl.dataset.deviceText = text;
+					updatedEl.textContent = text;
 				}
+				setSource(sourceLabel);
 			}
 
-			function renderStatus(payload) {
+			function renderStatus(payload, sourceLabel) {
 				if (!payload || payload.success === false) {
-					renderOffline("暂时读不到状态，稍后自动重试。", null);
+					renderOffline(
+						"暂时读不到状态，稍后自动重试。",
+						null,
+						hasRendered,
+						sourceLabel,
+					);
 					return;
 				}
 				if (payload.reason === "no_report_yet") {
-					renderOffline("本机还没有上报过状态。", null);
+					renderOffline(
+						"本机还没有上报过状态。",
+						null,
+						hasRendered,
+						sourceLabel,
+					);
 					return;
 				}
 				if (!payload.online || !payload.record) {
 					renderOffline(
 						"本机上报已中断，可能关机或断网。",
 						payload.record,
+						false,
+						sourceLabel,
 					);
 					return;
 				}
+				hasRendered = true;
 
 				var record = payload.record;
 				var state = record.state || "unknown";
@@ -224,36 +332,38 @@ const configJson = JSON.stringify(deviceStatusConfig);
 				else setBadge("未知", "unknown");
 
 				var appName = record.app || record.process || "未知应用";
-				setIcon(iconFor(record.process, appName));
+				// 锁屏时前台应用已经不在了，显示应用图标会误导，统一换成锁
+				if (state === "locked") setIcon("fa7-solid:lock");
+				else setIcon(iconFor(record.process, appName), colorFor(record.process));
 				if (appEl) appEl.textContent = appName;
 				if (quipEl) {
 					quipEl.textContent =
 						record.quip ||
 						defaultQuip(state, record.idleSeconds);
 				}
+				setHost(record.host);
 				if (titleEl) {
 					if (record.title) {
 						titleEl.textContent = record.title;
+						// 标题一定会被截断，挂个原生 tooltip 让鼠标悬停能看全
+						titleEl.setAttribute("title", record.title);
 						titleEl.hidden = false;
 					} else {
 						titleEl.textContent = "";
+						titleEl.removeAttribute("title");
 						titleEl.hidden = true;
 					}
 				}
-				if (updatedEl) updatedEl.textContent = formatAge(record.reportedAt);
+				if (updatedEl) {
+					var text = formatAge(record.reportedAt);
+					updatedEl.dataset.deviceText = text;
+					updatedEl.textContent = text;
+				}
+				setSource(sourceLabel);
 			}
 
-			function fetchStatus(manual) {
-				if (inFlight) return;
-				inFlight = true;
-				if (manual && refreshBtn) refreshBtn.classList.add("is-spinning");
-
-				var url =
-					CONFIG.endpoint +
-					(CONFIG.endpoint.indexOf("?") === -1 ? "?" : "&") +
-					"t=" +
-					Date.now();
-
+			// 主备通道共用的请求包装：超时按失败处理，避免请求悬着让卡片一直转圈
+			function fetchJson(url) {
 				var controller =
 					typeof AbortController !== "undefined"
 						? new AbortController()
@@ -264,7 +374,7 @@ const configJson = JSON.stringify(deviceStatusConfig);
 						}, CONFIG.requestTimeoutMs || 8000)
 					: null;
 
-				fetch(url, {
+				return fetch(url, {
 					cache: "no-store",
 					signal: controller ? controller.signal : undefined,
 				})
@@ -272,17 +382,145 @@ const configJson = JSON.stringify(deviceStatusConfig);
 						if (!res.ok) throw new Error("HTTP " + res.status);
 						return res.json();
 					})
-					.then(function (payload) {
-						lastSuccessAt = Date.now();
-						renderStatus(payload);
-					})
-					.catch(function (err) {
-						console.warn("[DeviceStatus] 获取失败：" + err.message);
-						// 失败只改角标，保留上次内容，避免网络抖动把卡片闪成空白
-						renderOffline("暂时读不到状态，稍后自动重试。", null);
-					})
 					.finally(function () {
 						if (timeoutId) clearTimeout(timeoutId);
+					});
+			}
+
+			// 带上时间戳绕开任何中间缓存；Worker 侧本身也是 no-store
+			function bustCache(url) {
+				return (
+					url + (url.indexOf("?") === -1 ? "?" : "&") + "t=" + Date.now()
+				);
+			}
+
+			// 备用通道拿到的是一份「裸快照」（没有 Worker 包装的 online / stale 字段），
+			// 所以这里按和 Worker 一样的规则在本地补算一遍，让两种来源的载荷形状一致。
+			//
+			// 这一步不能省：GitHub raw 的 CDN 最长缓存 5 分钟，完全可能把一份早就过期的
+			// 快照发过来。只有按 reportedAt 在本地判一次时效，才不会把「早就关机」
+			// 显示成「在线」。
+			function normalizeSnapshot(record) {
+				var heartbeat = Number(record && record.heartbeatSeconds) || 0;
+
+				// 与 Worker 的 staleThresholdFor 同一套规则：
+				// 阈值 = max(心跳 × 2, 心跳 + 60s)，再夹到 [120s, 2 天 + 60s]
+				var threshold =
+					heartbeat > 0
+						? Math.max(heartbeat * 2, heartbeat + 60)
+						: Number(CONFIG.staleAfterSeconds) || 600;
+				threshold = Math.max(120, Math.min(86400 * 2 + 60, threshold));
+
+				var ageSeconds = Math.round(
+					(Date.now() - (Number(record.reportedAt) || 0)) / 1000,
+				);
+				var stale = ageSeconds > threshold;
+
+				return {
+					success: true,
+					online: !stale,
+					stale: stale,
+					ageSeconds: ageSeconds,
+					staleAfterSeconds: threshold,
+					record: record,
+				};
+			}
+
+			// 备用通道：读 GitHub Gist 上的裸快照，本地补算时效后交给同一个渲染函数。
+			// reject 表示这条通道也不可用。
+			function fetchFallback() {
+				var fallback = String(CONFIG.fallbackEndpoint || "").trim();
+				if (!fallback) {
+					return Promise.reject(new Error("未配置备用通道"));
+				}
+
+				// Gist raw 带 Cache-Control: max-age=300，浏览器自己就会缓存 5 分钟。
+				// 挂一个每次都不同的查询串能绕开浏览器这一层（浏览器按完整 URL 做键）。
+				//
+				// 但别指望它能绕开 GitHub 那边的传播延迟：真正的兜底是返回后按
+				// reportedAt 在本地判一次时效，而不是这个参数。
+				return fetchJson(bustCache(fallback)).then(function (record) {
+					if (!record || !record.reportedAt) {
+						throw new Error("备用通道快照为空");
+					}
+					return normalizeSnapshot(record);
+				});
+			}
+
+			function fetchStatus(manual) {
+				if (inFlight) return;
+				inFlight = true;
+				if (manual && refreshBtn) refreshBtn.classList.add("is-spinning");
+
+				var endpoint = String(CONFIG.endpoint || "").trim();
+
+				// 主通道优先。它拿不到数据、或者拿到的已经过期，就退到备用通道。
+				// 两条都失败才算真失败。
+				var primary = endpoint
+					? fetchJson(bustCache(endpoint))
+					: Promise.reject(new Error("未配置主通道"));
+
+				primary
+					.then(function (payload) {
+						if (
+							payload &&
+							payload.success !== false &&
+							payload.online &&
+							payload.record
+						) {
+							lastSuccessAt = Date.now();
+							renderStatus(payload, "");
+							return null;
+						}
+
+						// 主通道说「离线」时先别下结论：可能是 Cloudflare 那一段出问题，
+						// 而本机其实好好的。这时用备用通道交叉验证一次。
+						//
+						// 但只有备用通道「新鲜」才算数：它也过期的话，说明本机确实断流了，
+						// 而主通道的记录还更新一些，没有理由采信更旧的那份。
+						return fetchFallback()
+							.then(function (snapshot) {
+								lastSuccessAt = Date.now();
+								if (snapshot.online) {
+									renderStatus(snapshot, "备用通道");
+								} else {
+									renderStatus(payload, "");
+								}
+								return null;
+							})
+							.catch(function () {
+								// 备用通道也没有更新鲜的说法，就用主通道的结论
+								lastSuccessAt = Date.now();
+								renderStatus(payload, "");
+								return null;
+							});
+					})
+					.catch(function (err) {
+						console.warn("[DeviceStatus] 主通道获取失败：" + err.message);
+
+						return fetchFallback()
+							.then(function (snapshot) {
+								lastSuccessAt = Date.now();
+								renderStatus(snapshot, "备用通道");
+								return null;
+							})
+							.catch(function (fallbackErr) {
+								console.warn(
+									"[DeviceStatus] 备用通道获取失败：" +
+										fallbackErr.message,
+								);
+								// 两条都拿不到时，有旧内容就保留（只降级角标，避免网络抖动
+								// 把卡片闪成空白）；从来没有过内容就老实说明读不到，
+								// 否则卡片会一直挂着「正在获取…」这种占位文案。
+								renderOffline(
+									"暂时读不到状态，稍后自动重试。",
+									null,
+									hasRendered,
+								);
+								return null;
+							});
+					})
+					.finally(function () {
 						inFlight = false;
 						if (refreshBtn) {
 							refreshBtn.classList.remove("is-spinning");
@@ -294,7 +532,7 @@ const configJson = JSON.stringify(deviceStatusConfig);
 				if (timer) clearInterval(timer);
 				var interval = Math.max(
 					10,
-					Number(CONFIG.refreshIntervalSeconds) || 30,
+					Number(CONFIG.refreshIntervalSeconds) || 60,
 				);
 				timer = setInterval(function () {
 					// 后台标签页的定时器会被浏览器降频，这里再兜一层

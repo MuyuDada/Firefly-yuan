@@ -1,8 +1,12 @@
 /* 电脑状态组件
  *
  * 数据来自本机 PowerShell 上报 → Cloudflare Worker + KV，页面只读。
- * 状态色统一收在 --device-tone，由 data-state 一次性下发给角标、图标底衬、标题竖条三处，
- * 扫一眼颜色就知道状态，不用读文字。
+ *
+ * 两条色彩线索各管一件事，不互相抢：
+ *   1. 状态色收在 --device-tone，由 data-state 一次性下发给角标、图标底衬、
+ *      标题竖条，扫一眼颜色就知道在不在线，不用读文字。
+ *   2. 品牌色收在 --device-brand（由脚本按进程名内联写入），只作用在图标本身，
+ *      让人一眼认出是 Edge 还是微信。没配品牌色的应用自动回落状态色。
  */
 
 .device-status-widget {
@@ -36,14 +40,19 @@
 }
 
 /* —— 标题右侧的状态角标 —— */
+/* 标题行是 ml-8 且 justify-between，右端没有任何内边距，
+ * 角标会紧贴卡片边缘、和下方 px-4 的内容对不齐，这里补上与内容一致的内缩。 */
 .device-status__badge {
 	display: inline-flex;
 	flex: none;
 	align-items: center;
 	gap: 6px;
+	margin-right: 1rem;
 	padding: 3px 10px 3px 8px;
 	border-radius: 999px;
-	color: var(--device-tone);
+	/* 状态色直接当 11px 小字的文字色太浅（亮色下只有 2.9:1），往黑里压一档才够读。
+	 * 圆点走 currentColor，会跟着一起压深，视觉上仍然一致。 */
+	color: color-mix(in oklch, var(--device-tone) 70%, black);
 	background: color-mix(in oklch, var(--device-tone) 14%, transparent);
 	border: 1px solid color-mix(in oklch, var(--device-tone) 26%, transparent);
 	font-size: 11px;
@@ -54,6 +63,11 @@
 		color 150ms ease,
 		background-color 150ms ease,
 		border-color 150ms ease;
+}
+
+/* 暗色下状态色本身已经足够亮（6.8:1），不需要再压 */
+:root.dark .device-status__badge {
+	color: var(--device-tone);
 }
 
 /* 角标自带兜底色：脚本只切 class 也能正确上色 */
@@ -93,6 +107,13 @@
 	}
 }
 
+/* 离线/未知时不再「呼吸」：数据都不更新了，闪动只会让人误以为还活着 */
+.device-status-widget[data-state="offline"] .device-status__dot,
+.device-status-widget[data-state="unknown"] .device-status__dot {
+	animation: none;
+	opacity: 0.55;
+}
+
 /* —— 应用主体 —— */
 .device-status__body {
 	display: flex;
@@ -101,29 +122,75 @@
 	padding: 0.75rem 0 0.25rem;
 }
 
+/* 图标底衬：优先品牌色，没有品牌色就用状态色 */
 .device-status__icon {
 	position: relative;
 	flex: none;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 44px;
-	height: 44px;
-	border-radius: 14px;
-	color: var(--device-tone);
+	width: 46px;
+	height: 46px;
+	border-radius: 15px;
+	color: var(--device-brand, var(--device-tone));
 	background: linear-gradient(
 		150deg,
-		color-mix(in oklch, var(--device-tone) 24%, transparent),
-		color-mix(in oklch, var(--device-tone) 7%, transparent)
+		color-mix(in oklch, var(--device-brand, var(--device-tone)) 26%, transparent),
+		color-mix(in oklch, var(--device-brand, var(--device-tone)) 7%, transparent)
 	);
-	border: 1px solid color-mix(in oklch, var(--device-tone) 24%, transparent);
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-	font-size: 19px;
+	border: 1px solid
+		color-mix(in oklch, var(--device-brand, var(--device-tone)) 24%, transparent);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+	font-size: 20px;
 	line-height: 1;
 	transition:
 		color 200ms ease,
 		background-color 200ms ease,
 		border-color 200ms ease;
+}
+
+/* 状态色外环：品牌色负责「是什么应用」，这圈负责「什么状态」，两者同时可读 */
+.device-status__icon::after {
+	content: "";
+	position: absolute;
+	inset: -3px;
+	border-radius: 18px;
+	border: 1px solid color-mix(in oklch, var(--device-tone) 30%, transparent);
+	opacity: 0;
+	transition: opacity 200ms ease;
+}
+
+.device-status-widget[data-state="online"] .device-status__icon::after {
+	opacity: 1;
+}
+
+/* 暗色下把品牌色往白里提一提。
+ * Steam、Epic、Notion 这些品牌色本身就接近纯黑（#1b2838 / #2a2a2a / #2f2f2f），
+ * 直接画在深色卡片上等于隐形。混 38% 白既保住色相又能看清。 */
+:root.dark .device-status__icon {
+	color: color-mix(
+		in oklch,
+		var(--device-brand, var(--device-tone)) 62%,
+		white 38%
+	);
+	background: linear-gradient(
+		150deg,
+		color-mix(
+			in oklch,
+			var(--device-brand, var(--device-tone)) 30%,
+			white 6%
+		),
+		color-mix(
+			in oklch,
+			var(--device-brand, var(--device-tone)) 10%,
+			transparent
+		)
+	);
+	border-color: color-mix(
+		in oklch,
+		var(--device-brand, var(--device-tone)) 34%,
+		transparent
+	);
 }
 
 .device-status__icon iconify-icon {
@@ -140,9 +207,9 @@
 .device-status__app {
 	overflow: hidden;
 	color: var(--deep-text);
-	font-size: 15px;
-	font-weight: 600;
-	line-height: 20px;
+	font-size: 15.5px;
+	font-weight: 650;
+	line-height: 21px;
 	letter-spacing: 0.2px;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -194,25 +261,101 @@
 	display: none;
 }
 
-/* —— 底部：更新时间 + 刷新 —— */
+/* —— 底部：机器名 + 更新时间 + 刷新 —— */
 .device-status__foot {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	gap: 8px;
 	margin-top: 0.75rem;
 	padding-top: 0.5rem;
 	border-top: 1px solid var(--line-divider);
 }
 
+/* 机器名：一台机器时意义不大，但哪天多机上报就能一眼分清 */
+.device-status__host {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: 4px;
+	max-width: 45%;
+	padding: 1px 6px;
+	overflow: hidden;
+	border-radius: 5px;
+	background: var(--btn-regular-bg);
+	color: var(--content-meta);
+	font-size: 10.5px;
+	line-height: 15px;
+	letter-spacing: 0.2px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.device-status__host[hidden] {
+	display: none;
+}
+
+.device-status__host iconify-icon {
+	display: inline-flex;
+	flex: none;
+	width: 1em;
+	height: 1em;
+	opacity: 0.75;
+}
+
+.device-status__host > span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .device-status__updated {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
 	color: var(--content-meta);
 	font-size: 11px;
 	letter-spacing: 0.3px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	opacity: 0.8;
+}
+
+/* 备用通道标记：只在主通道失效时出现。
+   单独做成 chip 而不是接在更新时间后面 —— 那一行本来就窄，
+   接上去会被 ellipsis 吃掉，读者看不到「这份数据是从备用通道来的」。 */
+.device-status__source {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: 4px;
+	padding: 1px 6px;
+	border-radius: 5px;
+	background: color-mix(in oklch, var(--device-warn) 16%, transparent);
+	color: color-mix(in oklch, var(--device-warn) 72%, black);
+	font-size: 10.5px;
+	line-height: 15px;
+	letter-spacing: 0.2px;
+	white-space: nowrap;
+}
+
+.device-status__source[hidden] {
+	display: none;
+}
+
+.device-status__source iconify-icon {
+	display: inline-flex;
+	flex: none;
+	width: 1em;
+	height: 1em;
+	opacity: 0.85;
+}
+
+:root.dark .device-status__source {
+	color: var(--device-warn);
 }
 
 .device-status__refresh {
 	display: inline-flex;
+	flex: none;
 	align-items: center;
 	justify-content: center;
 	width: 26px;
@@ -253,12 +396,13 @@
 	}
 }
 
-/* —— 离线时整体降噪 —— */
+/* —— 离线时整体降噪，不与在线态抢注意力 —— */
 .device-status-widget[data-state="offline"] .device-status__app {
 	color: var(--content-meta);
 }
 
 .device-status-widget[data-state="offline"] .device-status__icon {
+	color: var(--device-tone);
 	background: linear-gradient(
 		150deg,
 		color-mix(in oklch, var(--device-tone) 14%, transparent),
@@ -266,12 +410,16 @@
 	);
 }
 
+.device-status-widget[data-state="offline"] .device-status__title {
+	opacity: 0.5;
+}
+
 @media (max-width: 480px) {
 	.device-status__icon {
-		width: 40px;
-		height: 40px;
-		border-radius: 13px;
-		font-size: 17px;
+		width: 42px;
+		height: 42px;
+		border-radius: 14px;
+		font-size: 18px;
 	}
 }
 
