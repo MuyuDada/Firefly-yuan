@@ -12,6 +12,12 @@ interface Props {
 
 const { class: className, style, city, adcode, extended = true } = Astro.props;
 
+// UAPI key 兜底：仅当访客（匿名）额度被限流时才使用。
+// 只从部署平台环境变量 PUBLIC_UAPI_KEY 注入 —— 带 PUBLIC_ 前缀才会进入浏览器端代码；
+// 禁止写进 src/config 等仓库文件（AGENTS.md：不得提交密钥）。
+// 注意：静态站点没有服务端，该值会出现在页面源码中，请使用有额度上限的 key。
+const uapiKey = (import.meta.env.PUBLIC_UAPI_KEY || "").trim();
+
 // 缓存键名
 const CACHE_KEY = "weather_data_cache";
 const CACHE_DURATION = 30 * 60 * 1000; // 30分钟缓存
@@ -20,7 +26,7 @@ const COLLAPSED_HEIGHT = "9rem";
 ---
 
 <WidgetLayout name="天气预报" id="weather-widget" isCollapsed={true} collapsedHeight={COLLAPSED_HEIGHT} class={className} style={style}>
-	<div class="weather-container" data-weather-init data-city={city} data-adcode={adcode} data-extended={extended ? "true" : "false"}>
+	<div class="weather-container" data-weather-init data-city={city} data-adcode={adcode} data-api-key={uapiKey || undefined} data-extended={extended ? "true" : "false"}>
 		<!-- 加载状态 -->
 		<div class="weather-loading" data-weather-loading>
 			<div class="loading-spinner"></div>
@@ -564,10 +570,12 @@ const COLLAPSED_HEIGHT = "9rem";
 			}
 		};
 
+		// IP 自动定位模式下没有 adcode/city，同样要缓存：
+		// 否则每次翻页都会重新打一次接口，更容易撞上限流（缓存按访客各自的 localStorage 存）
 		function getCacheKey(adcode, city) {
 			if (adcode) return CACHE_KEY + "adcode_" + adcode;
 			if (city) return CACHE_KEY + "city_" + city;
-			return null;
+			return CACHE_KEY + "ip";
 		}
 
 		function fmt(value, suffix = "", fallback = "--") {
@@ -575,7 +583,18 @@ const COLLAPSED_HEIGHT = "9rem";
 			return `${value}${suffix}`;
 		}
 
-		async function fetchWeather(adcode, city, extended) {
+		// 当前容器配置的 UAPI key（为空表示只用访客额度）
+		function getApiKey(container: HTMLElement): string {
+			return (container && container.dataset.apiKey) || "";
+		}
+
+		// 单次请求：apiKey 为空走访客额度，非空走 key 额度
+		async function requestWeather(
+			adcode: string,
+			city: string,
+			extended: boolean,
+			apiKey: string,
+		): Promise<Response> {
 			const params = new URLSearchParams();
 			if (adcode) {
 				params.set("adcode", adcode);
@@ -589,9 +608,11 @@ const COLLAPSED_HEIGHT = "9rem";
 
 			const controller = new AbortController();
 			const timer = setTimeout(() => controller.abort(), 8000);
-			let response;
 			try {
-				response = await fetch(API_URL + params.toString(), { signal: controller.signal });
+				return await fetch(API_URL + params.toString(), {
+					signal: controller.signal,
+					headers: apiKey ? { "X-API-Key": apiKey } : undefined,
+				});
 			} catch (e) {
 				if (e && e.name === "AbortError") {
 					throw new Error("请求超时，请稍后重试");
@@ -600,8 +621,28 @@ const COLLAPSED_HEIGHT = "9rem";
 			} finally {
 				clearTimeout(timer);
 			}
+		}
+
+		// ✅ 访客额度优先：先用匿名请求；仅当访客额度被限流（429）且配置了 key 时，
+		// 才带 key 重试一次，尽量不消耗 key 额度
+		async function fetchWeather(
+			adcode: string,
+			city: string,
+			extended: boolean,
+			apiKey: string,
+		) {
+			let response = await requestWeather(adcode, city, extended, "");
+
+			if (!response.ok && response.status === 429 && apiKey) {
+				response = await requestWeather(adcode, city, extended, apiKey);
+			}
 
 			if (!response.ok) {
+				if (response.status === 429) {
+					throw new Error(
+						apiKey ? "接口请求过于频繁，请稍后重试" : "访客额度已用完，请稍后重试"
+					);
+				}
 				throw new Error(`请求失败: ${response.status}`);
 			}
 
@@ -737,6 +778,7 @@ const COLLAPSED_HEIGHT = "9rem";
 			const adcode = container.dataset.adcode || "";
 			const city = container.dataset.city || "";
 			const extended = container.dataset.extended === "true";
+			const apiKey = getApiKey(container);
 			const cacheKey = getCacheKey(adcode, city);
 
 			const retryBtn = container.querySelector("[data-retry-btn]");
@@ -760,7 +802,7 @@ const COLLAPSED_HEIGHT = "9rem";
 				}
 
 				try {
-					const data = await fetchWeather(adcode, city, extended);
+					const data = await fetchWeather(adcode, city, extended, apiKey);
 					if (seq !== requestSeq) return;
 					updateUI(container, data);
 				} catch (e) {

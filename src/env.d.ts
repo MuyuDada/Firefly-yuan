@@ -6,6 +6,9 @@ declare global {
 		readonly MEILI_MASTER_KEY: string;
 		// 视图设置面板总开关，可在部署平台配置（true / 1 / on / yes 开启）
 		readonly PUBLIC_DISPLAY_SETTINGS?: string;
+		// UAPI 天气接口的 key：访客额度被限流（429）时作为兜底使用。
+		// 只从部署平台环境变量注入，禁止写进 src/config（会提交到仓库）。
+		readonly PUBLIC_UAPI_KEY?: string;
 	}
 
 	interface ITOCManager {

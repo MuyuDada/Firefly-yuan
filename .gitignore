@@ -19,6 +19,14 @@ pnpm-debug.log*
 # environment variables
 .env
 .env.production
+# 本地覆盖文件（存 PUBLIC_UAPI_KEY 等，误提交会泄露密钥）
+.env.local
+.env.*.local
+# Cloudflare Workers / Pages 本地密钥文件
+.dev.vars
+.dev.vars.*
+# wrangler 本地缓存
+.wrangler/
 
 # macOS-specific files
 .DS_Store
