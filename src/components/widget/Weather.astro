@@ -657,32 +657,154 @@ const COLLAPSED_HEIGHT = "9rem";
 		}
 
 		// 天气图标映射
-		const weatherIcons = {
-			"100": "material-symbols:wb-sunny",
-			"101": "material-symbols:cloudy",
-			"102": "material-symbols:cloudy",
+		// 码值来源：https://uapis.cn/openapi.json 中 weather_icon 字段的 enum / enumLabels
+		// uapis.cn 用的是和风天气「旧版」编码（共 443 个码值），不是新版 QWeather 编码：
+		//   100s 晴/多云（150-153 为夜间）· 300s 雨 · 400s 雪 · 500s 雾/霾/沙尘
+		//   800s 月相 · 900s 冷热 · 1001+ 各类预警 · 1201+ 水文地质 · 2000+ 国际预警
+		const FALLBACK_WEATHER_ICON = "material-symbols:cloud";
+
+		const weatherIcons: Record<string, string> = {
+			// —— 晴 / 多云（白天） ——
+			"100": "material-symbols:sunny",
+			"101": "material-symbols:cloud",
+			"102": "material-symbols:partly-cloudy-day",
 			"103": "material-symbols:partly-cloudy-day",
-			"104": "material-symbols:cloudy",
-			"200": "material-symbols:air",
-			"201": "material-symbols:water-drop",
-			"202": "material-symbols:thunderstorm",
-			"203": "material-symbols:rainy",
-			"204": "material-symbols:ac-unit",
-			"205": "material-symbols:rainy",
-			"206": "material-symbols:thunderstorm",
-			"207": "material-symbols:snowing",
-			"208": "material-symbols:rainy",
-			"209": "material-symbols:rainy",
-			"210": "material-symbols:thunderstorm"
+			"104": "material-symbols:cloud",
+			// —— 晴 / 多云（夜间） ——
+			"150": "material-symbols:clear-night",
+			"151": "material-symbols:partly-cloudy-night",
+			"152": "material-symbols:partly-cloudy-night",
+			"153": "material-symbols:partly-cloudy-night",
+			// —— 雨 ——
+			"300": "material-symbols:rainy",
+			"301": "material-symbols:rainy-heavy",
+			"302": "material-symbols:thunderstorm",
+			"303": "material-symbols:thunderstorm",
+			"304": "material-symbols:weather-hail",
+			"305": "material-symbols:rainy-light",
+			"306": "material-symbols:rainy",
+			"307": "material-symbols:rainy-heavy",
+			"308": "material-symbols:rainy-heavy",
+			"309": "material-symbols:rainy-light",
+			"310": "material-symbols:rainy-heavy",
+			"311": "material-symbols:rainy-heavy",
+			"312": "material-symbols:rainy-heavy",
+			"313": "material-symbols:weather-mix",
+			"314": "material-symbols:rainy-light",
+			"315": "material-symbols:rainy",
+			"316": "material-symbols:rainy-heavy",
+			"317": "material-symbols:rainy-heavy",
+			"318": "material-symbols:rainy-heavy",
+			"350": "material-symbols:rainy",
+			"351": "material-symbols:rainy-heavy",
+			"399": "material-symbols:rainy",
+			// —— 雪 / 雨夹雪 ——
+			"400": "material-symbols:snowing",
+			"401": "material-symbols:snowing",
+			"402": "material-symbols:snowing-heavy",
+			"403": "material-symbols:snowing-heavy",
+			"404": "material-symbols:weather-mix",
+			"405": "material-symbols:weather-mix",
+			"406": "material-symbols:weather-mix",
+			"407": "material-symbols:snowing",
+			"408": "material-symbols:snowing",
+			"409": "material-symbols:snowing-heavy",
+			"410": "material-symbols:snowing-heavy",
+			"456": "material-symbols:weather-mix",
+			"457": "material-symbols:snowing",
+			"499": "material-symbols:snowing",
+			// —— 雾 / 霾 / 沙尘 ——
+			"500": "material-symbols:foggy",
+			"501": "material-symbols:foggy",
+			"502": "material-symbols:foggy",
+			"503": "material-symbols:storm",
+			"504": "material-symbols:storm",
+			"507": "material-symbols:storm",
+			"508": "material-symbols:storm",
+			"509": "material-symbols:foggy",
+			"510": "material-symbols:foggy",
+			"511": "material-symbols:foggy",
+			"512": "material-symbols:foggy",
+			"513": "material-symbols:foggy",
+			"514": "material-symbols:foggy",
+			"515": "material-symbols:foggy",
+			// —— 月相 ——
+			"800": "material-symbols:dark-mode",
+			"801": "material-symbols:nightlight",
+			"802": "material-symbols:nightlight",
+			"803": "material-symbols:nightlight",
+			"804": "material-symbols:brightness-1",
+			"805": "material-symbols:nightlight",
+			"806": "material-symbols:nightlight",
+			"807": "material-symbols:nightlight",
+			// —— 其他 ——
+			"900": "material-symbols:mode-heat",
+			"901": "material-symbols:severe-cold",
+			"999": "material-symbols:help",
+			// —— 常见预警（1001+） ——
+			"1001": "material-symbols:cyclone",
+			"1002": "material-symbols:tornado",
+			"1003": "material-symbols:rainy-heavy",
+			"1004": "material-symbols:snowing-heavy",
+			"1005": "material-symbols:severe-cold",
+			"1006": "material-symbols:air",
+			"1007": "material-symbols:storm",
+			"1008": "material-symbols:ac-unit",
+			"1009": "material-symbols:mode-heat",
+			"1010": "material-symbols:air",
+			"1014": "material-symbols:thunderstorm",
+			"1015": "material-symbols:ac-unit",
+			"1016": "material-symbols:ac-unit",
+			"1017": "material-symbols:foggy",
+			"1019": "material-symbols:foggy",
+			"1021": "material-symbols:ac-unit",
+			"1022": "material-symbols:water-drop",
+			"1025": "material-symbols:local-fire-department",
+			"1027": "material-symbols:ac-unit",
+			"1029": "material-symbols:masks",
+			"1031": "material-symbols:thunderstorm",
+			"1033": "material-symbols:snowing-heavy",
+			"1036": "material-symbols:flood",
+			"1037": "material-symbols:landslide",
+			"1038": "material-symbols:rainy-heavy",
+			"1040": "material-symbols:snowing-heavy",
+			"1043": "material-symbols:thunderstorm",
+			"1049": "material-symbols:cyclone",
+			"1053": "material-symbols:foggy",
+			"1063": "material-symbols:rainy-heavy",
+			"1075": "material-symbols:flood",
+			"1077": "material-symbols:local-fire-department",
+			"1079": "material-symbols:agriculture",
+			"1081": "material-symbols:ac-unit",
+			// —— 水文 / 地质 ——
+			"1247": "material-symbols:volcano",
+			"1271": "material-symbols:masks",
+			"1272": "material-symbols:masks",
+			"1273": "material-symbols:masks",
+			"1274": "material-symbols:masks"
 		};
 
+		// 预警类码值数量庞大（1001-2554），未逐个列举的按区间回退到同类图标
+		function getWeatherAlertIcon(code: string | number): string | null {
+			const n = Number(code);
+			if (!Number.isFinite(n)) return null;
+			if (n >= 1001 && n <= 1089) return "material-symbols:warning"; // 国内预警 / 气象指数
+			if (n >= 1201 && n <= 1221) return "material-symbols:flood"; // 洪水 / 内涝 / 干旱
+			if (n >= 1241 && n <= 1251) return "material-symbols:landslide"; // 地质灾害
+			if (n >= 1601 && n <= 1805) return "material-symbols:warning"; // 港澳预警
+			if (n >= 2000 && n <= 2999) return "material-symbols:warning"; // 国际预警
+			if (n >= 1000) return "material-symbols:warning";
+			return null;
+		}
+
 		// ✅ 修复：更稳健的图标解析（兼容字符串/数字/空值）
-		function getWeatherIcon(weatherIcon) {
+		function getWeatherIcon(weatherIcon: string | number | null | undefined): string {
 			if (weatherIcon === null || weatherIcon === undefined) {
-				return "material-symbols:wb-sunny";
+				return FALLBACK_WEATHER_ICON;
 			}
 			const key = String(weatherIcon).trim();
-			return weatherIcons[key] || "material-symbols:wb-sunny";
+			if (!key) return FALLBACK_WEATHER_ICON;
+			return weatherIcons[key] || getWeatherAlertIcon(key) || FALLBACK_WEATHER_ICON;
 		}
 
 		function updateUI(container, data, error = null) {
