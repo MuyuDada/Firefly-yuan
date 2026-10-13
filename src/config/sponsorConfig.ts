@@ -39,14 +39,14 @@ export const sponsorConfig: SponsorConfig = {
 			description: "使用 微信 扫码打赏",
 			enabled: true,
 		},
-		{
-			name: "ko-fi",
-			icon: "simple-icons:kofi",
-			qrCode: "",
-			link: "https://ko-fi.com/muyudada",
-			description: "Buy a Coffee for Firefly",
-			enabled: true,
-		},
+		// {
+		// 	name: "ko-fi",
+		// 	icon: "simple-icons:kofi",
+		// 	qrCode: "",
+		// 	link: "https://ko-fi.com/muyudada",
+		// 	description: "Buy a Coffee for Firefly",
+		// 	enabled: true,
+		// },
 		{
 			name: "爱发电",
 			icon: "simple-icons:afdian",
@@ -61,19 +61,19 @@ export const sponsorConfig: SponsorConfig = {
 	sponsors: [
 		// 示例：已实名打赏者
 		{
-			name: "夏叶",
+			name: "牧屿",
 			avatar:
-				"https://weavatar.com/avatar/d252655d40d6874417a720bad0a6c5f77f8f6a1fd2f882f8f338402dc37e4190?s=640",
-			amount: "¥50",
-			date: "2025-10-01",
+				"https://muyuimg.cc.cd/file/blog/1788157305659_maomao.gif",
+			amount: "¥100",
+			date: "2026-10-01",
 		},
 
 		// 示例：匿名打赏者
-		{
-			name: "匿名用户",
-			// avatar: "",
-			amount: "¥20",
-			date: "2025-10-01",
-		},
+		// {
+		// 	name: "匿名用户",
+		// 	// avatar: "",
+		// 	amount: "¥20",
+		// 	date: "2025-10-01",
+		// },
 	],
 };

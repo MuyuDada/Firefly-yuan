@@ -81,7 +81,7 @@
 - **GitHub** — [@MuyuDada](https://github.com/MuyuDada)
 - **Gitee** — [@muyudada](https://gitee.com/muyudada)
 - **个人主页** — [muyuhome.cc.cd](https://muyuhome.cc.cd)
-- **邮箱** — [xiaye@msn.com](mailto:xiaye@msn.com)
+- **邮箱** — [muyu_dada@qq.com](mailto:muyu_dada@qq.com)
 
 如果这里的内容帮到了你，或者只是想聊两句，都欢迎来信。
 
