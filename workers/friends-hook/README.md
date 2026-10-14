@@ -70,16 +70,16 @@ npx wrangler deploy -c wrangler.jsonc
 部署成功会打印 Worker 地址与 cron 计划：
 
 ```
-Uploaded firefly-friends-hook (4.13 sec)
-Deployed firefly-friends-hook triggers (2.45 sec)
-  https://firefly-friends-hook.<你的子域>.workers.dev
+Uploaded firefly-friends-hook (3.75 sec)
+Deployed firefly-friends-hook triggers (4.04 sec)
+  friends-hook.muyudada.dpdns.org (custom domain)
   schedule: */15 * * * *
 ```
 
 ### 5. 验证
 
 ```bash
-curl https://firefly-friends-hook.<子域>.workers.dev/health
+curl https://friends-hook.muyudada.dpdns.org/health
 # → {"ok":true,"kv":true,"applyPath":"/friends/","time":"..."}
 ```
 
@@ -89,9 +89,27 @@ curl https://firefly-friends-hook.<子域>.workers.dev/health
 
 ```bash
 curl -X POST -H "x-admin-token: <你的 ADMIN_TOKEN>" \
-  https://firefly-friends-hook.<子域>.workers.dev/admin/poll
+  https://friends-hook.muyudada.dpdns.org/admin/poll
 # → {"ok":true,"polled":true}
 ```
+
+### 6. 自定义域（已配置，供参考）
+
+Worker 绑的是自定义域 `friends-hook.muyudada.dpdns.org`，而不是默认的 `*.workers.dev`：
+
+```jsonc
+"routes": [
+  { "pattern": "friends-hook.muyudada.dpdns.org", "custom_domain": true }
+]
+```
+
+`custom_domain: true` 会让 wrangler 自动在该 zone 上建一条指向 Worker 的 DNS 记录并签发证书，不需要手工去 DNS 面板加 CNAME。
+
+> **为什么不用 `*.workers.dev`**：`workers.dev` 在国内被 DNS 污染，必须挂代理才能访问 —— 审核页打不开、Waline 的 webhook 也推不过来。绑到自己的域上走的是正常解析。
+>
+> 代价：绑定自定义域后 **`workers_dev` 默认被关闭**（wrangler 会警告 `Because 'workers_dev' is not in your Wrangler file, it will be disabled`），原来的 `*.workers.dev` 地址会返回 404。想让两个地址都通，在 `wrangler.jsonc` 里显式加 `"workers_dev": true`。
+>
+> 前提：`muyudada.dpdns.org` 这个域必须已经托管在同一个 Cloudflare 账号下。该域有一条 `*.muyudada.dpdns.org` 通配 DNS 记录，所以任意子域都能解析到 Cloudflare，但**只有显式绑定的那个子域才指向 Worker**，其他子域仍是 404。
 
 ---
 
@@ -101,7 +119,7 @@ curl -X POST -H "x-admin-token: <你的 ADMIN_TOKEN>" \
 
 | 项 | 值 |
 |---|---|
-| Worker 地址 | `https://firefly-friends-hook.2756390658.workers.dev` |
+| Worker 地址 | `https://friends-hook.muyudada.dpdns.org`（自定义域） |
 | KV namespace id | `f1def21c1578472abcd0691ca80ab953`（已写进 `wrangler.jsonc`） |
 | cron | `*/15 * * * *` |
 | 已入库 | 4 条待审（objectId 9 / 8 / 6 / 3），站长的两条「已添加」回复已正确过滤 |
@@ -118,7 +136,7 @@ curl -X POST -H "x-admin-token: <你的 ADMIN_TOKEN>" \
 想立刻看到效果，不用等 cron：
 
 ```bash
-curl -X POST https://firefly-friends-hook.<子域>.workers.dev/admin/poll \
+curl -X POST https://friends-hook.muyudada.dpdns.org/admin/poll \
   -H "x-admin-token: <你的 ADMIN_TOKEN>"
 ```
 
@@ -129,7 +147,7 @@ curl -X POST https://firefly-friends-hook.<子域>.workers.dev/admin/poll \
 在 Waline 服务的环境变量里加一条：
 
 ```
-WEBHOOK=https://firefly-friends-hook.<你的子域>.workers.dev/hook
+WEBHOOK=https://friends-hook.muyudada.dpdns.org/hook
 ```
 
 Waline 会在**每次评论创建后**（不论最终审核状态）向这个地址发一条 POST。改完需要重启/重新部署 Waline 服务。这条只在 Waline 部署在 Vercel 等能改环境变量的平台上才可用。
@@ -150,7 +168,7 @@ Waline 会在**每次评论创建后**（不论最终审核状态）向这个地
 浏览器打开：
 
 ```
-https://firefly-friends-hook.<子域>.workers.dev/admin?token=<你的 ADMIN_TOKEN>
+https://friends-hook.muyudada.dpdns.org/admin?token=<你的 ADMIN_TOKEN>
 ```
 
 页面分三块：

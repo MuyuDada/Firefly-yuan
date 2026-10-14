@@ -9,6 +9,14 @@
 	"triggers": {
 		"crons": ["*/15 * * * *"]
 	},
+	// 自定义域：绑到 muyudada.dpdns.org 这个已托管在 Cloudflare 的域上，
+	// 避开 *.workers.dev 在国内被 DNS 污染、必须挂代理才能访问的问题。
+	"routes": [
+		{
+			"pattern": "friends-hook.muyudada.dpdns.org",
+			"custom_domain": true
+		}
+	],
 	"kv_namespaces": [
 		{
 			"binding": "FRIENDS_KV",
