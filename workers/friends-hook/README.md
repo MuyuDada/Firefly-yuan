@@ -62,10 +62,19 @@ npx wrangler secret put ADMIN_TOKEN
 ### 4. 部署
 
 ```bash
-npx wrangler deploy
+npx wrangler deploy -c wrangler.jsonc
 ```
 
-部署成功会打印 Worker 地址，形如 `https://firefly-friends-hook.<你的子域>.workers.dev`。
+> 和 `wrangler dev` 一样要显式 `-c wrangler.jsonc`，否则会撞上仓库根目录的 `.wrangler/deploy/config.json`。
+
+部署成功会打印 Worker 地址与 cron 计划：
+
+```
+Uploaded firefly-friends-hook (4.13 sec)
+Deployed firefly-friends-hook triggers (2.45 sec)
+  https://firefly-friends-hook.<你的子域>.workers.dev
+  schedule: */15 * * * *
+```
 
 ### 5. 验证
 
@@ -76,7 +85,29 @@ curl https://firefly-friends-hook.<子域>.workers.dev/health
 
 `kv: true` 表示 KV 绑定成功。
 
+再手动触发一次轮询，立刻把已有的友链申请灌进队列（不用等 15 分钟）：
+
+```bash
+curl -X POST -H "x-admin-token: <你的 ADMIN_TOKEN>" \
+  https://firefly-friends-hook.<子域>.workers.dev/admin/poll
+# → {"ok":true,"polled":true}
+```
+
 ---
+
+## 本站当前部署状态
+
+已经部署好并在运行，无需重复以下步骤：
+
+| 项 | 值 |
+|---|---|
+| Worker 地址 | `https://firefly-friends-hook.2756390658.workers.dev` |
+| KV namespace id | `f1def21c1578472abcd0691ca80ab953`（已写进 `wrangler.jsonc`） |
+| cron | `*/15 * * * *` |
+| 已入库 | 4 条待审（objectId 9 / 8 / 6 / 3），站长的两条「已添加」回复已正确过滤 |
+| 未接线 | Waline 的 `WEBHOOK` 环境变量**没设** —— 现在完全靠 cron 轮询工作 |
+
+也就是说：**访客照旧在友链页留言即可**，15 分钟内自动出现在审核页。想做到即时入库，再去 Vercel 给 Waline 加 `WEBHOOK`（见第三节方式 B）。
 
 ## 三、评论怎么进来
 
