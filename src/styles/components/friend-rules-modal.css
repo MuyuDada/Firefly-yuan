@@ -293,6 +293,258 @@ friend-rules-modal {
 	color: rgb(0 0 0 / 90%);
 }
 
+/* ── 三步向导 ─────────────────────────────── */
+
+.friend-wizard {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	/* 面板本身是 flex 容器且 overflow:hidden，这里必须允许收缩，
+	   否则中间的内容区会把 footer 顶出面板 */
+	flex: 1;
+}
+
+/* 向导的内容区自己滚动，footer 始终钉在底部 */
+.friend-wizard .friend-modal-body {
+	flex: 1;
+	min-height: 0;
+}
+
+.friend-wizard-dots {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 2rem;
+	padding: 0.875rem 1.25rem 0;
+}
+
+.friend-wizard-dots li {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.5rem;
+	height: 1.5rem;
+	border-radius: 9999px;
+	font-size: 0.7rem;
+	font-weight: 700;
+	color: var(--content-meta);
+	background: color-mix(in srgb, var(--line-divider) 60%, transparent);
+	transition:
+		color 0.2s ease,
+		background 0.2s ease;
+}
+
+/* 步骤之间的连线：除最后一个圆点外，每个圆点右侧拉一条到下一个 */
+.friend-wizard-dots li:not(:last-child)::after {
+	content: "";
+	position: absolute;
+	left: 100%;
+	width: 2rem;
+	height: 1px;
+	background: var(--line-divider);
+}
+
+.friend-wizard-dots li.is-active {
+	color: #fff;
+	background: var(--primary);
+}
+
+.friend-wizard-step {
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+}
+
+.friend-wizard-step[hidden] {
+	display: none;
+}
+
+/* ── 申请表单 ─────────────────────────────── */
+
+.friend-apply-form {
+	display: flex;
+	flex-direction: column;
+	gap: 0.875rem;
+}
+
+.friend-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+}
+
+.friend-field label {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: rgb(0 0 0 / 90%);
+}
+
+.friend-field-flag {
+	font-size: 0.6rem;
+	font-weight: 500;
+	color: var(--content-meta);
+}
+
+.friend-field-flag.is-required {
+	color: var(--primary);
+}
+
+.friend-field input,
+.friend-field textarea {
+	width: 100%;
+	padding: 0.5rem 0.625rem;
+	border-radius: 0.5rem;
+	border: 1px solid var(--line-divider);
+	font-size: 0.8rem;
+	color: rgb(0 0 0 / 90%);
+	background: color-mix(in srgb, var(--line-divider) 22%, transparent);
+	transition:
+		border-color 0.2s ease,
+		background 0.2s ease;
+}
+
+.friend-field textarea {
+	resize: vertical;
+	min-height: 4rem;
+	line-height: 1.6;
+}
+
+.friend-field input:focus,
+.friend-field textarea:focus {
+	outline: none;
+	border-color: var(--primary);
+	background: var(--card-bg);
+}
+
+.friend-field input::placeholder,
+.friend-field textarea::placeholder {
+	color: var(--content-meta);
+	opacity: 0.7;
+}
+
+/* ── 验证码 ───────────────────────────────── */
+
+.friend-captcha-row {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.friend-captcha-question {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	min-width: 6.5rem;
+	height: 2.125rem;
+	padding: 0 0.625rem;
+	border-radius: 0.5rem;
+	font-size: 0.8rem;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	color: rgb(0 0 0 / 90%);
+	background: color-mix(in srgb, var(--line-divider) 35%, transparent);
+}
+
+.friend-captcha-question[data-state="loading"] {
+	font-size: 0.7rem;
+	font-weight: 500;
+	letter-spacing: 0;
+	color: var(--content-meta);
+}
+
+/* 出错时题面本身可点，当重试按钮用 */
+.friend-captcha-question[data-state="error"] {
+	font-size: 0.65rem;
+	font-weight: 500;
+	letter-spacing: 0;
+	line-height: 1.3;
+	text-align: center;
+	color: var(--primary);
+	cursor: pointer;
+	background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.friend-captcha-row input {
+	flex: 1;
+	min-width: 0;
+}
+
+.friend-captcha-refresh {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 2.125rem;
+	height: 2.125rem;
+	border-radius: 0.5rem;
+	cursor: pointer;
+	color: var(--content-meta);
+	background: color-mix(in srgb, var(--line-divider) 60%, transparent);
+	transition:
+		color 0.2s ease,
+		background 0.2s ease,
+		transform 0.3s ease;
+}
+
+.friend-captcha-refresh:hover {
+	color: var(--primary);
+	background: color-mix(in srgb, var(--primary) 18%, transparent);
+	transform: rotate(90deg);
+}
+
+/* ── 蜜罐 ─────────────────────────────────── */
+/* 用绝对定位移出视口而不是 display:none —— 有些脚本会跳过不可见字段，
+   但 display:none 的字段更容易被识别成蜜罐。 */
+.friend-honeypot {
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+/* ── 提交状态与成功页 ─────────────────────── */
+
+.friend-form-status {
+	margin: 0;
+	font-size: 0.72rem;
+	line-height: 1.6;
+	color: var(--content-meta);
+}
+
+.friend-form-status[data-kind="error"] {
+	color: rgb(220 38 38);
+}
+
+.friend-form-status[hidden] {
+	display: none;
+}
+
+.friend-done {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 2rem 0;
+	text-align: center;
+}
+
+.friend-done-icon {
+	color: rgb(34 197 94);
+}
+
+.friend-done p {
+	margin: 0;
+	font-size: 0.85rem;
+	line-height: 1.7;
+	color: rgb(0 0 0 / 90%);
+}
+
 /* ── 底部动作 ─────────────────────────────── */
 
 .friend-modal-footer {
@@ -316,6 +568,20 @@ friend-rules-modal {
 	transition:
 		background 0.2s ease,
 		opacity 0.2s ease;
+}
+
+/* 向导里 footer 的第一个按钮靠左，其余靠右 —— 让「上一步」和「下一步/提交」分开 */
+.friend-wizard .friend-modal-footer {
+	justify-content: flex-end;
+}
+
+.friend-wizard .friend-modal-footer > :first-child {
+	margin-right: auto;
+}
+
+.friend-modal-primary[disabled] {
+	opacity: 0.6;
+	cursor: not-allowed;
 }
 
 .friend-modal-primary {
@@ -348,8 +614,27 @@ body.friend-modal-open {
 :root.dark .friend-info-value,
 :root.dark .friend-step-content strong,
 :root.dark .friend-template pre,
-:root.dark .friend-notes strong {
+:root.dark .friend-notes strong,
+:root.dark .friend-field label,
+:root.dark .friend-field input,
+:root.dark .friend-field textarea,
+:root.dark .friend-captcha-question,
+:root.dark .friend-done p {
 	color: rgb(255 255 255 / 90%);
+}
+
+:root.dark .friend-field input,
+:root.dark .friend-field textarea {
+	background: color-mix(in srgb, var(--line-divider) 30%, transparent);
+}
+
+:root.dark .friend-field input:focus,
+:root.dark .friend-field textarea:focus {
+	background: var(--card-bg);
+}
+
+:root.dark .friend-form-status[data-kind="error"] {
+	color: rgb(248 113 113);
 }
 
 /* 链接字段跟随主题色，暗色下同样清晰 */

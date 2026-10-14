@@ -41,6 +41,11 @@ export const friendsPageConfig: FriendsPageConfig = {
 	// 外链自助申请地址（如 GitHub Issue 模板），留空则不显示该按钮
 	applyLink: "",
 
+	// 站内申请表单的接收端（workers/friends-hook 部署后的地址）。
+	// 填了就启用弹窗里的三步向导：注意事项 → 本站信息 → 直接填表提交，
+	// 访客不用再去评论区贴模板。留空则退回「复制模板 → 评论区留言」的老流程。
+	applyApi: "https://friends-hook.muyudada.dpdns.org",
+
 	// 弹窗中的「本站信息」，供访客一键复制用于互换友链
 	siteInfo: {
 		name: "Muyu の 小窝",
@@ -76,8 +81,7 @@ export const friendsPageConfig: FriendsPageConfig = {
 export const friendsConfig: FriendLink[] = [
 	{
 		title: "Muyu の 小窝",
-		imgurl:
-			"https://muyuimg.cc.cd/file/blog/1788157305659_maomao.gif",
+		imgurl: "https://muyuimg.cc.cd/file/blog/1788157305659_maomao.gif",
 		desc: "永远相信美好的事情即将发生",
 		siteurl: "https://muyudada.dpdns.org",
 		tags: ["本站"],
@@ -86,8 +90,7 @@ export const friendsConfig: FriendLink[] = [
 	},
 	{
 		title: "番茄主理人",
-		imgurl:
-			"https://q1.qlogo.cn/g?b=qq&nk=20447289&s=640",
+		imgurl: "https://q1.qlogo.cn/g?b=qq&nk=20447289&s=640",
 		desc: "躬身入局，心为主理，行有尺度，自持本心。",
 		siteurl: "https://blog.fqzlr.top/",
 		tags: ["Blog"],
@@ -96,8 +99,7 @@ export const friendsConfig: FriendLink[] = [
 	},
 	{
 		title: "LonelyBingの小窝",
-		imgurl:
-			"https://img.lonelybing.top/file/头像/1789400498937.jpg",
+		imgurl: "https://img.lonelybing.top/file/头像/1789400498937.jpg",
 		desc: "一名普普通通の大学生~",
 		siteurl: "https://lonelybing.top",
 		tags: ["Blog"],
@@ -152,7 +154,8 @@ export const friendsConfig: FriendLink[] = [
 	},
 	{
 		title: "奶油小屋",
-		imgurl: "https://abcdtfk.icu/uploads/settings/20261009_740d3da591717fff.jpg",
+		imgurl:
+			"https://abcdtfk.icu/uploads/settings/20261009_740d3da591717fff.jpg",
 		desc: "玫瑰捧起篝火，追忆它年少时爱的日落",
 		siteurl: "https://abcdtfk.icu/",
 		tags: ["Blog"],
@@ -161,7 +164,8 @@ export const friendsConfig: FriendLink[] = [
 	},
 	{
 		title: "O7statの小窝",
-		imgurl: "https://hello123.fun/media/covers/7c3f3f24d4ff4aee8cba04f9f3762369.webp",
+		imgurl:
+			"https://hello123.fun/media/covers/7c3f3f24d4ff4aee8cba04f9f3762369.webp",
 		desc: "记录学习，分享笔记",
 		siteurl: "https://hello123.fun",
 		tags: ["Blog"],

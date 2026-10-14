@@ -10,6 +10,8 @@
  *
  * 路由：
  *   POST /hook          Waline WEBHOOK 的接收端（必须返回 JSON 体，Waline 会对响应 .json()）
+ *   GET  /captcha       站内申请表单的算术验证码
+ *   POST /apply         站内申请表单的直接提交（不走 Waline 评论）
  *   GET  /api/links     已通过的友链列表，供前端 fetch 合并展示（?format=ts 输出配置片段）
  *   GET  /health        健康检查
  *   GET  /admin         审核页（需要 ADMIN_TOKEN）
@@ -17,7 +19,10 @@
  */
 
 import { checkBacklink, hostOf, isSafePublicUrl } from "./backlink";
+import { issueCaptcha, verifyCaptcha } from "./captcha";
+import { type ApplyPayload, validateApply } from "./form";
 import { findMissing, parseApplication } from "./parse";
+import { clientIp, consumeQuota } from "./rate";
 import type { PublicLink } from "./store";
 import {
 	approveApplication,
@@ -337,6 +342,148 @@ function toConfigSnippet(links: PublicLink[]): string {
 		.join("\n");
 }
 
+/**
+ * GET /captcha —— 出一道具算术题。
+ *
+ * 为什么需要：`/apply` 是个对公网开放的写接口。没有这道题，任何人写个循环就能把
+ * 审核页刷满。算术题挡不住有心人，但挡得住「顺手写个脚本」这一类。
+ *
+ * 同时按 IP 限额，避免有人把验证码接口当随机数生成器刷 KV 写入额度。
+ */
+async function handleCaptcha(request: Request, env: Env): Promise<Response> {
+	const ip = clientIp(request);
+	const denied = await consumeQuota(env.FRIENDS_KV, ip, "cap", env);
+	if (denied) return json({ ok: false, error: denied }, 429);
+
+	const { id, question } = await issueCaptcha(env.FRIENDS_KV);
+	return json({ ok: true, id, question });
+}
+
+/** 给表单提交生成的记录 id —— 加前缀，和 Waline 的数字 objectId 区分开 */
+function formId(): string {
+	const bytes = new Uint8Array(8);
+	crypto.getRandomValues(bytes);
+	const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
+		"",
+	);
+	return `form-${hex}`;
+}
+
+/**
+ * POST /apply —— 站内表单直接提交。
+ *
+ * 与 `/hook` 的区别：那边是「Waline 评论 → 解析文本」，这边是「表单字段 → 直接用」。
+ * 两条路的产物是同一种 `FriendApplication`，所以审核页、`/api/links`、审核动作都
+ * 不需要任何改动。`nick` 记成「表单申请」，`raw` 存一份可读的文本快照，方便人工核对。
+ *
+ * 反链检测放在 `ctx.waitUntil` 里：它要抓外部站点，实测慢站首包 20s+，同步等会让
+ * 用户对着转圈等半天。申请本身已经入库，检测结果随后补写。
+ */
+async function handleApply(
+	request: Request,
+	env: Env,
+	ctx: ExecutionContext,
+): Promise<Response> {
+	if (env.ENABLE_FORM === "0") {
+		return json({ ok: false, error: "站内申请已关闭。" }, 403);
+	}
+
+	let payload: ApplyPayload;
+	try {
+		payload = (await request.json()) as ApplyPayload;
+	} catch {
+		return json({ ok: false, error: "请求体不是合法 JSON。" }, 400);
+	}
+
+	const validated = validateApply(payload);
+	if (!validated.ok) return json({ ok: false, error: validated.error }, 400);
+
+	const ip = clientIp(request);
+	// 先验验证码：它是一次性的，验完即删；额度在验证码通过后才扣，
+	// 免得用户填错一次就白扣一次配额。
+	const captchaOk = await verifyCaptcha(
+		env.FRIENDS_KV,
+		validated.captchaId,
+		validated.captchaAnswer,
+	);
+	if (!captchaOk) {
+		return json({ ok: false, error: "验证码不对，请重新获取。" }, 400);
+	}
+
+	const denied = await consumeQuota(env.FRIENDS_KV, ip, "apply", env);
+	if (denied) return json({ ok: false, error: denied }, 429);
+
+	const { parsed } = validated;
+	// 用共享的 REQUIRED_FIELDS 算一遍，别硬编码 —— 以后改了必填项两边不会脱节
+	const missing = findMissing(parsed);
+	const duplicateOf = await findDuplicate(env.FRIENDS_KV, parsed.siteurl);
+	// 已经在友链列表里的站点直接回绝，省得审核页堆重复条目；
+	// 只是「另一个待审申请撞了同一站点」的则照常入库，由审核页标出来让人判断。
+	if (duplicateOf) {
+		const other = await getApplication(env.FRIENDS_KV, duplicateOf);
+		if (other?.status === "approved") {
+			return json({ ok: false, error: "这个站点已经在友链列表里了。" }, 409);
+		}
+	}
+	const id = formId();
+	const now = new Date().toISOString();
+
+	const application: FriendApplication = {
+		id,
+		createdAt: now,
+		nick: "表单申请",
+		link: "",
+		raw: [
+			`站点名称：${parsed.name}`,
+			`站点描述：${parsed.desc}`,
+			`站点链接：${parsed.siteurl}`,
+			`头像链接：${parsed.avatar}`,
+			parsed.email ? `邮箱：${parsed.email}` : "",
+		]
+			.filter(Boolean)
+			.join("\n"),
+		parsed,
+		unparsed: [],
+		complete: missing.length === 0,
+		missing,
+		backlink: { ok: false, checkedUrl: "", note: "检测中" },
+		status: "pending",
+		...(duplicateOf ? { duplicateOf } : {}),
+	};
+
+	await saveApplication(env.FRIENDS_KV, application);
+	console.log(`[friends-hook] 表单申请已入库 ${id} (${parsed.siteurl})`);
+
+	// 反链检测放后台，结果回写同一条记录
+	ctx.waitUntil(
+		(async () => {
+			try {
+				const timeoutMs = Number(env.BACKLINK_TIMEOUT_MS ?? "8000") || 8000;
+				const backlink = isSafePublicUrl(parsed.siteurl)
+					? await checkBacklink(parsed.siteurl, hostOf(env.SITE_URL), timeoutMs)
+					: { ok: false, checkedUrl: "", note: "没有可检测的站点地址" };
+				const current = await getApplication(env.FRIENDS_KV, id);
+				// 审核员可能在检测跑完前就处理掉了，那就别再覆盖状态
+				if (!current || current.status !== "pending") return;
+				await saveApplication(env.FRIENDS_KV, { ...current, backlink });
+				console.log(
+					`[friends-hook] 表单申请 ${id} 反链检测完成 ok=${backlink.ok}`,
+				);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				console.error(`[friends-hook] 表单申请 ${id} 反链检测失败：${message}`);
+			}
+		})(),
+	);
+
+	return json({
+		ok: true,
+		id,
+		message: "申请已提交，审核通过后会显示在友链列表里。",
+		...(duplicateOf ? { duplicate: true } : {}),
+	});
+}
+
 /** GET /api/links —— 已通过的友链，前端可直接 fetch */
 async function handlePublicLinks(
 	request: Request,
@@ -442,6 +589,10 @@ export default {
 		try {
 			if (pathname === "/hook" && request.method === "POST")
 				return await handleHook(request, env, ctx);
+			if (pathname === "/captcha" && request.method === "GET")
+				return await handleCaptcha(request, env);
+			if (pathname === "/apply" && request.method === "POST")
+				return await handleApply(request, env, ctx);
 			if (pathname === "/api/links" && request.method === "GET")
 				return await handlePublicLinks(request, env);
 			if (pathname === "/admin" && request.method === "GET")

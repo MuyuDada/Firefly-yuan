@@ -20,6 +20,12 @@ export interface Env {
 	VERIFY_COMMENT?: string;
 	/** 反链检测超时（毫秒），默认 5000 */
 	BACKLINK_TIMEOUT_MS?: string;
+	/** 是否开启站内表单申请（POST /apply）。"0" 关闭，默认开启 */
+	ENABLE_FORM?: string;
+	/** 一个 IP 每天最多领几道验证码，默认 30 */
+	CAPTCHA_PER_DAY?: string;
+	/** 一个 IP 每天最多提交几次申请，默认 5 */
+	APPLY_PER_DAY?: string;
 }
 
 /** 从申请文本中解析出的字段 */

@@ -22,11 +22,12 @@ pinned: false
 | --- | --- |
 | 搜索 | 按站名 / 简介 / 域名 / 标签过滤，输入有 150ms 防抖 |
 | Tag 筛选 | 「全部」+ 所有友链 `tags` 并集，带滑动指示条 |
-| 分页 | 默认每页 9 条，筛选后自动重新分页并回到第 1 页 |
+| 分页 | 默认每页 12 条，筛选后自动重新分页并回到第 1 页 |
 | 延时徽章 | 卡片进入视口才探测，绿 / 橙 / 红三档，带脉冲圆点 |
 | 站点预览图 | 顶栏 16:9 缩略图，支持手填或自动截图 |
 | 头像懒加载 | 进入视口才把 `data-src` 赋给 `src`，失败显示首字占位 |
-| 申请弹窗 | 右上角按钮，本站信息一键复制 + 三步流程 + 注意事项 |
+| 申请弹窗 | 右上角按钮，三步向导 + 页内表单直接提交（也可退回「复制模板去评论区」的老流程） |
+| 申请接收端 | 独立 Cloudflare Worker：算术验证码 + 每日限额 + 反链检测 + 审核页 |
 | 空态 | 筛选无结果时显示提示，而不是留一片空白 |
 | 卡片视觉 | 三列网格、极光晕、左侧色轨、悬停扫光与前往按钮 |
 
@@ -44,6 +45,7 @@ pinned: false
 | `src/styles/pages/friends.css` | 工具栏、三列网格、Tag 指示条、分页样式 |
 | `src/content/spec/friends.mdx` | 卡片区下方的自定义内容 |
 | `src/i18n/i18nKey.ts` + `languages/*.ts` | 弹窗与徽章文案 |
+| `workers/friends-hook/` | 申请接收端（独立 Cloudflare Worker，不在 Astro 构建里） |
 
 ## 三、配置：把可调项都抽出来
 
@@ -58,7 +60,7 @@ export const friendsPageConfig: FriendsPageConfig = {
 	randomizeSort: false,
 
 	// 每页展示的卡片数量
-	pageSize: 9,
+	pageSize: 12,
 
 	// ── 访问延时徽章 ──
 	showLatency: true,
@@ -71,6 +73,8 @@ export const friendsPageConfig: FriendsPageConfig = {
 
 	// ── 申请指南弹窗 ──
 	applyLink: "",
+	// 站内表单的接收端地址（友链申请 Worker），填了就走三步向导 + 表单
+	applyApi: "https://friends-hook.muyudada.dpdns.org",
 	siteInfo: {
 		name: "Muyu の 小窝",
 		desc: "永远相信美好的事情即将发生",
@@ -320,12 +324,33 @@ function boot() {
 ```astro
 const hasApplyModal = Boolean(
 	friendsPageConfig.applyLink ||
-		friendsPageConfig.siteInfo ||
-		isCommentEnabled,
+	friendsPageConfig.siteInfo ||
+	isCommentEnabled,
 );
 ```
 
-弹窗内容分四块：本站信息（每行一个复制按钮）、三步流程、申请模板（可整体复制）、注意事项。复制走一个带兜底的函数 —— `navigator.clipboard` 在非 HTTPS 环境或旧浏览器里可能不可用：
+弹窗有两种形态，由 `applyApi` 有没有值决定：
+
+- **没配 `applyApi`** —— 传统形态：本站信息（每行一个复制按钮）、三步流程、申请模板（可整体复制）、注意事项。访客复制模板后去评论区留言。
+- **配了 `applyApi`** —— 三步向导：注意事项 → 本站信息（按钮「已添加，去填写申请」）→ **申请表单** → 成功页。
+
+向导的状态机很小：`order` 数组记录参与导航的步骤名，`show(index)` 负责切 `hidden`、点亮步骤圆点、按位置显隐「上一步 / 下一步 / 提交」三个按钮。收尾页 `done` 故意不放进 `order`，这样「下一步」不会把它当成中间步骤：
+
+```js
+const order = steps
+	.map((el) => el.dataset.wizardStep)
+	.filter((name) => name !== "done");
+```
+
+一个细节：**验证码只在真正进入表单那一步才去取**（`if (current === "form" && !captchaId) loadCaptcha()`）。访客可能只想看看申请要求就关掉，不该为此白领一道题、白扣一次每日额度。
+
+提交按钮在 `<footer>` 里、位于 `<form>` 之外（为了让它同时服务于三个步骤），所以得手动转交：
+
+```js
+submitBtn.addEventListener("click", () => form.requestSubmit());
+```
+
+复制功能走一个带兜底的函数 —— `navigator.clipboard` 在非 HTTPS 环境或旧浏览器里可能不可用：
 
 ```js
 const copyText = async (text) => {
@@ -443,26 +468,77 @@ document.querySelectorAll("body > [data-modal-root]").forEach((el) => el.remove(
 
 这个坑最值得记的地方是：**错误不在弹窗自己的样式里，而在一个八竿子打不着的祖先元素上。** 排查时不要盯着 `position: fixed` 反复看，直接打印 `getBoundingClientRect()` 对比视口尺寸，再用循环往上找带 `transform` / `filter` 的祖先，比猜快得多。
 
-## 八、和底部自定义区怎么分工
+## 八、接收端：一个独立的 Worker
+
+表单要有地方提交。这里没有把接口写成 Astro 的动态路由，而是单独做了一个 Cloudflare Worker（`workers/friends-hook/`）。原因有三条：
+
+1. **本站是纯静态 SSG。** 加一个 `export const prerender = false` 的路由，构建产物会从扁平的 `dist/` 变成 `dist/client/` + `dist/server/` 双目录，`wrangler.jsonc` 的 `assets.directory`、`scripts/site-root.ts` 里那段 `existsSync("dist/client")` 探测逻辑、以及 Cloudflare 上的构建配置都得跟着改 —— 风险远大于收益。
+2. **表单和博客本来就不同源。** 申请接口只需要一个能收 `POST` 的 URL，没必要同域。
+3. **Worker 挂了不影响博客。** 反过来也一样。
+
+Worker 提供的接口：
+
+| 方法 | 路径 | 作用 |
+| --- | --- | --- |
+| GET | `/captcha` | 出一道算术题，返回 `{id, question}` |
+| POST | `/apply` | 接收表单 JSON |
+| GET | `/api/links` | 已通过的友链；加 `?format=ts` 直接输出可粘贴的配置片段 |
+| GET | `/admin?token=…` | 审核页 |
+| POST | `/admin/review` | 通过 / 拒绝 |
+
+### 防刷：算术验证码 + 蜜罐 + 每日限额
+
+三道拦网，成本从低到高：
+
+- **蜜罐字段** `company`。它在表单里被 `position: absolute; left: -9999px` 藏起来（不用 `display: none` —— 有些脚本会跳过不可见元素，那反而放过了机器人），正常用户看不见也填不到。有值就直接拒。
+- **算术验证码**。`GET /captcha` 出题，答案写进 KV 带 300 秒 TTL，**校验时无论对错都立刻删掉** —— 否则一道题可以被反复试答案。答案比对前会做归一化：去空白、全角数字 `０-９` 转半角，免得访客用中文输入法全角数字答对了却被判错。
+- **按 IP 每日限额**（KV 计数，键是 `rl:<ip>:<UTC 日期>`）。验证码 30 次/天、申请 5 次/天。用 KV 而不是 Durable Object，是因为申请量是个人博客量级，KV 免费额度（读 10 万/天、写 1 千/天）绰绰有余；计数非原子也无所谓，这本来就是软限额。
+
+> 顺带一个顺序上的讲究：**先校验验证码，再扣申请配额**。反过来的话，访客答错一次就白扣一次当天的提交机会。
+
+### 为什么不用 Turnstile
+
+Turnstile 要嵌一段 Cloudflare 的脚本、再配 sitekey/secret 两处，而 Worker 本来就在 Cloudflare 上、申请量也就个人博客量级 —— 一道「6 + 7 = ?」已经能挡掉绝大多数无脑脚本，成本接近零。
+
+代价是挡不住**专门针对本站写的**脚本。真被盯上了再换：`captcha.ts` 只有出题和校验两个函数，换掉它们、把前端那行题面换成 widget 即可，其余流程不用动。
+
+### 字段校验
+
+前端 `maxlength` 是给正常用户看的，服务端一律重新校验（`src/form.ts`）：
+
+- 站点名称 ≤40、简介 ≤120、站点链接 ≤240、头像链接 ≤300、邮箱 ≤254；
+- 站点链接与头像链接**必须** `http:` / `https:` 开头 —— 否则 `javascript:` 或 `data:` 会被原样渲染进卡片的 `href`，就是一个现成的 XSS；
+- 邮箱用 `/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/` 做宽松校验，不追求 RFC 精确。
+
+表单这条路走的是直填字段，不经过 Waline 评论，所以没有「评论必须真实存在」那层回查 —— 它靠验证码和限额代替。反链检测照常做，结论只作为审核时的参考证据。
+
+## 九、和底部自定义区怎么分工
 
 `friends.mdx` 渲染在卡片网格下方。原来我把本站信息、申请流程、注意事项都写在这里 —— 现在弹窗已经承载了这些内容，两边重复会让页面显得啰嗦。
 
 我的处理是让它们分工：**弹窗负责"怎么办"（可操作、可复制），`friends.mdx` 负责"为什么"** —— 写了会优先通过哪些站点、什么情况会被移除。如果你不需要底部内容，把 `showCustomContent` 设为 `false` 即可。
 
-## 九、多语言
+## 十、多语言
 
-新增的文案都进了 i18n，六种语言包（`zh_CN` / `zh_TW` / `en` / `ja` / `ko` / `ru`）同步补齐，包括「如何申请友链」「超时」「已复制」等：
+新增的文案都进了 i18n，六种语言包（`zh_CN` / `zh_TW` / `en` / `ja` / `ko` / `ru`）同步补齐，包括「如何申请友链」「超时」「已复制」，以及表单向导的二十多个词条：
 
 ```ts
 friendsApplyHow = "friendsApplyHow",
 friendsLatencyTimeout = "friendsLatencyTimeout",
 friendsCopy = "friendsCopy",
 friendsCopied = "friendsCopied",
+// 表单向导
+friendsApplyNext = "friendsApplyNext",
+friendsFormName = "friendsFormName",
+friendsFormCaptchaRefresh = "friendsFormCaptchaRefresh",
+friendsFormSubmit = "friendsFormSubmit",
 ```
 
-延时徽章的超时文案通过 `data-timeout-label` 传给客户端脚本，这样脚本里不需要判断当前语言。
+`Translation` 类型是 `{ [K in I18nKey]: string }`，所以**新增一个 key 会让六个语言文件全部编译报错** —— 这正好是想要的：漏翻一处就过不了 `pnpm type-check`，不会静默回退。
 
-## 十、验收清单
+延时徽章的超时文案通过 `data-timeout-label` 传给客户端脚本，这样脚本里不需要判断当前语言。表单里的固定文案同理，都走 `data-*` 属性从组件传给内联脚本。
+
+## 十一、验收清单
 
 改完建议逐条过一遍：
 
@@ -477,10 +553,15 @@ friendsCopied = "friendsCopied",
 - [ ] 申请弹窗可打开，**面板完整居中在视口内、底部按钮点得到**
 - [ ] 弹窗关闭后页面能正常滚动，再次打开仍然居中
 - [ ] 本站信息可复制，`Esc` / 遮罩 / 右上角按钮都能关闭
+- [ ] 配了 `applyApi` 时弹窗是三步向导：注意事项 → 本站信息 → 表单 → 成功页
+- [ ] 「上一步 / 下一步 / 提交」在每一步显隐正确，步骤圆点跟着亮
+- [ ] 表单必填项留空会被拦，答错验证码有提示且**自动换一道新题**
+- [ ] 验证码只在进入表单那一步才请求，关掉弹窗不会白扣额度
+- [ ] 提交成功后弹窗显示成功页，关掉再打开回到第一步
 - [ ] `showCustomContent: false` 时底部 MDX 消失
 - [ ] `siteConfig.pages.friends = false` 时 `/friends/` 返回 404
 
-## 十一、常见问题
+## 十二、常见问题
 
 | 现象 | 排查方向 |
 | --- | --- |
@@ -493,11 +574,15 @@ friendsCopied = "friendsCopied",
 | 头像不显示 | `imgurl` 是否可访问、图床是否防盗链、卡片是否已滚入当前页 |
 | 预览图空白 | 是否填了 `previewurl` 或开了 `autoPreview`；第三方截图服务国内可能失败 |
 | 申请按钮不出现 | 需 `applyLink` / `siteInfo` / 评论区实际开启，三者之一 |
+| 表单提交报「验证码不对」 | 验证码 5 分钟过期且**用一次即失效**；答错后前端会自动换题，重填即可 |
+| 提交报「今天提交的次数已达上限」 | `APPLY_PER_DAY`（默认 5）按 IP 计算，换网络或等次日 UTC 零点重置 |
+| 表单提交成功但审核页没有 | 检查 `friendsConfig.ts` 的 `applyApi` 是否指向正确的 Worker，以及 Worker 的 `ENABLE_FORM` 是否为 `"0"` |
+| 弹窗里出现「表单申请」而不是昵称 | 正常，表单路径没有评论作者，`nick` 统一写成「表单申请」 |
 | 排序不对 | `randomizeSort: true` 会忽略 `weight`；否则检查 `weight` 大小 |
 | 弹窗里文字在暗色下发黑 | 检查是否漏了 `:root.dark` 下的颜色覆盖 |
 | Tag 指示条错位 | 中文字体加载后按钮宽度会变，需要在 `document.fonts.ready` 后重算一次 |
 
-## 十二、相关文件
+## 十三、相关文件
 
 页面：[src/pages/friends.astro](https://github.com/muyudada/firefly-yuan/blob/master/src/pages/friends.astro)
 
@@ -506,6 +591,8 @@ friendsCopied = "friendsCopied",
 弹窗：[src/components/features/FriendRulesModal.astro](https://github.com/muyudada/firefly-yuan/blob/master/src/components/features/FriendRulesModal.astro)
 
 配置：[src/config/friendsConfig.ts](https://github.com/muyudada/firefly-yuan/blob/master/src/config/friendsConfig.ts)
+
+接收端：[workers/friends-hook](https://github.com/muyudada/firefly-yuan/tree/master/workers/friends-hook)（含 `README.md`，部署步骤都在里面）
 
 相关源码：[muyudada/firefly-yuan](https://github.com/muyudada/firefly-yuan)
 
@@ -516,3 +603,5 @@ friendsCopied = "friendsCopied",
 这次最有价值的收获不是那些功能，而是两个坑的共同点：**它们都不报错。** `DOMContentLoaded` 被第三方资源卡住时，交互静默失效、控制台一片干净；`transform` 让弹窗错位时，CSS 语法完全正确、样式表里挑不出毛病。这类问题只能靠"打印实际数值再和预期对比"来定位 —— `document.readyState`、`getBoundingClientRect()`，两个最朴素的 API 就够了。
 
 如果你也在给页面写交互，建议初始化别只挂在 `DOMContentLoaded` 上；写 `position: fixed` 的浮层时，先确认它的祖先链里没有 `transform`。
+
+还有一条经验是这次表单化才体会到的：**能复用已有后端就别新建一套。** 站内表单看起来是个新功能，但解析、查重、反链检测、待审队列、审核页这些全都在那个 Worker 里跑着了，真正要加的只是「出一道题」「收一个 JSON」两个接口。想清楚缺什么、而不是从零设计一遍，工作量会差一个数量级。

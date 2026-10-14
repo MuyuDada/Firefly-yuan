@@ -2,7 +2,14 @@
 // 「如何申请友链」弹窗
 //
 // 是否渲染由 friends.astro 判断（applyLink / siteInfo / 评论区 三者之一满足即可），
-// 这里只负责内容与交互。本站信息与申请模板都支持一键复制。
+// 这里只负责内容与交互。
+//
+// 两种形态：
+//   1. 配了 friendsPageConfig.applyApi —— 三步向导（注意事项 → 本站信息 → 申请表单），
+//      访客直接在站内提交，不用去评论区贴模板；
+//   2. 没配 —— 保留老流程：本站信息 + 申请模板 + 「前往评论区」。
+// 交互逻辑统一在 friends.astro 的 initModal() 里（本组件的 <script> 在 Swup 换页后
+// 不会重新执行，所以不能把逻辑放这里）。
 import { Icon } from "astro-icon/components";
 import { friendsPageConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
@@ -14,7 +21,10 @@ interface Props {
 
 const { hasComment } = Astro.props;
 
-const { applyLink, siteInfo, notes } = friendsPageConfig;
+const { applyLink, applyApi, siteInfo, notes } = friendsPageConfig;
+
+// 站内表单是否启用。空字符串、纯空格都算没配。
+const formEnabled = Boolean(applyApi && applyApi.trim());
 
 // 本站信息字段（可复制）。email 额外渲染成 mailto 链接，方便访客直接点击发送。
 const infoFields = siteInfo
@@ -48,6 +58,7 @@ const template = siteInfo
 			.join("\n")
 	: "";
 
+// 申请流程三步。第二步的说明随形态变化：走表单时不必再讲「复制模板去评论」。
 const steps = [
 	{
 		title: i18n(I18nKey.friendsApplyStep1Title),
@@ -55,16 +66,33 @@ const steps = [
 	},
 	{
 		title: i18n(I18nKey.friendsApplyStep2Title),
-		desc: i18n(I18nKey.friendsApplyStep2Desc),
+		desc: i18n(
+			formEnabled
+				? I18nKey.friendsApplyStep2DescForm
+				: I18nKey.friendsApplyStep2Desc,
+		),
 	},
 	{
 		title: i18n(I18nKey.friendsApplyStep3Title),
 		desc: i18n(I18nKey.friendsApplyStep3Desc),
 	},
 ];
+
+// 表单字段标签（必填标记由 required 决定；可选字段直接写 i18n 提示文案）
+const requiredMark = i18n(I18nKey.friendsFormRequired);
 ---
 
-<friend-rules-modal data-copy-label={i18n(I18nKey.friendsCopy)} data-copied-label={i18n(I18nKey.friendsCopied)}>
+<friend-rules-modal
+  data-copy-label={i18n(I18nKey.friendsCopy)}
+  data-copied-label={i18n(I18nKey.friendsCopied)}
+  data-apply-api={formEnabled ? applyApi?.trim() : undefined}
+  data-submitting-label={i18n(I18nKey.friendsFormSubmitting)}
+  data-submit-default-label={i18n(I18nKey.friendsFormSubmit)}
+  data-failed-label={i18n(I18nKey.friendsFormFailed)}
+  data-captcha-loading-label={i18n(I18nKey.friendsFormCaptchaLoading)}
+  data-captcha-error-label={i18n(I18nKey.friendsFormCaptchaFailed)}
+  data-success-label={i18n(I18nKey.friendsFormSuccess)}
+>
   {/* 触发按钮 */}
   <button type="button" data-modal-open class="friend-apply-btn">
     <Icon name="material-symbols:help-outline-rounded" class="text-base" />
@@ -88,135 +116,420 @@ const steps = [
         </button>
       </header>
 
-      <div class="friend-modal-body">
-        {/* 本站信息 */}
-        {
-          infoFields.length > 0 && (
-            <section class="friend-modal-section">
-              <h4>
-                <Icon name="material-symbols:badge-outline" class="text-base" />
-                {i18n(I18nKey.friendsApplySiteInfo)}
-              </h4>
-              <div class="friend-info-list">
-                {infoFields.map((field) => (
-                  <div class="friend-info-row">
-                    <div class="friend-info-text">
-                      <span class="friend-info-label">{field.label}</span>
-                      {field.href ? (
-                        <a
-                          class="friend-info-value friend-info-link"
-                          href={field.href}
-                          target={field.href.startsWith("mailto:") ? undefined : "_blank"}
-                          rel={field.href.startsWith("mailto:") ? undefined : "noopener noreferrer"}
-                        >
-                          {field.value}
-                        </a>
-                      ) : (
-                        <span class="friend-info-value">{field.value}</span>
-                      )}
+      {
+        formEnabled ? (
+          /* ── 形态 1：三步向导 ─────────────────────── */
+          <div class="friend-wizard" data-wizard data-step="notice">
+            {/* 步骤指示 */}
+            <ol class="friend-wizard-dots" data-wizard-dots>
+              <li data-dot="notice" class="is-active">1</li>
+              <li data-dot="self">2</li>
+              <li data-dot="form">3</li>
+            </ol>
+
+            <div class="friend-modal-body">
+              {/* 第一步：注意事项 + 申请流程 */}
+              <div class="friend-wizard-step" data-wizard-step="notice">
+                {notes && notes.length > 0 && (
+                  <section class="friend-modal-section">
+                    <h4>
+                      <Icon name="material-symbols:info-outline" class="text-base" />
+                      {i18n(I18nKey.friendsApplyNotes)}
+                    </h4>
+                    <ul class="friend-notes">
+                      {notes.map((note) => (
+                        <li>
+                          <strong>{note.title}</strong>
+                          <span>{note.content}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
+                <section class="friend-modal-section">
+                  <h4>
+                    <Icon name="material-symbols:list-alt-outline" class="text-base" />
+                    {i18n(I18nKey.friendsApplySteps)}
+                  </h4>
+                  <ol class="friend-steps">
+                    {steps.map((step, index) => (
+                      <li class="friend-step">
+                        <span class="friend-step-index">{index + 1}</span>
+                        <span class="friend-step-content">
+                          <strong>{step.title}</strong>
+                          <span>{step.desc}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              </div>
+
+              {/* 第二步：本站信息（一键复制） */}
+              <div class="friend-wizard-step" data-wizard-step="self" hidden>
+                {infoFields.length > 0 && (
+                  <section class="friend-modal-section">
+                    <h4>
+                      <Icon name="material-symbols:badge-outline" class="text-base" />
+                      {i18n(I18nKey.friendsApplySiteInfo)}
+                    </h4>
+                    <div class="friend-info-list">
+                      {infoFields.map((field) => (
+                        <div class="friend-info-row">
+                          <div class="friend-info-text">
+                            <span class="friend-info-label">{field.label}</span>
+                            {field.href ? (
+                              <a
+                                class="friend-info-value friend-info-link"
+                                href={field.href}
+                                target={
+                                  field.href.startsWith("mailto:")
+                                    ? undefined
+                                    : "_blank"
+                                }
+                                rel={
+                                  field.href.startsWith("mailto:")
+                                    ? undefined
+                                    : "noopener noreferrer"
+                                }
+                              >
+                                {field.value}
+                              </a>
+                            ) : (
+                              <span class="friend-info-value">{field.value}</span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            class="friend-copy-btn"
+                            data-copy={field.value}
+                            aria-label={`${i18n(I18nKey.friendsCopy)} ${field.label}`}
+                          >
+                            <Icon
+                              name="material-symbols:content-copy-outline"
+                              class="text-sm"
+                            />
+                          </button>
+                        </div>
+                      ))}
                     </div>
+                  </section>
+                )}
+              </div>
+
+              {/* 第三步：申请表单 */}
+              <div class="friend-wizard-step" data-wizard-step="form" hidden>
+                <form class="friend-apply-form" data-apply-form novalidate>
+                  <div class="friend-field">
+                    <label for="friend-form-name">
+                      {i18n(I18nKey.friendsFormName)}
+                      <span class="friend-field-flag is-required">{requiredMark}</span>
+                    </label>
+                    <input
+                      id="friend-form-name"
+                      name="siteName"
+                      type="text"
+                      maxlength="40"
+                      required
+                      autocomplete="off"
+                      placeholder={i18n(I18nKey.friendsFormNamePlaceholder)}
+                    />
+                  </div>
+
+                  <div class="friend-field">
+                    <label for="friend-form-url">
+                      {i18n(I18nKey.friendsFormUrl)}
+                      <span class="friend-field-flag is-required">{requiredMark}</span>
+                    </label>
+                    <input
+                      id="friend-form-url"
+                      name="siteUrl"
+                      type="url"
+                      inputmode="url"
+                      maxlength="240"
+                      required
+                      autocomplete="off"
+                      placeholder="https://"
+                    />
+                  </div>
+
+                  <div class="friend-field">
+                    <label for="friend-form-avatar">
+                      {i18n(I18nKey.friendsFormAvatar)}
+                      <span class="friend-field-flag is-required">{requiredMark}</span>
+                    </label>
+                    <input
+                      id="friend-form-avatar"
+                      name="avatarUrl"
+                      type="url"
+                      inputmode="url"
+                      maxlength="300"
+                      required
+                      autocomplete="off"
+                      placeholder="https://"
+                    />
+                  </div>
+
+                  <div class="friend-field">
+                    <label for="friend-form-desc">
+                      {i18n(I18nKey.friendsFormDesc)}
+                      <span class="friend-field-flag is-required">{requiredMark}</span>
+                    </label>
+                    <textarea
+                      id="friend-form-desc"
+                      name="description"
+                      rows="3"
+                      maxlength="120"
+                      required
+                      placeholder={i18n(I18nKey.friendsFormDescPlaceholder)}
+                    ></textarea>
+                  </div>
+
+                  <div class="friend-field">
+                    <label for="friend-form-email">
+                      {i18n(I18nKey.friendsFormEmail)}
+                      <span class="friend-field-flag">{i18n(I18nKey.friendsFormEmailHint)}</span>
+                    </label>
+                    <input
+                      id="friend-form-email"
+                      name="contactEmail"
+                      type="email"
+                      maxlength="254"
+                      autocomplete="off"
+                      placeholder={i18n(I18nKey.friendsFormEmailPlaceholder)}
+                    />
+                  </div>
+
+                  <div class="friend-field">
+                    <label for="friend-form-captcha">
+                      {i18n(I18nKey.friendsFormCaptcha)}
+                      <span class="friend-field-flag is-required">{requiredMark}</span>
+                    </label>
+                    <div class="friend-captcha-row">
+                      <span class="friend-captcha-question" data-captcha-question>
+                        {i18n(I18nKey.friendsFormCaptchaLoading)}
+                      </span>
+                      <input
+                        id="friend-form-captcha"
+                        name="captchaAnswer"
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        required
+                        placeholder={i18n(I18nKey.friendsFormCaptchaPlaceholder)}
+                      />
+                      <button
+                        type="button"
+                        class="friend-captcha-refresh"
+                        data-captcha-refresh
+                        aria-label={i18n(I18nKey.friendsFormCaptchaRefresh)}
+                        title={i18n(I18nKey.friendsFormCaptchaRefresh)}
+                      >
+                        <Icon name="material-symbols:refresh-rounded" class="text-base" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 蜜罐：正常用户看不见也填不到，有值就是脚本 */}
+                  <div class="friend-honeypot" aria-hidden="true">
+                    <label for="friend-form-company">公司</label>
+                    <input
+                      id="friend-form-company"
+                      name="company"
+                      type="text"
+                      tabindex="-1"
+                      autocomplete="off"
+                    />
+                  </div>
+
+                  <p class="friend-form-status" data-form-status hidden></p>
+                </form>
+              </div>
+
+              {/* 提交成功 */}
+              <div class="friend-wizard-step" data-wizard-step="done" hidden>
+                <div class="friend-done">
+                  <Icon
+                    name="material-symbols:check-circle-outline"
+                    class="text-3xl friend-done-icon"
+                  />
+                  <p data-done-message>{i18n(I18nKey.friendsFormSuccess)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 向导底部动作 */}
+            <footer class="friend-modal-footer">
+              <button
+                type="button"
+                class="friend-modal-secondary"
+                data-wizard-prev
+                hidden
+              >
+                <Icon name="material-symbols:arrow-back-rounded" class="text-base" />
+                {i18n(I18nKey.friendsApplyPrev)}
+              </button>
+              <button type="button" class="friend-modal-primary" data-wizard-next>
+                {i18n(I18nKey.friendsApplyNext)}
+                <Icon name="material-symbols:arrow-forward-rounded" class="text-base" />
+              </button>
+              <button
+                type="button"
+                class="friend-modal-primary"
+                data-wizard-submit
+                hidden
+              >
+                <Icon name="material-symbols:send-rounded" class="text-base" />
+                <span data-submit-label>{i18n(I18nKey.friendsFormSubmit)}</span>
+              </button>
+              {hasComment && (
+                <button type="button" data-modal-comment class="friend-modal-secondary">
+                  <Icon name="material-symbols:chat-outline" class="text-base" />
+                  {i18n(I18nKey.friendsApplyGoComment)}
+                </button>
+              )}
+            </footer>
+          </div>
+        ) : (
+          /* ── 形态 2：老的「复制模板去评论」 ─────────── */
+          <>
+            <div class="friend-modal-body">
+              {/* 本站信息 */}
+              {infoFields.length > 0 && (
+                <section class="friend-modal-section">
+                  <h4>
+                    <Icon name="material-symbols:badge-outline" class="text-base" />
+                    {i18n(I18nKey.friendsApplySiteInfo)}
+                  </h4>
+                  <div class="friend-info-list">
+                    {infoFields.map((field) => (
+                      <div class="friend-info-row">
+                        <div class="friend-info-text">
+                          <span class="friend-info-label">{field.label}</span>
+                          {field.href ? (
+                            <a
+                              class="friend-info-value friend-info-link"
+                              href={field.href}
+                              target={
+                                field.href.startsWith("mailto:")
+                                  ? undefined
+                                  : "_blank"
+                              }
+                              rel={
+                                field.href.startsWith("mailto:")
+                                  ? undefined
+                                  : "noopener noreferrer"
+                              }
+                            >
+                              {field.value}
+                            </a>
+                          ) : (
+                            <span class="friend-info-value">{field.value}</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          class="friend-copy-btn"
+                          data-copy={field.value}
+                          aria-label={`${i18n(I18nKey.friendsCopy)} ${field.label}`}
+                        >
+                          <Icon
+                            name="material-symbols:content-copy-outline"
+                            class="text-sm"
+                          />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* 申请流程 */}
+              <section class="friend-modal-section">
+                <h4>
+                  <Icon name="material-symbols:list-alt-outline" class="text-base" />
+                  {i18n(I18nKey.friendsApplySteps)}
+                </h4>
+                <ol class="friend-steps">
+                  {steps.map((step, index) => (
+                    <li class="friend-step">
+                      <span class="friend-step-index">{index + 1}</span>
+                      <span class="friend-step-content">
+                        <strong>{step.title}</strong>
+                        <span>{step.desc}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+
+              {/* 申请模板 */}
+              {template && (
+                <section class="friend-modal-section">
+                  <h4>
+                    <Icon name="material-symbols:edit-note" class="text-base" />
+                    {i18n(I18nKey.friendsApplyTemplate)}
+                  </h4>
+                  <div class="friend-template">
+                    <pre>{template}</pre>
                     <button
                       type="button"
-                      class="friend-copy-btn"
-                      data-copy={field.value}
-                      aria-label={`${i18n(I18nKey.friendsCopy)} ${field.label}`}
+                      class="friend-copy-btn friend-template-copy"
+                      data-copy={template}
+                      aria-label={i18n(I18nKey.friendsCopy)}
                     >
-                      <Icon name="material-symbols:content-copy-outline" class="text-sm" />
+                      <Icon
+                        name="material-symbols:content-copy-outline"
+                        class="text-sm"
+                      />
                     </button>
                   </div>
-                ))}
-              </div>
-            </section>
-          )
-        }
+                </section>
+              )}
 
-        {/* 申请流程 */}
-        <section class="friend-modal-section">
-          <h4>
-            <Icon name="material-symbols:list-alt-outline" class="text-base" />
-            {i18n(I18nKey.friendsApplySteps)}
-          </h4>
-          <ol class="friend-steps">
-            {
-              steps.map((step, index) => (
-                <li class="friend-step">
-                  <span class="friend-step-index">{index + 1}</span>
-                  <span class="friend-step-content">
-                    <strong>{step.title}</strong>
-                    <span>{step.desc}</span>
-                  </span>
-                </li>
-              ))
-            }
-          </ol>
-        </section>
+              {/* 注意事项 */}
+              {notes && notes.length > 0 && (
+                <section class="friend-modal-section">
+                  <h4>
+                    <Icon name="material-symbols:info-outline" class="text-base" />
+                    {i18n(I18nKey.friendsApplyNotes)}
+                  </h4>
+                  <ul class="friend-notes">
+                    {notes.map((note) => (
+                      <li>
+                        <strong>{note.title}</strong>
+                        <span>{note.content}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </div>
 
-        {/* 申请模板 */}
-        {
-          template && (
-            <section class="friend-modal-section">
-              <h4>
-                <Icon name="material-symbols:edit-note" class="text-base" />
-                {i18n(I18nKey.friendsApplyTemplate)}
-              </h4>
-              <div class="friend-template">
-                <pre>{template}</pre>
-                <button
-                  type="button"
-                  class="friend-copy-btn friend-template-copy"
-                  data-copy={template}
-                  aria-label={i18n(I18nKey.friendsCopy)}
-                >
-                  <Icon name="material-symbols:content-copy-outline" class="text-sm" />
-                </button>
-              </div>
-            </section>
-          )
-        }
-
-        {/* 注意事项 */}
-        {
-          notes && notes.length > 0 && (
-            <section class="friend-modal-section">
-              <h4>
-                <Icon name="material-symbols:info-outline" class="text-base" />
-                {i18n(I18nKey.friendsApplyNotes)}
-              </h4>
-              <ul class="friend-notes">
-                {notes.map((note) => (
-                  <li>
-                    <strong>{note.title}</strong>
-                    <span>{note.content}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )
-        }
-      </div>
-
-      {/* 底部动作 */}
-      {
-        (applyLink || hasComment) && (
-          <footer class="friend-modal-footer">
-            {applyLink && (
-              <a
-                href={applyLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="friend-modal-primary"
-              >
-                <Icon name="material-symbols:open-in-new" class="text-base" />
-                {i18n(I18nKey.friendsApplySelfLink)}
-              </a>
+            {/* 底部动作 */}
+            {(applyLink || hasComment) && (
+              <footer class="friend-modal-footer">
+                {applyLink && (
+                  <a
+                    href={applyLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="friend-modal-primary"
+                  >
+                    <Icon name="material-symbols:open-in-new" class="text-base" />
+                    {i18n(I18nKey.friendsApplySelfLink)}
+                  </a>
+                )}
+                {hasComment && (
+                  <button type="button" data-modal-comment class="friend-modal-secondary">
+                    <Icon name="material-symbols:chat-outline" class="text-base" />
+                    {i18n(I18nKey.friendsApplyGoComment)}
+                  </button>
+                )}
+              </footer>
             )}
-            {hasComment && (
-              <button type="button" data-modal-comment class="friend-modal-secondary">
-                <Icon name="material-symbols:chat-outline" class="text-base" />
-                {i18n(I18nKey.friendsApplyGoComment)}
-              </button>
-            )}
-          </footer>
+          </>
         )
       }
     </div>

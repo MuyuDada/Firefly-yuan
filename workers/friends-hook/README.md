@@ -1,6 +1,13 @@
 # 友链自助申请接收端
 
-访客在友链页按弹窗里的模板留言 → Worker 解析出站点名称/描述/链接/头像 → 做反链检测 → 进待审队列 → 你在审核页点「通过」→ 复制生成的配置片段粘进 `src/config/friendsConfig.ts` → 重新部署上线。
+访客在友链页有两种申请方式，**推荐用表单**：
+
+| 申请方式 | 访客体验 | 后端路径 |
+|---|---|---|
+| **站内表单**（推荐） | 弹窗里点「已添加，去填写申请」→ 填表 → 提交，页面内完成 | `GET /captcha` 取算术题 → `POST /apply` |
+| 评论区留言（旧方式，仍可用） | 复制弹窗里的模板 → 贴到评论区 | `POST /hook`（webhook）或 cron 轮询 |
+
+两条路的产物是同一种 `FriendApplication`，都进同一个待审队列，审核页、`/api/links`、审核动作完全共用。你在审核页点「通过」→ 复制生成的配置片段粘进 `src/config/friendsConfig.ts` → 重新部署上线。
 
 评论进入 Worker 有**两条路，任选其一或都开**：
 
@@ -9,7 +16,7 @@
 | **cron 轮询**（默认开启） | 每 15 分钟拉一次 Waline 友链页评论 | **不需要** —— 只靠 Worker 自己的 `triggers.crons` |
 | **Waline WEBHOOK** | 评论创建后立刻推送 | 需要给 Waline 服务加 `WEBHOOK` 环境变量并重启 |
 
-两条路可以并存：谁先到谁入库，后到的那条会因为 `app:<id>` 已存在而跳过，不会产生重复记录。轮询的代价是延迟最多一个 cron 周期。
+两条路可以并存：谁先到谁入库，后到的那条会因为 `app:<id>` 已存在而跳过，不会产生重复记录。轮询的代价是延迟最多一个 cron 周期。**站内表单不受这两条路影响** —— 它直接 POST 到 `/apply`，即时入库。
 
 **为什么是独立 Worker 而不是 Astro 动态路由**：本站是纯静态 SSG，一旦加入 `prerender = false` 的路由，构建产物会从扁平的 `dist/` 变成 `dist/client/` + `dist/server/` 双目录，`wrangler.jsonc` 的 `assets.directory`、`scripts/site-root.ts` 的探测逻辑、以及 Cloudflare 上的构建配置都要跟着改。而 Waline 的 WEBHOOK 只需要一个能收 POST 的 URL，不必与站点同域。独立 Worker 崩了也不影响博客。
 
@@ -55,7 +62,10 @@ npx wrangler secret put ADMIN_TOKEN
   "APPLY_PATH": "/friends/",                      // 只处理发到这个路径的评论
   "WALINE_SERVER": "https://comment.muyudada.dpdns.org",  // 用于二次核验评论真实存在
   "VERIFY_COMMENT": "1",                          // "1" 开启核验，"0" 关闭
-  "BACKLINK_TIMEOUT_MS": "8000"                   // 反链检测单路径超时
+  "BACKLINK_TIMEOUT_MS": "8000",                  // 反链检测单路径超时
+  "ENABLE_FORM": "1",                             // 站内表单开关，"0" 关闭
+  "CAPTCHA_PER_DAY": "30",                        // 单 IP 每天最多领几道验证码
+  "APPLY_PER_DAY": "5"                            // 单 IP 每天最多提交几次申请
 }
 ```
 
@@ -122,14 +132,36 @@ Worker 绑的是自定义域 `friends-hook.muyudada.dpdns.org`，而不是默认
 | Worker 地址 | `https://friends-hook.muyudada.dpdns.org`（自定义域） |
 | KV namespace id | `f1def21c1578472abcd0691ca80ab953`（已写进 `wrangler.jsonc`） |
 | cron | `*/15 * * * *` |
-| 已入库 | 4 条待审（objectId 9 / 8 / 6 / 3），站长的两条「已添加」回复已正确过滤 |
-| 未接线 | Waline 的 `WEBHOOK` 环境变量**没设** —— 现在完全靠 cron 轮询工作 |
+| 前端接线 | `src/config/friendsConfig.ts` 的 `friendsPageConfig.applyApi` 指向本 Worker，弹窗已切换为三步向导 + 表单 |
+| 未接线 | Waline 的 `WEBHOOK` 环境变量**没设** —— 评论区那条路完全靠 cron 轮询工作 |
 
-也就是说：**访客照旧在友链页留言即可**，15 分钟内自动出现在审核页。想做到即时入库，再去 Vercel 给 Waline 加 `WEBHOOK`（见第三节方式 B）。
+也就是说：**访客直接在友链页弹窗里填表提交即可**，立刻进待审队列。评论区留言也仍然有效，15 分钟内自动出现在审核页。想做到即时入库，再去 Vercel 给 Waline 加 `WEBHOOK`（见第三节方式 B）。
 
-## 三、评论怎么进来
+## 三、申请怎么进来
 
-### 方式 A：cron 轮询（默认，无需任何外部配置）
+### 方式 A：站内表单（推荐，无需任何外部配置）
+
+友链页弹窗的第三步是一个真实表单，提交时打两个接口：
+
+1. `GET /captcha` → `{"ok":true,"id":"...","question":"6 + 7 = ?"}`
+2. `POST /apply` → body 见下，成功返回 `{"ok":true,"id":"form-...","message":"..."}`
+
+```jsonc
+{
+  "siteName": "我的博客",           // 必填，≤40 字
+  "siteUrl": "https://example.com", // 必填，≤240，必须 http(s)
+  "avatarUrl": "https://.../a.png", // 必填，≤300，必须 http(s)
+  "contactEmail": "hi@example.com", // 可选，≤254
+  "description": "一句话简介",       // 必填，≤120 字
+  "captchaId": "...",               // 必填，来自 /captcha
+  "captchaAnswer": "13",            // 必填
+  "company": ""                     // 蜜罐，正常用户永远留空
+}
+```
+
+前端开关是 `src/config/friendsConfig.ts` 的 `friendsPageConfig.applyApi`：填了 Worker 地址就启用向导，留空则退回旧的「复制模板 → 评论区留言」流程。
+
+### 方式 B：cron 轮询（默认，无需任何外部配置）
 
 `wrangler.jsonc` 里的 `triggers.crons` 是 `["*/15 * * * *"]`，Worker 每 15 分钟拉一次 Waline 的友链页评论，把 KV 里还没有的补进来。部署完就自动生效。
 
@@ -142,7 +174,7 @@ curl -X POST https://friends-hook.muyudada.dpdns.org/admin/poll \
 
 > 轮询用 `pageSize=100`，只取 Waline 接口返回的第一页。友链页评论超过 100 条时，更早的申请不会再被自动补入（但已入库的记录不受影响）。真到那个量级再改成分页拉取即可。
 
-### 方式 B：Waline WEBHOOK（即时推送）
+### 方式 C：Waline WEBHOOK（即时推送）
 
 在 Waline 服务的环境变量里加一条：
 
@@ -192,6 +224,8 @@ https://friends-hook.muyudada.dpdns.org/admin?token=<你的 ADMIN_TOKEN>
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
+| GET | `/captcha` | 出一道具算术题，给站内表单用。返回 `{"ok":true,"id":"...","question":"6 + 7 = ?"}` |
+| POST | `/apply` | 站内表单直接提交。返回 `{"ok":true,"id":"form-...","message":"..."}` |
 | POST | `/hook` | Waline WEBHOOK 接收端。立即返回 `{"ok":true,"id":"...","queued":true}` |
 | GET | `/api/links` | 已通过的友链 JSON：`{"ok":true,"count":N,"data":[...]}` |
 | GET | `/api/links?format=ts` | 同上，但输出可直接粘贴的 TS 配置片段 |
@@ -201,7 +235,7 @@ https://friends-hook.muyudada.dpdns.org/admin?token=<你的 ADMIN_TOKEN>
 | POST | `/admin/poll` | 手动触发一次 Waline 轮询，不用等 cron |
 | cron | `*/15 * * * *` | 自动轮询 Waline 友链页，把新评论补进队列 |
 
-`/api/links` 与 `/hook` 带 `Access-Control-Allow-Origin: *`；`/admin*` 需要口令。
+`/captcha`、`/apply`、`/api/links` 与 `/hook` 带 `Access-Control-Allow-Origin: *`（前两个要跨域，因为博客站与 Worker 不同域）；`/admin*` 需要口令。
 
 ---
 
@@ -217,6 +251,10 @@ https://friends-hook.muyudada.dpdns.org/admin?token=<你的 ADMIN_TOKEN>
 | 字段不全就通过 | `approve` 时校验必填字段（站点名称/描述/链接/头像），缺一个就 400 |
 | 只有链接、没有字段名的垃圾评论被当成申请 | 解析器仍会兜底抽出链接，但缺字段标记会让它在审核页显示为「缺字段」，且 `approve` 会被 400 挡住 |
 | 站长自己的「已添加」回复被当成申请 | `rejectReason()`：`pid`/`rid` 非空（是回复）或 `type` 为 `administrator`/`author` 的评论一律跳过。webhook 与轮询两条路共用同一判据 |
+| 脚本刷 `/apply` 把审核页塞满 | 算术验证码（`GET /captcha`，答案存 KV 带 300 秒 TTL，**用一次即删**）+ 蜜罐字段 `company` + 单 IP 每日限额（`CAPTCHA_PER_DAY` / `APPLY_PER_DAY`） |
+| 有人在链接里塞 `javascript:` / `data:` | `validateApply()` 的 `isHttpUrl()` 只放行 `http:`/`https:`，否则会被原样渲染进友链卡片的 `href` |
+| 表单提交绕过了「评论必须真实存在」的核验 | 表单不走 Waline，因此没有 `VERIFY_COMMENT` 回查 —— 它靠验证码 + 限额代替。反链检测照常做，结果作为审核证据 |
+| 同一站点连投两次 | `saveApplication()` 会写 `pend:<host>` 待审索引，`findDuplicate()` 先查已通过的 `dup:` 再查 `pend:`。表单路径下若命中的是**已通过**记录，直接 409 回绝 |
 
 > 反链检测只是**审核证据**，不是自动通过的门槛 —— 对方站点可能有 Cloudflare 拦截、JS 渲染或防盗链，抓不到不代表没放。最终由人判断。
 
@@ -259,6 +297,27 @@ npx tsx workers/friends-hook/test-parse.ts
 ```
 
 拿线上真实的 6 条申请评论跑解析，检查字段是否被正确抽出。改 `src/parse.ts` 后务必重跑。
+
+### 浏览器端到端测试（表单向导）
+
+```bash
+# 先起两个服务：Worker（8797）与 Astro dev（4401）
+npx wrangler dev -c wrangler.jsonc --port 8797 \
+  --var ADMIN_TOKEN:test-token-123 --var VERIFY_COMMENT:0 \
+  --var BACKLINK_TIMEOUT_MS:2000 --var CAPTCHA_PER_DAY:500 --var APPLY_PER_DAY:500
+
+# 另开一个终端，在仓库根跑 pnpm dev --port 4401
+
+# 然后跑 CDP 测试（需要本机 Chrome）
+node workers/friends-hook/cdp-friends-test.mjs \
+  "http://localhost:4401/friends/" "http://127.0.0.1:8797"
+```
+
+`cdp-friends-test.mjs` 用 Chrome DevTools Protocol 驱动一个无头浏览器，覆盖 21 项断言：向导三步切换、步骤指示高亮、按钮显隐、验证码取题、答错提示、失败后自动换题、重新作答成功进成功页、关闭按钮与滚动锁、以及页面无控制台错误。
+
+> 它会在文档脚本执行前给 `window.fetch` 打补丁，把 `https://friends-hook.muyudada.dpdns.org` 重写到本地 Worker 地址 —— 因为 `data-apply-api` 是在 `boot()` 时读进闭包的，事后改 DOM 属性来不及。所以本地测试不需要改 `friendsConfig.ts`。
+>
+> 弹窗打开时 `[data-modal-root]` 会被搬到 `document.body` 上（`#content-wrapper` 的 `transform` 会成为 `position:fixed` 的包含块），所以测试里凡是弹窗内部的元素都要用 `[data-modal-root] ...` 打头选择器。
 
 ### 手工模拟一次 webhook
 
@@ -306,17 +365,27 @@ curl -X POST http://127.0.0.1:8787/hook \
 
 ```
 workers/friends-hook/
-├── package.json        依赖与脚本（wrangler / typescript）
-├── tsconfig.json       独立于仓库根的 tsconfig
-├── wrangler.jsonc      Worker 配置：KV 绑定 + vars
-├── test-parse.ts       解析器自测（拿线上真实评论跑）
+├── package.json         依赖与脚本（wrangler / typescript）
+├── tsconfig.json        独立于仓库根的 tsconfig
+├── wrangler.jsonc       Worker 配置：KV 绑定 + vars
+├── test-parse.ts        解析器自测（拿线上真实评论跑）
+├── cdp-friends-test.mjs 浏览器端到端测试（CDP 驱动无头 Chrome）
 └── src/
-    ├── index.ts        入口：路由、审核页、webhook 处理
-    ├── parse.ts        评论 HTML → 结构化字段
-    ├── store.ts        KV 读写（app: / dup: / link: 三种前缀）
-    ├── backlink.ts     反链检测 + SSRF 防护
-    ├── types.ts        共享类型
-    └── runtime.d.ts    Workers 运行时类型的最小声明
+    ├── index.ts         入口：路由、审核页、webhook 处理、表单接收
+    ├── parse.ts         评论 HTML → 结构化字段
+    ├── form.ts          表单载荷校验（必填、长度、http(s) 协议、蜜罐）
+    ├── captcha.ts       算术验证码：出题 / 存 KV / 一次性校验
+    ├── rate.ts          按 IP 的每日限额（验证码 30 次、申请 5 次）
+    ├── store.ts         KV 读写（app: / dup: / pend: / link: 四种前缀）
+    ├── backlink.ts      反链检测 + SSRF 防护
+    ├── types.ts         共享类型
+    └── runtime.d.ts     Workers 运行时类型的最小声明
 ```
 
 `runtime.d.ts` 是自己写的，没用 `@cloudflare/workers-types` —— 本目录不在根 `tsconfig.json` 的 `include` 里（只有 `src/**` + `scripts/**`），为一个 Worker 单独装一整个类型包、再拉一份 `node_modules` 不划算。这里只声明实际用到的几个 API。
+
+## 九、为什么用算术验证码而不是 Turnstile
+
+Turnstile 要嵌一段 Cloudflare 的脚本、再配 sitekey/secret 两处，而本 Worker 本来就跑在 Cloudflare 上、申请量是个人博客量级 —— 一道「6 + 7 = ?」已经能挡掉绝大多数无脑脚本，成本接近零。
+
+代价是挡不住**专门针对本站写的**脚本。真被盯上了再换成 Turnstile：`captcha.ts` 只有出题与校验两个函数，替换掉它们、把前端那个 `<img>` 换成 widget 即可，其余流程不用动。

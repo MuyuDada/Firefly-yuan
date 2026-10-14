@@ -29,6 +29,10 @@
 		"APPLY_PATH": "/friends/",
 		"WALINE_SERVER": "https://comment.muyudada.dpdns.org",
 		"VERIFY_COMMENT": "1",
-		"BACKLINK_TIMEOUT_MS": "8000"
+		"BACKLINK_TIMEOUT_MS": "8000",
+		// 站内表单：出题 + 直接提交，不走 Waline 评论
+		"ENABLE_FORM": "1",
+		"CAPTCHA_PER_DAY": "30",
+		"APPLY_PER_DAY": "5"
 	}
 }

@@ -548,6 +548,181 @@ const hasApplyModal = Boolean(
             }, 1500);
           });
         });
+
+        initWizard(modal);
+      }
+
+      // ── 申请表单（三步向导）──────────────────
+      // 只在 friendsPageConfig.applyApi 配置了接收端时才会命中：组件在这种情况下
+      // 渲染 [data-wizard]，否则渲染老的「复制模板去评论」形态。
+      function initWizard(modal) {
+        const wizard = modal.querySelector("[data-wizard]");
+        const apiBase = (modal.dataset.applyApi || "").trim().replace(/\/+$/, "");
+        if (!wizard || !apiBase) return;
+
+        const steps = Array.from(wizard.querySelectorAll("[data-wizard-step]"));
+        // 收尾页（提交成功）不参与导航，单独拿出来
+        const order = steps
+          .map((el) => el.dataset.wizardStep)
+          .filter((name) => name !== "done");
+        const dots = Array.from(wizard.querySelectorAll("[data-dot]"));
+        const prevBtn = wizard.querySelector("[data-wizard-prev]");
+        const nextBtn = wizard.querySelector("[data-wizard-next]");
+        const submitBtn = wizard.querySelector("[data-wizard-submit]");
+        const submitLabel = wizard.querySelector("[data-submit-label]");
+        const form = wizard.querySelector("[data-apply-form]");
+        const questionEl = wizard.querySelector("[data-captcha-question]");
+        const statusEl = wizard.querySelector("[data-form-status]");
+        const doneMessage = wizard.querySelector("[data-done-message]");
+
+        let index = 0;
+        // 验证码 id 与题目存在闭包里，刷新按钮和提交共用
+        let captchaId = "";
+        let submitting = false;
+
+        const setStatus = (text, kind) => {
+          if (!statusEl) return;
+          if (!text) {
+            statusEl.hidden = true;
+            statusEl.textContent = "";
+            return;
+          }
+          statusEl.hidden = false;
+          statusEl.textContent = text;
+          statusEl.dataset.kind = kind || "";
+        };
+
+        /** 拉一道新验证码。失败时把题面换成可点击重试的提示，而不是留白。 */
+        const loadCaptcha = async () => {
+          if (!questionEl) return;
+          questionEl.textContent = modal.dataset.captchaLoadingLabel || "…";
+          questionEl.dataset.state = "loading";
+          try {
+            const res = await fetch(apiBase + "/captcha", { cache: "no-store" });
+            const data = await res.json();
+            if (!res.ok || !data.ok) throw new Error(data.error || "captcha failed");
+            captchaId = data.id;
+            questionEl.textContent = data.question;
+            questionEl.dataset.state = "ready";
+          } catch {
+            captchaId = "";
+            questionEl.textContent =
+              modal.dataset.captchaErrorLabel || "captcha unavailable";
+            questionEl.dataset.state = "error";
+          }
+        };
+
+        const show = (next) => {
+          index = Math.max(0, Math.min(order.length - 1, next));
+          const current = order[index];
+          steps.forEach((el) => {
+            el.hidden = el.dataset.wizardStep !== current;
+          });
+          dots.forEach((el) => {
+            el.classList.toggle("is-active", el.dataset.dot === current);
+          });
+          if (prevBtn) prevBtn.hidden = index === 0;
+          if (nextBtn) nextBtn.hidden = index >= order.length - 1;
+          if (submitBtn) submitBtn.hidden = current !== "form";
+          // 进到表单步骤才取题，避免访客只是看看说明就白领一道
+          if (current === "form" && !captchaId && questionEl?.dataset.state !== "loading") {
+            loadCaptcha();
+          }
+        };
+
+        const finish = (message) => {
+          if (doneMessage && message) doneMessage.textContent = message;
+          // 多插一个 done 步骤：它不在 dots 里，用 show 的越界保护会退回 form，
+          // 所以这里直接手工切换可见性。
+          steps.forEach((el) => {
+            el.hidden = el.dataset.wizardStep !== "done";
+          });
+          dots.forEach((el) => el.classList.remove("is-active"));
+          if (prevBtn) prevBtn.hidden = true;
+          if (nextBtn) nextBtn.hidden = true;
+          if (submitBtn) submitBtn.hidden = true;
+        };
+
+        prevBtn?.addEventListener("click", () => show(index - 1));
+        nextBtn?.addEventListener("click", () => show(index + 1));
+        // 提交按钮在 footer 里、位于 <form> 之外，所以要手动触发提交
+        submitBtn?.addEventListener("click", () => {
+          if (form) form.requestSubmit();
+        });
+        questionEl?.addEventListener("click", () => {
+          if (questionEl.dataset.state === "error") loadCaptcha();
+        });
+        wizard
+          .querySelector("[data-captcha-refresh]")
+          ?.addEventListener("click", () => loadCaptcha());
+
+        form?.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          if (submitting) return;
+
+          // 浏览器原生校验先跑一遍（表单是 novalidate，避免各浏览器提示样式不一）
+          if (!form.reportValidity()) return;
+          if (!captchaId) {
+            setStatus(modal.dataset.captchaErrorLabel || "captcha unavailable", "error");
+            return;
+          }
+
+          const fd = new FormData(form);
+          const payload = {
+            siteName: String(fd.get("siteName") || "").trim(),
+            siteUrl: String(fd.get("siteUrl") || "").trim(),
+            avatarUrl: String(fd.get("avatarUrl") || "").trim(),
+            contactEmail: String(fd.get("contactEmail") || "").trim(),
+            description: String(fd.get("description") || "").trim(),
+            captchaId,
+            captchaAnswer: String(fd.get("captchaAnswer") || "").trim(),
+            company: String(fd.get("company") || "").trim(),
+          };
+
+          submitting = true;
+          setStatus("");
+          if (submitBtn) submitBtn.disabled = true;
+          if (submitLabel) {
+            submitLabel.textContent =
+              modal.dataset.submittingLabel || submitLabel.textContent;
+          }
+
+          try {
+            const res = await fetch(apiBase + "/apply", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.ok) {
+              setStatus(data.error || modal.dataset.failedLabel || "failed", "error");
+              // 验证码是一次性的：无论失败原因是答错还是别的，旧题都不能再用
+              captchaId = "";
+              loadCaptcha();
+              return;
+            }
+            finish(data.message || modal.dataset.successLabel || "");
+          } catch {
+            setStatus(modal.dataset.failedLabel || "failed", "error");
+            captchaId = "";
+            loadCaptcha();
+          } finally {
+            submitting = false;
+            if (submitBtn) submitBtn.disabled = false;
+            if (submitLabel) {
+              submitLabel.textContent =
+                modal.dataset.submitDefaultLabel || submitLabel.textContent;
+            }
+          }
+        });
+
+        // 每次打开都回到第一步：上次可能停在提交成功的收尾页
+        modal.querySelector("[data-modal-open]")?.addEventListener("click", () => {
+          show(0);
+          setStatus("");
+        });
+
+        show(0);
       }
 
       function boot() {

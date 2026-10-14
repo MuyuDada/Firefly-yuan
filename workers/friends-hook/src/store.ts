@@ -3,7 +3,8 @@
  *
  * 键设计（前缀区分，便于 list 与人工排查）：
  *   app:<id>        一条申请记录（FriendApplication 的 JSON）
- *   dup:<host>      已登记的站点 host → 记录 id，用于查重
+ *   dup:<host>      已通过的站点 host → 记录 id，用于查重
+ *   pend:<host>     待审的站点 host → 记录 id，用于「同一站点重复投递」提醒
  *   link:<host>     已通过的友链（用于 /api/links 输出）
  *
  * KV 免费额度：读 10 万/天、写 1 千/天、总量 1 GB。本站量级远远用不完。
@@ -15,6 +16,7 @@ import type { FriendApplication, ParsedApplication } from "./types";
 
 const APP_PREFIX = "app:";
 const DUP_PREFIX = "dup:";
+const PEND_PREFIX = "pend:";
 const LINK_PREFIX = "link:";
 
 /** 已通过审核、对外公开的友链 */
@@ -31,6 +33,17 @@ export async function saveApplication(
 	app: FriendApplication,
 ): Promise<void> {
 	await kv.put(APP_PREFIX + app.id, JSON.stringify(app));
+	// 待审站点登记一个 pend: 键，让同一站点再次提交时能被认出来。
+	// 只登记 pending 的：一旦审核（通过或拒绝）就该由 dup: 接管，否则被拒的站点
+	// 会一直背着「疑似重复」的标记。
+	const host = normalizeSiteUrl(app.parsed.siteurl);
+	if (host) {
+		if (app.status === "pending") {
+			await kv.put(PEND_PREFIX + host, app.id);
+		} else {
+			await kv.delete(PEND_PREFIX + host);
+		}
+	}
 }
 
 /** 读取一条申请记录 */
@@ -73,15 +86,22 @@ export async function listApplications(
 		.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-/** 查重：这个站点是否已经申请过 / 已在友链列表里 */
+/**
+ * 查重：这个站点是否已经申请过（待审）或已在友链列表里（已通过）。
+ *
+ * 两个键都要看：`dup:` 只有审核通过才写，所以光查它会漏掉「同一站点连投两次」——
+ * 那种情况下审核页会出现两条一模一样的待审记录。
+ */
 export async function findDuplicate(
 	kv: KVNamespace,
 	siteurl: string,
 ): Promise<string | undefined> {
 	const host = normalizeSiteUrl(siteurl);
 	if (!host) return undefined;
-	const existing = await kv.get(DUP_PREFIX + host);
-	return existing ?? undefined;
+	const approved = await kv.get(DUP_PREFIX + host);
+	if (approved) return approved;
+	const pending = await kv.get(PEND_PREFIX + host);
+	return pending ?? undefined;
 }
 
 /** 审核通过：写入公开友链、登记查重键 */

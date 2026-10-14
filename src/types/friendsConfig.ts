@@ -47,4 +47,10 @@ export type FriendsPageConfig = {
 	applyLink?: string; // 外链自助申请地址（如 GitHub Issue），留空则不显示该按钮
 	siteInfo?: FriendSiteInfo; // 弹窗中的本站信息，供访客一键复制
 	notes?: FriendNote[]; // 弹窗中的注意事项列表
+
+	// ── 站内申请表单 ──
+	// 接收端地址（workers/friends-hook 部署后的地址），例如
+	// "https://friends-hook.example.com"。填了就启用三步向导里的「填写申请表单」，
+	// 访客可直接提交、不用再去评论区贴模板；留空则只保留原来的评论区留言方式。
+	applyApi?: string;
 };
