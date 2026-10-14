@@ -45,6 +45,18 @@ interface ExportedHandler<EnvType = unknown> {
 		env: EnvType,
 		ctx?: ExecutionContext,
 	): Response | Promise<Response>;
+	/** cron 触发（wrangler.jsonc 的 triggers.crons） */
+	scheduled?(
+		controller: ScheduledController,
+		env: EnvType,
+		ctx: ExecutionContext,
+	): void | Promise<void>;
+}
+
+/** cron 触发器上下文 */
+interface ScheduledController {
+	scheduledTime: number;
+	cron: string;
 }
 
 /** Worker 的 execution context：waitUntil 用来把慢活挪到响应之后 */

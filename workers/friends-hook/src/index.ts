@@ -111,6 +111,12 @@ interface WalineWebhookPayload {
 			url?: string;
 			status?: string;
 			insertedAt?: string;
+			/** 父评论 id —— 非空说明这条是回复，不是新申请 */
+			pid?: number | null;
+			/** 根评论 id —— 同上 */
+			rid?: number | null;
+			/** "administrator" / "author" 表示站长自己发的 */
+			type?: string;
 		};
 		reply?: unknown;
 	};
@@ -155,6 +161,9 @@ async function handleHook(
 	const id = String(comment.objectId ?? "");
 	if (!id) return json({ ok: true, skipped: "评论没有 objectId" });
 
+	const notApplication = rejectReason(comment);
+	if (notApplication) return json({ ok: true, skipped: notApplication });
+
 	// 已处理过就跳过（Waline 不重试，但手工重放时能防重）
 	const existing = await getApplication(env.FRIENDS_KV, id);
 	if (existing)
@@ -173,12 +182,16 @@ async function ingest(
 	env: Env,
 	comment: NonNullable<NonNullable<WalineWebhookPayload["data"]>["comment"]>,
 	id: string,
+	options: { skipVerify?: boolean } = {},
 ): Promise<void> {
 	try {
-		const verify = await verifyCommentExists(env, id);
-		if (!verify.ok) {
-			console.warn(`[friends-hook] 核验失败，丢弃 ${id}：${verify.note}`);
-			return;
+		// 定时轮询拿到的评论，来源本身就是 Waline 接口，不需要再核验一次
+		if (!options.skipVerify) {
+			const verify = await verifyCommentExists(env, id);
+			if (!verify.ok) {
+				console.warn(`[friends-hook] 核验失败，丢弃 ${id}：${verify.note}`);
+				return;
+			}
 		}
 
 		const raw = comment.comment ?? "";
@@ -218,6 +231,86 @@ async function ingest(
 		const message = error instanceof Error ? error.message : String(error);
 		console.error(`[friends-hook] 处理 ${id} 失败：${message}`);
 	}
+}
+
+/** Waline 评论对象的形状（从 webhook payload 里取，去掉可选的 undefined） */
+type WalineComment = NonNullable<
+	NonNullable<WalineWebhookPayload["data"]>["comment"]
+>;
+
+/**
+ * 判断一条友链页评论「不是友链申请」，返回跳过原因；是申请则返回 null。
+ *
+ * 为什么需要：站长自己在友链页回复「已添加」同样会触发 webhook，也会出现在轮询
+ * 结果里。若不拦掉，这些回复会被当成申请解析（通常解析不出任何字段），在审核页
+ * 堆成一串垃圾。判据两条，任一命中即跳过：
+ *  - `pid`/`rid` 非空 —— Waline 里只有回复才有父评论 id；
+ *  - `type` 是 `administrator`/`author` —— 站长自己发的评论。
+ */
+function rejectReason(comment: WalineComment): string | null {
+	const replyTo = comment.pid ?? comment.rid;
+	if (replyTo) return `这是对 #${replyTo} 的回复，不是新申请`;
+	if (comment.type === "administrator" || comment.type === "author") {
+		return "站长的评论，跳过";
+	}
+	return null;
+}
+
+/**
+ * 定时轮询：直接从 Waline 拉友链页评论，把还没入库的补进来。
+ *
+ * 为什么需要它：Waline 的 WEBHOOK 配在 Vercel 那边的环境变量里，改它要动 Waline
+ * 服务本身；而轮询只需要这个 Worker 自己跑 cron，不依赖任何外部配置。两条路可以
+ * 并存（谁先到谁入库，另一条会因为 `app:<id>` 已存在而跳过），也可以只用轮询。
+ *
+ * 代价：评论从提交到出现在审核页最多延迟一个 cron 周期（默认 15 分钟）。
+ */
+async function handleScheduled(env: Env, ctx: ExecutionContext): Promise<void> {
+	const applyPath = env.APPLY_PATH || "/friends/";
+	const base = (env.WALINE_SERVER || "").replace(/\/+$/, "");
+	if (!base) {
+		console.warn("[friends-hook] 未配置 WALINE_SERVER，轮询跳过");
+		return;
+	}
+
+	const url = `${base}/comment?path=${encodeURIComponent(applyPath)}&pageSize=100`;
+	let comments: WalineComment[];
+	try {
+		const resp = await fetch(url, {
+			signal: AbortSignal.timeout(15000),
+			headers: { accept: "application/json" },
+		});
+		if (!resp.ok) {
+			console.error(`[friends-hook] 轮询 Waline 返回 ${resp.status}`);
+			return;
+		}
+		const payload = (await resp.json()) as { data?: WalineComment[] };
+		comments = payload.data ?? [];
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		console.error(`[friends-hook] 轮询 Waline 失败：${message}`);
+		return;
+	}
+
+	const fresh: { comment: WalineComment; id: string }[] = [];
+	for (const comment of comments) {
+		const id = String(comment?.objectId ?? "");
+		if (!id) continue;
+		// 站长的「已添加」回复不是申请，别入库
+		if (rejectReason(comment)) continue;
+		// 已在库里（无论 pending / approved / rejected）就不再重复处理
+		if (await getApplication(env.FRIENDS_KV, id)) continue;
+		fresh.push({ comment, id });
+	}
+
+	if (fresh.length === 0) return;
+	console.log(`[friends-hook] 轮询发现 ${fresh.length} 条新申请`);
+
+	// 逐条串行处理：反链检测要抓外部站点，并发太多既慢又容易被打回
+	for (const { comment, id } of fresh) {
+		await ingest(env, comment, id, { skipVerify: true });
+	}
+	ctx.waitUntil(Promise.resolve());
 }
 
 /**
@@ -355,6 +448,13 @@ export default {
 				return await handleAdminPage(request, env);
 			if (pathname === "/admin/review" && request.method === "POST")
 				return await handleReview(request, env);
+			// 手动触发一次轮询，便于部署后立刻验证，不用等 cron
+			if (pathname === "/admin/poll" && request.method === "POST") {
+				if (!isAdmin(request, env))
+					return json({ ok: false, error: "口令错误" }, 401);
+				await handleScheduled(env, ctx);
+				return json({ ok: true, polled: true });
+			}
 			if (pathname === "/health") {
 				return json({
 					ok: true,
@@ -368,6 +468,14 @@ export default {
 			const message = error instanceof Error ? error.message : String(error);
 			return json({ ok: false, error: message }, 500);
 		}
+	},
+	/** cron 触发：兜底轮询 Waline，不依赖 WEBHOOK 环境变量 */
+	async scheduled(
+		_controller: ScheduledController,
+		env: Env,
+		ctx: ExecutionContext,
+	): Promise<void> {
+		await handleScheduled(env, ctx);
 	},
 } satisfies ExportedHandler<Env>;
 

@@ -1,6 +1,15 @@
 # 友链自助申请接收端
 
-访客在友链页按弹窗里的模板留言 → Waline 把评论 POST 给这个 Worker → Worker 解析出站点名称/描述/链接/头像 → 做反链检测 → 进待审队列 → 你在审核页点「通过」→ 复制生成的配置片段粘进 `src/config/friendsConfig.ts` → 重新部署上线。
+访客在友链页按弹窗里的模板留言 → Worker 解析出站点名称/描述/链接/头像 → 做反链检测 → 进待审队列 → 你在审核页点「通过」→ 复制生成的配置片段粘进 `src/config/friendsConfig.ts` → 重新部署上线。
+
+评论进入 Worker 有**两条路，任选其一或都开**：
+
+| 方式 | 触发时机 | 需要改外部配置吗 |
+|---|---|---|
+| **cron 轮询**（默认开启） | 每 15 分钟拉一次 Waline 友链页评论 | **不需要** —— 只靠 Worker 自己的 `triggers.crons` |
+| **Waline WEBHOOK** | 评论创建后立刻推送 | 需要给 Waline 服务加 `WEBHOOK` 环境变量并重启 |
+
+两条路可以并存：谁先到谁入库，后到的那条会因为 `app:<id>` 已存在而跳过，不会产生重复记录。轮询的代价是延迟最多一个 cron 周期。
 
 **为什么是独立 Worker 而不是 Astro 动态路由**：本站是纯静态 SSG，一旦加入 `prerender = false` 的路由，构建产物会从扁平的 `dist/` 变成 `dist/client/` + `dist/server/` 双目录，`wrangler.jsonc` 的 `assets.directory`、`scripts/site-root.ts` 的探测逻辑、以及 Cloudflare 上的构建配置都要跟着改。而 Waline 的 WEBHOOK 只需要一个能收 POST 的 URL，不必与站点同域。独立 Worker 崩了也不影响博客。
 
@@ -69,7 +78,22 @@ curl https://firefly-friends-hook.<子域>.workers.dev/health
 
 ---
 
-## 三、接线：让 Waline 把评论推过来
+## 三、评论怎么进来
+
+### 方式 A：cron 轮询（默认，无需任何外部配置）
+
+`wrangler.jsonc` 里的 `triggers.crons` 是 `["*/15 * * * *"]`，Worker 每 15 分钟拉一次 Waline 的友链页评论，把 KV 里还没有的补进来。部署完就自动生效。
+
+想立刻看到效果，不用等 cron：
+
+```bash
+curl -X POST https://firefly-friends-hook.<子域>.workers.dev/admin/poll \
+  -H "x-admin-token: <你的 ADMIN_TOKEN>"
+```
+
+> 轮询用 `pageSize=100`，只取 Waline 接口返回的第一页。友链页评论超过 100 条时，更早的申请不会再被自动补入（但已入库的记录不受影响）。真到那个量级再改成分页拉取即可。
+
+### 方式 B：Waline WEBHOOK（即时推送）
 
 在 Waline 服务的环境变量里加一条：
 
@@ -77,12 +101,14 @@ curl https://firefly-friends-hook.<子域>.workers.dev/health
 WEBHOOK=https://firefly-friends-hook.<你的子域>.workers.dev/hook
 ```
 
-Waline 会在**每次评论创建后**（不论最终审核状态）向这个地址发一条 POST。改完需要重启/重新部署 Waline 服务。
+Waline 会在**每次评论创建后**（不论最终审核状态）向这个地址发一条 POST。改完需要重启/重新部署 Waline 服务。这条只在 Waline 部署在 Vercel 等能改环境变量的平台上才可用。
 
 > ⚠️ Waline 对 webhook 的调用是 `fetch(...).then(resp => resp.json())`，**没有超时、没有重试、不检查状态码**。所以：
 > - 接收端必须返回**合法 JSON 体**（返回 204 或纯文本会让 Waline 侧抛错）；
 > - 接收端必须**立刻返回**，慢活丢给 `ctx.waitUntil()`。本 Worker 已经这么做了（实测 `/hook` 响应 ~190ms，反链检测在后台跑）。
 > - Waline 只有一个事件 `new_comment`，**没有**审核通过/注册等事件，也没有 URL 过滤 —— 过滤是在本 Worker 里按 `data.comment.url` 做的。
+>
+> 走 webhook 时，Worker 会回查 Waline 确认 `objectId` 真实存在（`VERIFY_COMMENT=1`），防止有人伪造请求打进来。轮询模式下这一步会跳过 —— 数据本来就是从 Waline 拉的。
 
 ---
 
@@ -123,6 +149,8 @@ https://firefly-friends-hook.<子域>.workers.dev/admin?token=<你的 ADMIN_TOKE
 | GET | `/health` | 健康检查 |
 | GET | `/admin?token=...` | 审核页 |
 | POST | `/admin/review` | 审核动作，body `{"id":"...","action":"approve"\|"reject","note":"..."}` |
+| POST | `/admin/poll` | 手动触发一次 Waline 轮询，不用等 cron |
+| cron | `*/15 * * * *` | 自动轮询 Waline 友链页，把新评论补进队列 |
 
 `/api/links` 与 `/hook` 带 `Access-Control-Allow-Origin: *`；`/admin*` 需要口令。
 
@@ -139,6 +167,7 @@ https://firefly-friends-hook.<子域>.workers.dev/admin?token=<你的 ADMIN_TOKE
 | 重复申请 | 按归一化后的 host 查重（去协议/`www`/端口/路径），审核页标「疑似重复」 |
 | 字段不全就通过 | `approve` 时校验必填字段（站点名称/描述/链接/头像），缺一个就 400 |
 | 只有链接、没有字段名的垃圾评论被当成申请 | 解析器仍会兜底抽出链接，但缺字段标记会让它在审核页显示为「缺字段」，且 `approve` 会被 400 挡住 |
+| 站长自己的「已添加」回复被当成申请 | `rejectReason()`：`pid`/`rid` 非空（是回复）或 `type` 为 `administrator`/`author` 的评论一律跳过。webhook 与轮询两条路共用同一判据 |
 
 > 反链检测只是**审核证据**，不是自动通过的门槛 —— 对方站点可能有 Cloudflare 拦截、JS 渲染或防盗链，抓不到不代表没放。最终由人判断。
 

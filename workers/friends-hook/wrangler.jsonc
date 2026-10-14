@@ -6,10 +6,13 @@
 	"observability": {
 		"enabled": true
 	},
+	"triggers": {
+		"crons": ["*/15 * * * *"]
+	},
 	"kv_namespaces": [
 		{
 			"binding": "FRIENDS_KV",
-			"id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+			"id": "f1def21c1578472abcd0691ca80ab953"
 		}
 	],
 	"vars": {
