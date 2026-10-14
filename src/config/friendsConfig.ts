@@ -177,6 +177,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 90,
 		enabled: true,
 	},
+	{
+		title: "Zhong Website",
+		imgurl: "https://zhongweb.cn/icons/icon-512.png",
+		desc: "医学生×互联网折腾爱好者",
+		siteurl: "https://zhongweb.cn",
+		tags: ["Friend"],
+		weight: 88,
+		enabled: true,
+	},
 	// {
 	// 	title: "Firefly Docs",
 	// 	imgurl: "https://docs-firefly.cuteleaf.cn/logo.png",
