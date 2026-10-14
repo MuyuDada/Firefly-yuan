@@ -1,0 +1,23 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "firefly-friends-hook",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-01-01",
+	"observability": {
+		"enabled": true
+	},
+	"kv_namespaces": [
+		{
+			"binding": "FRIENDS_KV",
+			"id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+		}
+	],
+	"vars": {
+		"SITE_URL": "https://muyudada.dpdns.org",
+		"SITE_NAME": "Muyu の 小窝",
+		"APPLY_PATH": "/friends/",
+		"WALINE_SERVER": "https://comment.muyudada.dpdns.org",
+		"VERIFY_COMMENT": "1",
+		"BACKLINK_TIMEOUT_MS": "8000"
+	}
+}

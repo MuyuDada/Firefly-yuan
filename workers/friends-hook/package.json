@@ -1,0 +1,17 @@
+{
+	"name": "firefly-friends-hook",
+	"private": true,
+	"version": "1.0.0",
+	"description": "友链自助申请接收端：接收 Waline WEBHOOK、解析申请、反链检测、待审队列",
+	"type": "module",
+	"scripts": {
+		"dev": "wrangler dev",
+		"deploy": "wrangler deploy",
+		"type-check": "tsc --noEmit",
+		"tail": "wrangler tail"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.3",
+		"wrangler": "^4.131.2"
+	}
+}

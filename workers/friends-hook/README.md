@@ -1,0 +1,244 @@
+# 友链自助申请接收端
+
+访客在友链页按弹窗里的模板留言 → Waline 把评论 POST 给这个 Worker → Worker 解析出站点名称/描述/链接/头像 → 做反链检测 → 进待审队列 → 你在审核页点「通过」→ 复制生成的配置片段粘进 `src/config/friendsConfig.ts` → 重新部署上线。
+
+**为什么是独立 Worker 而不是 Astro 动态路由**：本站是纯静态 SSG，一旦加入 `prerender = false` 的路由，构建产物会从扁平的 `dist/` 变成 `dist/client/` + `dist/server/` 双目录，`wrangler.jsonc` 的 `assets.directory`、`scripts/site-root.ts` 的探测逻辑、以及 Cloudflare 上的构建配置都要跟着改。而 Waline 的 WEBHOOK 只需要一个能收 POST 的 URL，不必与站点同域。独立 Worker 崩了也不影响博客。
+
+---
+
+## 一、前置条件
+
+| 项 | 说明 |
+|---|---|
+| Cloudflare 账号 | 免费计划即可。KV 免费额度：读 10 万/天、写 1 千/天、存储 1 GB |
+| Waline 服务 | 已部署且能改环境变量（本站是 `https://comment.muyudada.dpdns.org`） |
+| Node.js ≥ 22 | `wrangler` 要求 |
+
+---
+
+## 二、部署步骤
+
+### 1. 创建 KV namespace
+
+```bash
+cd workers/friends-hook
+npx wrangler kv namespace create FRIENDS_KV
+```
+
+命令会输出一个 `id`，把它填进 `wrangler.jsonc` 的 `kv_namespaces[0].id`，替换掉 `REPLACE_WITH_YOUR_KV_NAMESPACE_ID`。
+
+> 本地 `wrangler dev` 用的是 miniflare 模拟的 KV，不需要真实 id，但真机部署必须填对。
+
+### 2. 设置管理口令
+
+```bash
+npx wrangler secret put ADMIN_TOKEN
+```
+
+输入一个足够长的随机串。这个口令用于访问审核页 `/admin` 和调用 `/admin/review`。**不要写进 `wrangler.jsonc`**（`vars` 里的内容会进 git）。
+
+### 3. 核对 `wrangler.jsonc` 里的 `vars`
+
+```jsonc
+"vars": {
+  "SITE_URL": "https://muyudada.dpdns.org",      // 本站地址，反链检测要找的就是这个 host
+  "SITE_NAME": "Muyu の 小窝",                    // 仅用于审核页标题
+  "APPLY_PATH": "/friends/",                      // 只处理发到这个路径的评论
+  "WALINE_SERVER": "https://comment.muyudada.dpdns.org",  // 用于二次核验评论真实存在
+  "VERIFY_COMMENT": "1",                          // "1" 开启核验，"0" 关闭
+  "BACKLINK_TIMEOUT_MS": "8000"                   // 反链检测单路径超时
+}
+```
+
+### 4. 部署
+
+```bash
+npx wrangler deploy
+```
+
+部署成功会打印 Worker 地址，形如 `https://firefly-friends-hook.<你的子域>.workers.dev`。
+
+### 5. 验证
+
+```bash
+curl https://firefly-friends-hook.<子域>.workers.dev/health
+# → {"ok":true,"kv":true,"applyPath":"/friends/","time":"..."}
+```
+
+`kv: true` 表示 KV 绑定成功。
+
+---
+
+## 三、接线：让 Waline 把评论推过来
+
+在 Waline 服务的环境变量里加一条：
+
+```
+WEBHOOK=https://firefly-friends-hook.<你的子域>.workers.dev/hook
+```
+
+Waline 会在**每次评论创建后**（不论最终审核状态）向这个地址发一条 POST。改完需要重启/重新部署 Waline 服务。
+
+> ⚠️ Waline 对 webhook 的调用是 `fetch(...).then(resp => resp.json())`，**没有超时、没有重试、不检查状态码**。所以：
+> - 接收端必须返回**合法 JSON 体**（返回 204 或纯文本会让 Waline 侧抛错）；
+> - 接收端必须**立刻返回**，慢活丢给 `ctx.waitUntil()`。本 Worker 已经这么做了（实测 `/hook` 响应 ~190ms，反链检测在后台跑）。
+> - Waline 只有一个事件 `new_comment`，**没有**审核通过/注册等事件，也没有 URL 过滤 —— 过滤是在本 Worker 里按 `data.comment.url` 做的。
+
+---
+
+## 四、日常使用
+
+### 审核页
+
+浏览器打开：
+
+```
+https://firefly-friends-hook.<子域>.workers.dev/admin?token=<你的 ADMIN_TOKEN>
+```
+
+页面分三块：
+
+1. **待审** — 每条显示解析出的字段、缺失字段标记、重复标记、反链检测结论、以及「未识别的行」和原始评论（便于人工核对）。点「通过」或「拒绝」。
+2. **已通过 · 待粘进 friendsConfig.ts** — 一键复制生成的配置片段。
+3. **已处理** — 已通过/已拒绝的记录。
+
+> 带 token 的 URL 会进浏览器历史。介意的话改用请求头方式（`curl -H "x-admin-token: ..."`），或者看完就清一下历史。
+
+### 上线一条友链
+
+1. 审核页点「通过」；
+2. 在「已通过」区点「复制片段」；
+3. 打开 `src/config/friendsConfig.ts`，把片段粘进 `friendsConfig` 数组；
+4. 重新部署博客。
+
+> **为什么还要手工粘**：`friends.astro` 的友链数据是构建时读的静态数组（`getEnabledFriends()`），审核通过只写进了 KV，静态页面并不知道。要做到全自动，需要让前端在浏览器里 fetch `/api/links` 并合并进列表 —— 但卡片是服务端渲染的 HTML，还牵扯分页计数、标签筛选、搜索索引、延时徽章，客户端合并会很脏。手工粘一行是当前代价最小的闭环。
+
+### 接口一览
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/hook` | Waline WEBHOOK 接收端。立即返回 `{"ok":true,"id":"...","queued":true}` |
+| GET | `/api/links` | 已通过的友链 JSON：`{"ok":true,"count":N,"data":[...]}` |
+| GET | `/api/links?format=ts` | 同上，但输出可直接粘贴的 TS 配置片段 |
+| GET | `/health` | 健康检查 |
+| GET | `/admin?token=...` | 审核页 |
+| POST | `/admin/review` | 审核动作，body `{"id":"...","action":"approve"\|"reject","note":"..."}` |
+
+`/api/links` 与 `/hook` 带 `Access-Control-Allow-Origin: *`；`/admin*` 需要口令。
+
+---
+
+## 五、安全设计
+
+| 风险 | 处置 |
+|---|---|
+| 有人伪造 webhook 打进来 | `VERIFY_COMMENT=1` 时，Worker 会回查 Waline 的 `/comment` 接口，确认这个 `objectId` 确实存在，否则丢弃 |
+| 申请链接是 SSRF 跳板（探测内网） | `isSafePublicUrl()` 拦掉 `localhost`、`*.local`、`10.x`、`127.x`、`192.168.x`、`169.254.x`、`172.16-31.x` |
+| 管理口令被计时侧信道猜解 | `safeEqual()` 常量时间比较 |
+| 密钥泄漏 | `ADMIN_TOKEN` 走 `wrangler secret`；本地开发用 `.dev.vars`（已在 `.gitignore` 里） |
+| 重复申请 | 按归一化后的 host 查重（去协议/`www`/端口/路径），审核页标「疑似重复」 |
+| 字段不全就通过 | `approve` 时校验必填字段（站点名称/描述/链接/头像），缺一个就 400 |
+| 只有链接、没有字段名的垃圾评论被当成申请 | 解析器仍会兜底抽出链接，但缺字段标记会让它在审核页显示为「缺字段」，且 `approve` 会被 400 挡住 |
+
+> 反链检测只是**审核证据**，不是自动通过的门槛 —— 对方站点可能有 Cloudflare 拦截、JS 渲染或防盗链，抓不到不代表没放。最终由人判断。
+
+---
+
+## 六、本地开发
+
+```bash
+cd workers/friends-hook
+npx tsc --noEmit                          # 类型检查
+npx biome check src test-parse.ts         # 代码检查（从仓库根跑，用根 biome.json）
+npx wrangler dev -c wrangler.jsonc        # 起本地服务，默认 http://127.0.0.1:8787
+```
+
+> 本目录**不在**根 `tsconfig.json` 的 `include` 里，也不在 `pnpm lint` / `pnpm format` / CI 的扫描范围内（它们只扫 `./src` 和 `./scripts`）。所以改完这里要自己跑上面两条命令。`biome.json` 的 `files.includes` 已排除 `**/.wrangler/**`，否则 wrangler 生成的临时 bundle 会报一堆无关错误。
+
+**必须显式 `-c wrangler.jsonc`**。否则 wrangler 会同时看到仓库根目录的 `.wrangler/deploy/config.json` 和本目录的 `wrangler.jsonc`，报：
+
+```
+Found both a user configuration file at "wrangler.jsonc"
+and a deploy configuration file at "..\..\.wrangler\deploy\config.json".
+But these do not share the same base path so it is not clear which should be used.
+```
+
+本地变量可以直接用 `--var` 传，避免建 `.dev.vars`：
+
+```bash
+npx wrangler dev -c wrangler.jsonc --port 8787 \
+  --var SITE_URL:https://muyudada.dpdns.org \
+  --var APPLY_PATH:/friends/ \
+  --var VERIFY_COMMENT:0 \
+  --var BACKLINK_TIMEOUT_MS:8000 \
+  --var ADMIN_TOKEN:test-token-123
+```
+
+### 解析器自测
+
+```bash
+npx tsx workers/friends-hook/test-parse.ts
+```
+
+拿线上真实的 6 条申请评论跑解析，检查字段是否被正确抽出。改 `src/parse.ts` 后务必重跑。
+
+### 手工模拟一次 webhook
+
+```bash
+curl -X POST http://127.0.0.1:8787/hook \
+  -H "content-type: application/json" \
+  --data-binary @hook.json
+```
+
+`hook.json` 的形状：
+
+```json
+{
+  "type": "new_comment",
+  "data": {
+    "comment": {
+      "objectId": 93001,
+      "comment": "站点名称：示例<br>站点描述：描述<br>站点链接：<a href=\"https://example.com\">https://example.com</a><br>头像链接：<a href=\"https://example.com/a.png\">https://example.com/a.png</a>",
+      "nick": "tester",
+      "url": "/friends/",
+      "status": "approved",
+      "insertedAt": "2026-10-14T12:00:00.000Z"
+    }
+  }
+}
+```
+
+> 用 PowerShell 测试时注意：**必须把 JSON 写成 UTF-8 文件再用 `curl --data-binary @file`**。用 `Invoke-RestMethod -Body` 传含中文的字符串会因为编码问题导致中文全部丢失，看起来像解析器有 bug。
+
+---
+
+## 七、解析器说明
+
+申请文本五花八门：全角/半角冒号、等号、英文键名、整段挤在一行、开头还写一句「申请友链」。所以 `src/parse.ts` 不用「逐行匹配」，而是**全文扫描字段锚点**：
+
+1. 先找出所有「字段名 + 分隔符」的位置（字段名支持中英文别名，如 `站点名称`/`name`/`title`）；
+2. 两个锚点之间的内容就是前一个字段的值 —— 单行和多行因此是同一条代码路径；
+3. 剩下的、没被任何锚点覆盖的行作为「未识别行」保留，同时按内容特征兜底（含 URL 的当站点链接、含 `@` 的当邮箱）。
+
+一条关键规则：**字段名要么在行首，要么后面必须跟 `:`/`=` 这类显式分隔符**。否则 `名称 Zhong Website` 里的行中单词 `Website` 会被认成 `siteurl` 标签，把站名截成 `Zhong`。
+
+---
+
+## 八、目录结构
+
+```
+workers/friends-hook/
+├── package.json        依赖与脚本（wrangler / typescript）
+├── tsconfig.json       独立于仓库根的 tsconfig
+├── wrangler.jsonc      Worker 配置：KV 绑定 + vars
+├── test-parse.ts       解析器自测（拿线上真实评论跑）
+└── src/
+    ├── index.ts        入口：路由、审核页、webhook 处理
+    ├── parse.ts        评论 HTML → 结构化字段
+    ├── store.ts        KV 读写（app: / dup: / link: 三种前缀）
+    ├── backlink.ts     反链检测 + SSRF 防护
+    ├── types.ts        共享类型
+    └── runtime.d.ts    Workers 运行时类型的最小声明
+```
+
+`runtime.d.ts` 是自己写的，没用 `@cloudflare/workers-types` —— 本目录不在根 `tsconfig.json` 的 `include` 里（只有 `src/**` + `scripts/**`），为一个 Worker 单独装一整个类型包、再拉一份 `node_modules` 不划算。这里只声明实际用到的几个 API。
