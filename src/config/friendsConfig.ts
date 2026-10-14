@@ -20,7 +20,7 @@ export const friendsPageConfig: FriendsPageConfig = {
 	randomizeSort: false,
 
 	// 每页展示的卡片数量
-	pageSize: 9,
+	pageSize: 12,
 
 	// ── 访问延时徽章 ──────────────────────────────────
 	// 在卡片右上角显示探测到的访问延时：绿=良好，橙=偏慢，红=超时
@@ -182,7 +182,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://zhongweb.cn/icons/icon-512.png",
 		desc: "医学生×互联网折腾爱好者",
 		siteurl: "https://zhongweb.cn",
-		tags: ["Friend"],
+		tags: ["Blog"],
 		weight: 88,
 		enabled: true,
 	},
