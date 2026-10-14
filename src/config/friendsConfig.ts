@@ -111,7 +111,7 @@ export const friendsConfig: FriendLink[] = [
 		desc: "飞萤之火自无梦的长夜亮起，绽放在终竟的明天。",
 		siteurl: "https://blog.cuteleaf.cn",
 		tags: ["Blog"],
-		weight: 3, // 权重，数字越大排序越靠前
+		weight: 89, // 权重，数字越大排序越靠前
 		enabled: true, // 是否启用
 	},
 	{
@@ -166,6 +166,15 @@ export const friendsConfig: FriendLink[] = [
 		siteurl: "https://hello123.fun",
 		tags: ["Blog"],
 		weight: 91,
+		enabled: true,
+	},
+	{
+		title: "玻璃瓶和纸飞机",
+		imgurl: "https://www.sunandyou.cn/img/logo-B3KTxsD8.png",
+		desc: "专注于个人搞笑和后端开发",
+		siteurl: "https://www.sunandyou.cn",
+		tags: ["Blog"],
+		weight: 90,
 		enabled: true,
 	},
 	// {
