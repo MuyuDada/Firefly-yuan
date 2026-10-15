@@ -285,16 +285,59 @@ try {
 	await sleep(200);
 	check("清空搜索后恢复显示", (await evaluate(VISIBLE_CARDS)) > 0);
 
-	// ── 配置片段 ──
+	// ── 待上线区 ──
 	check(
-		"已通过时出现配置片段区",
-		(await evaluate(`!!document.getElementById('snippet')`)) === true,
+		"已通过时出现待上线区",
+		(await evaluate(`!!document.querySelector('.pending')`)) === true,
+	);
+	const approvedCount = await evaluate(
+		`document.querySelectorAll('.card[data-status="approved"]').length`,
+	);
+	const pendingRows = await evaluate(
+		`document.querySelectorAll('.pending-item').length`,
 	);
 	check(
-		"片段内容是 friendsConfig 条目",
+		"待上线区每条一个独立行",
+		pendingRows === approvedCount,
+		`${pendingRows} 行 / ${approvedCount} 条已通过`,
+	);
+	check(
+		"每行有头像、站名、域名",
 		(await evaluate(
-			`(document.getElementById('snippet')?.textContent || '').includes('title:')`,
+			`(() => {
+        const r = document.querySelector('.pending-item');
+        return !!r.querySelector('.avatar')
+          && !!(r.querySelector('strong')?.textContent || '').trim()
+          && !!(r.querySelector('.host')?.textContent || '').trim();
+      })()`,
 		)) === true,
+	);
+	check(
+		"每行有独立的复制按钮",
+		(await evaluate(
+			`document.querySelectorAll('.pending-item [data-copy-entry]').length`,
+		)) === pendingRows,
+	);
+	check(
+		"单条复制的片段是合法的 friendsConfig 条目",
+		(await evaluate(`(() => {
+      const s = document.querySelector('[data-copy-entry]').dataset.snippet || '';
+      return s.includes('title:')
+        && s.includes('imgurl:')
+        && s.includes('siteurl:')
+        && s.includes('tags: ["Blog"]')
+        && s.includes('enabled: true');
+    })()`)) === true,
+	);
+	check(
+		"有「复制全部」按钮",
+		(await evaluate(`!!document.getElementById('copy-all')`)) === true,
+	);
+	check(
+		"隐藏的整段片段条数等于待上线行数",
+		(await evaluate(
+			`(document.getElementById('snippet')?.textContent.match(/title:/g) || []).length`,
+		)) === pendingRows,
 	);
 
 	// ── 深色模式 ──
@@ -313,6 +356,16 @@ try {
 	const shot = await send("Page.captureScreenshot", { format: "png" });
 	writeFileSync(SHOT, Buffer.from(shot.data, "base64"));
 	console.log(`\n截图：${SHOT}`);
+
+	// 单独给「待上线」区截一张，方便肉眼检查排版
+	await evaluate(
+		`document.querySelector('.pending')?.scrollIntoView({ block: 'center' }); true`,
+	);
+	await sleep(400);
+	const shotPending = await send("Page.captureScreenshot", { format: "png" });
+	const pendingPath = SHOT.replace(/\.png$/, "-pending.png");
+	writeFileSync(pendingPath, Buffer.from(shotPending.data, "base64"));
+	console.log(`待上线区截图：${pendingPath}`);
 
 	// ── 移动端宽度 ──
 	await send("Emulation.setDeviceMetricsOverride", {

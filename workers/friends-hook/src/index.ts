@@ -319,6 +319,24 @@ async function handleScheduled(env: Env, ctx: ExecutionContext): Promise<void> {
 }
 
 /**
+ * 生成单条可直接粘进 `src/config/friendsConfig.ts` 的友链条目。
+ *
+ * `tags` 固定给 "Blog"：`FriendCard.astro` 的 `TAG_LABELS` 只映射
+ * Blog / Docs / Home / Framework 四个，未命中的 tag 会原样显示英文。
+ */
+function toConfigEntry(link: PublicLink): string {
+	return `	{
+		title: ${JSON.stringify(link.name)},
+		imgurl: ${JSON.stringify(link.avatar)},
+		desc: ${JSON.stringify(link.desc)},
+		siteurl: ${JSON.stringify(link.siteurl)},
+		tags: ["Blog"],
+		weight: 1,
+		enabled: true,
+	},`;
+}
+
+/**
  * 生成可直接粘进 `src/config/friendsConfig.ts` 的友链条目。
  *
  * 为什么需要它：`friends.astro` 的友链数据是构建时读的静态数组
@@ -327,19 +345,7 @@ async function handleScheduled(env: Env, ctx: ExecutionContext): Promise<void> {
  */
 function toConfigSnippet(links: PublicLink[]): string {
 	if (links.length === 0) return "// 暂无已通过的友链";
-	return links
-		.map(
-			(link) => `	{
-		title: ${JSON.stringify(link.name)},
-		imgurl: ${JSON.stringify(link.avatar)},
-		desc: ${JSON.stringify(link.desc)},
-		siteurl: ${JSON.stringify(link.siteurl)},
-		tags: ["Friend"],
-		weight: 1,
-		enabled: true,
-	},`,
-		)
-		.join("\n");
+	return links.map(toConfigEntry).join("\n");
 }
 
 /**
@@ -849,16 +855,35 @@ details pre{
   border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
   padding:1px 9px;border-radius:999px;
 }
-.snippet-box{
+.pending{
   background:var(--card);border:1px solid var(--border);border-radius:16px;
-  padding:16px 18px;box-shadow:var(--shadow);
+  box-shadow:var(--shadow);overflow:hidden;
 }
-.snippet-box p{margin:0 0 11px;font-size:.85rem;color:var(--muted)}
+.pending-head{
+  display:flex;gap:14px;align-items:center;padding:14px 18px;
+  border-bottom:1px solid var(--border);
+}
+.pending-head p{margin:0;font-size:.85rem;color:var(--muted);flex:1;min-width:0}
+.pending-head .btn{flex:none}
+.pending-list{display:flex;flex-direction:column}
+.pending-item{
+  display:flex;align-items:center;gap:13px;padding:12px 18px;
+  border-bottom:1px solid var(--border);
+}
+.pending-item:last-child{border-bottom:0}
+.pending-item:hover{background:var(--soft)}
+.pending-item .avatar{width:38px;height:38px;border-radius:11px;font-size:1rem}
+.pending-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pending-info strong{font-size:.92rem;font-weight:600;overflow-wrap:anywhere}
+.pending-info .host{font-size:.8rem;color:var(--accent)}
+.pending-info .meta{font-size:.75rem;color:var(--muted);overflow-wrap:anywhere}
+.pending-item .btn{flex:none}
 #snippet{
   margin:0;padding:14px 16px;border-radius:11px;background:var(--soft);
   border:1px solid var(--border);white-space:pre;overflow:auto;max-height:360px;
   font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.7;
 }
+#snippet[hidden]{display:none}
 .empty{
   text-align:center;padding:56px 20px;color:var(--muted);font-size:.9rem;
   border:1px dashed var(--border);border-radius:16px;
@@ -890,6 +915,10 @@ details pre{
   .actions{gap:7px}
   .btn{padding:8px 16px;flex:1;min-width:0}
   .note-input{min-width:100%;order:3}
+  .pending-head{padding:12px 14px;flex-wrap:wrap}
+  .pending-head .btn{width:100%}
+  .pending-item{padding:11px 14px;gap:11px}
+  .pending-item .avatar{width:34px;height:34px}
   #snippet{font-size:.72rem}
 }
 `;
@@ -938,6 +967,46 @@ function adminPage(apps: FriendApplication[], env: Env): string {
 	const pending = apps.filter((app) => app.status === "pending");
 	const approved = apps.filter((app) => app.status === "approved");
 	const rejected = apps.filter((app) => app.status === "rejected");
+
+	/** 已通过的记录转成 PublicLink，供配置片段生成用 */
+	const approvedLinks: PublicLink[] = approved.map((app) => ({
+		...app.parsed,
+		id: app.id,
+		approvedAt: app.reviewedAt ?? app.createdAt,
+	}));
+	const snippetText = toConfigSnippet(approvedLinks);
+
+	/**
+	 * 「待上线」区的一行：一条已通过的友链 = 一张小卡 + 单独的复制按钮。
+	 *
+	 * 原来是一个大 <pre> 把所有条目堆在一起，条数一多就得靠肉眼在里面找某一条。
+	 * 拆成每行一条之后，每条能单独复制，也能一眼看到头像和域名对不对。
+	 */
+	const approvedItem = (app: FriendApplication): string => {
+		const { parsed } = app;
+		const snippet = toConfigEntry({
+			...parsed,
+			id: app.id,
+			approvedAt: app.reviewedAt ?? app.createdAt,
+		});
+		return `<div class="pending-item">
+    <div class="avatar">${
+			parsed.avatar
+				? `<img src="${escapeHtml(parsed.avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
+				: ""
+		}<span>${escapeHtml((parsed.name || "友").slice(0, 1))}</span></div>
+    <div class="pending-info">
+      <strong>${escapeHtml(parsed.name || "(未识别站点名)")}</strong>
+      <span class="host">${
+				parsed.siteurl ? escapeHtml(hostLabel(parsed.siteurl)) : "(无站点链接)"
+			}</span>
+      <span class="meta">${escapeHtml(timeAgo(app.reviewedAt ?? app.createdAt))}${
+				app.reviewNote ? ` · ${escapeHtml(app.reviewNote)}` : ""
+			}</span>
+    </div>
+    <button class="btn" data-copy-entry type="button" data-snippet="${escapeHtml(snippet)}">复制</button>
+  </div>`;
+	};
 
 	const card = (app: FriendApplication): string => {
 		const { parsed } = app;
@@ -1102,18 +1171,15 @@ ${ADMIN_STYLE}
   ${
 		approved.length
 			? `<div class="section-title">待上线<span class="badge">${approved.length}</span></div>
-  <div class="snippet-box">
-    <p>把下面的条目粘进 <code>src/config/friendsConfig.ts</code> 的 <code>friendsConfig</code> 数组，再重新部署即可生效 —— 友链列表是构建时读取的静态数组。</p>
-    <pre id="snippet">${escapeHtml(
-			toConfigSnippet(
-				approved.map((app) => ({
-					...app.parsed,
-					id: app.id,
-					approvedAt: app.reviewedAt ?? app.createdAt,
-				})),
-			),
-		)}</pre>
-    <div class="actions"><button class="btn" id="copy-snippet" type="button">复制片段</button></div>
+  <div class="pending">
+    <div class="pending-head">
+      <p>把条目粘进 <code>src/config/friendsConfig.ts</code> 的 <code>friendsConfig</code> 数组，再重新部署即可生效 —— 友链列表是构建时读取的静态数组。</p>
+      <button class="btn" id="copy-all" type="button">复制全部</button>
+    </div>
+    <div class="pending-list">
+      ${approved.map(approvedItem).join("\n")}
+    </div>
+    <pre id="snippet" hidden>${escapeHtml(snippetText)}</pre>
   </div>`
 			: ""
 	}
@@ -1184,14 +1250,28 @@ try {
 } catch {}
 
 document.addEventListener("click", async (event) => {
-  const copyBtn = event.target.closest("#copy-snippet");
-  if (copyBtn) {
+  const copyEntry = event.target.closest("[data-copy-entry]");
+  if (copyEntry) {
+    const text = copyEntry.dataset.snippet || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      copyEntry.textContent = "已复制";
+      toast("这条配置已复制到剪贴板");
+      setTimeout(() => { copyEntry.textContent = "复制"; }, 1500);
+    } catch {
+      toast("复制失败，请手动选中复制");
+    }
+    return;
+  }
+
+  const copyAll = event.target.closest("#copy-all");
+  if (copyAll) {
     const text = document.getElementById("snippet")?.textContent || "";
     try {
       await navigator.clipboard.writeText(text);
-      copyBtn.textContent = "已复制";
-      toast("配置片段已复制到剪贴板");
-      setTimeout(() => { copyBtn.textContent = "复制片段"; }, 1500);
+      copyAll.textContent = "已复制";
+      toast("全部配置片段已复制到剪贴板");
+      setTimeout(() => { copyAll.textContent = "复制全部"; }, 1500);
     } catch {
       toast("复制失败，请手动选中复制");
     }
