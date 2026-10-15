@@ -464,7 +464,7 @@ async function handleApply(
 					: { ok: false, checkedUrl: "", note: "没有可检测的站点地址" };
 				const current = await getApplication(env.FRIENDS_KV, id);
 				// 审核员可能在检测跑完前就处理掉了，那就别再覆盖状态
-				if (!current || current.status !== "pending") return;
+				if (current?.status !== "pending") return;
 				await saveApplication(env.FRIENDS_KV, { ...current, backlink });
 				console.log(
 					`[friends-hook] 表单申请 ${id} 反链检测完成 ok=${backlink.ok}`,
@@ -630,120 +630,559 @@ export default {
 	},
 } satisfies ExportedHandler<Env>;
 
+/** HTML 转义。审核页里所有来自申请者的内容都要过这一层。 */
+function escapeHtml(value: string): string {
+	return value
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;");
+}
+
+/** 从 URL 里取出用于展示的主机名 */
+function hostLabel(url: string): string {
+	try {
+		return new URL(url).hostname.replace(/^www\./, "");
+	} catch {
+		return url;
+	}
+}
+
+/** 相对时间。审核页每次都是服务端现渲染，所以在这里算就够了 */
+function timeAgo(iso: string): string {
+	const then = Date.parse(iso);
+	if (Number.isNaN(then)) return iso;
+	const minutes = Math.round((Date.now() - then) / 60000);
+	if (minutes < 1) return "刚刚";
+	if (minutes < 60) return `${minutes} 分钟前`;
+	const hours = Math.round(minutes / 60);
+	if (hours < 24) return `${hours} 小时前`;
+	const days = Math.round(hours / 24);
+	if (days < 30) return `${days} 天前`;
+	return iso.slice(0, 10);
+}
+
+/** 审核页里三个状态的展示文案 */
+const STATUS_LABEL: Record<FriendApplication["status"], string> = {
+	pending: "待审",
+	approved: "已通过",
+	rejected: "已拒绝",
+};
+
+/**
+ * 审核页的共用样式。
+ *
+ * 页面是自包含的（内联 style + 内联 script），不引任何外部资源 —— 审核页地址本身
+ * 不公开，没必要为它维护一套构建流程；而且它在 Cloudflare 边缘渲染，多一个外链
+ * 就多一次可能失败的首屏阻塞。
+ */
+const ADMIN_STYLE = `
+:root{
+  color-scheme:light dark;
+  --bg:#f5f6f8; --card:#fff; --text:#111827; --muted:#6b7280; --border:#e5e7eb;
+  --soft:#f3f4f6; --accent:#4f46e5; --accent-soft:#eef2ff;
+  --good:#047857; --good-bg:#ecfdf5; --good-bd:#a7f3d0;
+  --warn:#b45309; --warn-bg:#fffbeb; --warn-bd:#fde68a;
+  --bad:#b91c1c;  --bad-bg:#fef2f2;  --bad-bd:#fecaca;
+  --shadow:0 1px 2px rgb(0 0 0 / 4%),0 8px 24px -12px rgb(0 0 0 / 12%);
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#0b1020; --card:#151a2d; --text:#e8eaf2; --muted:#98a2b8; --border:#272e4a;
+    --soft:#1c2238; --accent:#818cf8; --accent-soft:#1e2447;
+    --good:#6ee7b7; --good-bg:#0d2b23; --good-bd:#1c5c4a;
+    --warn:#fcd34d; --warn-bg:#2b2410; --warn-bd:#5c4a15;
+    --bad:#fca5a5;  --bad-bg:#2b1416;  --bad-bd:#5c2225;
+    --shadow:0 1px 2px rgb(0 0 0 / 30%),0 10px 30px -14px rgb(0 0 0 / 60%);
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans SC",sans-serif;
+  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code{
+  background:var(--accent-soft);color:var(--accent);
+  padding:1px 5px;border-radius:5px;font-size:.85em;
+}
+
+/* ── 顶栏 ── */
+.topbar{
+  position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+}
+.topbar-inner{
+  max-width:1080px;margin:0 auto;padding:14px 20px;
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;font-size:1.05rem}
+.brand .dot{
+  width:9px;height:9px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent);
+}
+.brand small{font-weight:400;color:var(--muted);font-size:.82rem}
+.stats{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.stat{
+  display:flex;align-items:baseline;gap:6px;padding:5px 12px;border-radius:999px;
+  background:var(--soft);border:1px solid var(--border);font-size:.8rem;color:var(--muted);
+}
+.stat b{font-size:.95rem;color:var(--text);font-variant-numeric:tabular-nums}
+.stat.is-pending b{color:var(--warn)}
+.stat.is-approved b{color:var(--good)}
+
+/* ── 工具条 ── */
+.toolbar{
+  max-width:1080px;margin:0 auto;padding:18px 20px 0;
+  display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+}
+.tabs{
+  display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:12px;
+  border:1px solid var(--border);max-width:100%;overflow-x:auto;scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  border:0;background:transparent;color:var(--muted);font:inherit;font-size:.85rem;
+  padding:6px 14px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:6px;
+  transition:background .15s,color .15s;
+  white-space:nowrap;flex:none;
+}
+.tab:hover{color:var(--text)}
+.tab.is-active{background:var(--card);color:var(--text);box-shadow:var(--shadow)}
+.tab [data-count]{
+  font-size:.72rem;font-variant-numeric:tabular-nums;opacity:.75;
+  background:color-mix(in srgb,currentColor 12%,transparent);padding:0 6px;border-radius:999px;
+}
+.search{
+  flex:1;min-width:200px;padding:9px 14px;border-radius:11px;
+  border:1px solid var(--border);background:var(--card);color:var(--text);font:inherit;font-size:.88rem;
+}
+.search:focus{outline:2px solid color-mix(in srgb,var(--accent) 40%,transparent);outline-offset:1px}
+
+main{max-width:1080px;margin:0 auto;padding:18px 20px 96px}
+.list{display:grid;gap:14px}
+
+/* ── 卡片 ── */
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:16px 18px;box-shadow:var(--shadow);transition:opacity .2s,transform .2s;
+}
+.card[hidden]{display:none}
+.card.is-leaving{opacity:0;transform:translateY(-6px)}
+.card-top{display:flex;gap:13px;align-items:flex-start}
+.avatar{
+  position:relative;flex:none;width:46px;height:46px;border-radius:13px;overflow:hidden;
+  background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;
+  font-weight:650;font-size:1.15rem;text-transform:uppercase;border:1px solid var(--border);
+}
+.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.head{min-width:0;flex:1}
+.head h3{margin:0;font-size:1rem;font-weight:650;overflow-wrap:anywhere}
+.head .host{font-size:.82rem;color:var(--muted)}
+.badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:100%}
+.flag{
+  font-size:.72rem;padding:2px 9px;border-radius:999px;border:1px solid;
+  white-space:nowrap;line-height:1.7;
+}
+.flag.good{color:var(--good);border-color:var(--good-bd);background:var(--good-bg)}
+.flag.warn{color:var(--warn);border-color:var(--warn-bd);background:var(--warn-bg)}
+.flag.bad{color:var(--bad);border-color:var(--bad-bd);background:var(--bad-bg)}
+.flag.plain{color:var(--muted);border-color:var(--border);background:var(--soft)}
+
+.desc{margin:11px 0 0;font-size:.9rem;color:var(--muted);overflow-wrap:anywhere}
+.meta-row{
+  display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;
+  font-size:.78rem;color:var(--muted);
+}
+.meta-row .sep{opacity:.4}
+.links{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+.chip{
+  font-size:.78rem;padding:3px 11px;border-radius:9px;border:1px solid var(--border);
+  background:var(--soft);color:var(--text);
+}
+.chip:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+.backlink{
+  margin:11px 0 0;font-size:.8rem;color:var(--muted);
+  padding:9px 12px;border-radius:10px;background:var(--soft);border:1px solid var(--border);
+  overflow-wrap:anywhere;
+}
+details{margin-top:10px}
+details summary{
+  cursor:pointer;font-size:.82rem;color:var(--muted);user-select:none;
+  padding:3px 0;list-style:none;
+}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"▸ ";display:inline-block;transition:transform .15s}
+details[open] summary::before{transform:rotate(90deg)}
+details summary:hover{color:var(--text)}
+details pre{
+  margin:8px 0 0;padding:11px 13px;border-radius:10px;background:var(--soft);
+  border:1px solid var(--border);white-space:pre-wrap;word-break:break-word;
+  font-size:.78rem;color:var(--muted);max-height:260px;overflow:auto;
+}
+
+.actions{display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.btn{
+  padding:7px 17px;border-radius:10px;border:1px solid var(--border);background:var(--card);
+  color:var(--text);font:inherit;font-size:.85rem;font-weight:500;cursor:pointer;
+  transition:filter .15s,opacity .15s;
+}
+.btn:hover:not(:disabled){filter:brightness(1.04)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger{color:var(--bad);border-color:var(--bad-bd);background:var(--bad-bg)}
+.note-input{
+  flex:1;min-width:170px;padding:7px 12px;border-radius:10px;
+  border:1px solid var(--border);background:var(--card);color:var(--text);font:inherit;font-size:.85rem;
+}
+.review-note{margin:12px 0 0;font-size:.82rem;color:var(--muted)}
+
+/* ── 配置片段 ── */
+.section-title{
+  display:flex;align-items:center;gap:9px;margin:32px 0 12px;
+  font-size:1rem;font-weight:650;
+}
+.section-title .badge{
+  font-size:.72rem;font-weight:500;color:var(--accent);background:var(--accent-soft);
+  border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
+  padding:1px 9px;border-radius:999px;
+}
+.snippet-box{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:16px 18px;box-shadow:var(--shadow);
+}
+.snippet-box p{margin:0 0 11px;font-size:.85rem;color:var(--muted)}
+#snippet{
+  margin:0;padding:14px 16px;border-radius:11px;background:var(--soft);
+  border:1px solid var(--border);white-space:pre;overflow:auto;max-height:360px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.7;
+}
+.empty{
+  text-align:center;padding:56px 20px;color:var(--muted);font-size:.9rem;
+  border:1px dashed var(--border);border-radius:16px;
+}
+.empty[hidden]{display:none}
+
+/* ── 提示条 ── */
+#toast{
+  position:fixed;left:50%;bottom:28px;transform:translate(-50%,14px);
+  background:var(--text);color:var(--bg);padding:10px 20px;border-radius:11px;
+  font-size:.85rem;box-shadow:var(--shadow);opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;z-index:50;
+}
+#toast.is-show{opacity:1;transform:translate(-50%,0)}
+
+@media(max-width:620px){
+  .topbar-inner{padding:12px 16px;gap:10px}
+  .brand{font-size:1rem}
+  .stats{width:100%;margin-left:0}
+  .stat{padding:4px 10px}
+  .toolbar{padding:14px 16px 0;gap:10px}
+  .tabs{width:100%}
+  .search{min-width:0}
+  main{padding:14px 16px 72px}
+  .card{padding:14px}
+  .card-top{flex-wrap:wrap;gap:11px}
+  .badges{justify-content:flex-start;width:100%}
+  .avatar{width:42px;height:42px}
+  .actions{gap:7px}
+  .btn{padding:8px 16px;flex:1;min-width:0}
+  .note-input{min-width:100%;order:3}
+  #snippet{font-size:.72rem}
+}
+`;
+
 /** 未登录时的提示页 */
 function adminLoginPage(): string {
-	return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+	return `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>友链审核 · 需要口令</title>
-<style>body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;max-width:640px;margin:12vh auto;padding:0 20px;color:#1f2937}
-code{background:#f3f4f6;padding:2px 6px;border-radius:4px}</style></head><body>
-<h1>需要口令</h1>
-<p>请在地址后面加上 <code>?token=你的口令</code>，或设置请求头 <code>x-admin-token</code>。</p>
-</body></html>`;
+<style>
+${ADMIN_STYLE}
+.gate{max-width:480px;margin:14vh auto;padding:0 20px}
+.gate .box{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:28px;box-shadow:var(--shadow);
+}
+.gate h1{margin:0 0 10px;font-size:1.15rem}
+.gate p{margin:0 0 12px;color:var(--muted);font-size:.88rem;line-height:1.75}
+.gate p:last-child{margin-bottom:0}
+</style>
+</head>
+<body>
+<div class="gate">
+  <div class="box">
+    <h1>需要口令</h1>
+    <p>请在地址后面加上 <code>?token=你的口令</code>，或设置请求头 <code>x-admin-token</code>。</p>
+    <p>口令由 <code>wrangler secret put ADMIN_TOKEN</code> 写入 Worker 环境，不会存在仓库里。</p>
+  </div>
+</div>
+</body>
+</html>`;
 }
 
-/** 审核页：一个自包含的静态页面，动作走 fetch 打 /admin/review */
+/**
+ * 审核页：一个自包含的静态页面，动作走 fetch 打 /admin/review。
+ *
+ * 所有卡片一次渲染完，靠 data-status 做前端筛选 —— 申请量是个人博客量级，
+ * 不需要分页，但「待审 / 已通过 / 已拒绝」这个切换是每天都用的，所以做成了
+ * 即时过滤而不是三个页面。
+ */
 function adminPage(apps: FriendApplication[], env: Env): string {
-	const escapeHtml = (value: string): string =>
-		value
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;");
-
 	const pending = apps.filter((app) => app.status === "pending");
-	const handled = apps.filter((app) => app.status !== "pending");
-	// 已通过但还没粘进 friendsConfig.ts 的，就是「待上线」——管理员照这段片段粘过去
 	const approved = apps.filter((app) => app.status === "approved");
+	const rejected = apps.filter((app) => app.status === "rejected");
 
 	const card = (app: FriendApplication): string => {
 		const { parsed } = app;
 		const flags: string[] = [];
-		if (app.missing.length > 0)
+
+		if (app.missing.length > 0) {
 			flags.push(
 				`<span class="flag bad">缺字段：${escapeHtml(app.missing.join("、"))}</span>`,
 			);
-		if (app.duplicateOf)
+		}
+		if (app.duplicateOf) {
 			flags.push(
-				`<span class="flag bad">疑似重复（已存在 ${escapeHtml(app.duplicateOf)}）</span>`,
+				`<span class="flag bad">疑似重复 ${escapeHtml(app.duplicateOf)}</span>`,
 			);
-		if (app.backlink.ok)
+		}
+		if (app.backlink.ok) {
 			flags.push(`<span class="flag good">反链已找到</span>`);
-		else flags.push(`<span class="flag warn">反链未确认</span>`);
+		} else {
+			flags.push(`<span class="flag warn">反链未确认</span>`);
+		}
+		if (app.status !== "pending") {
+			flags.push(
+				`<span class="flag plain">${escapeHtml(STATUS_LABEL[app.status])}</span>`,
+			);
+		}
 
-		return `<article class="card" data-id="${escapeHtml(app.id)}">
-  <header>
-    <strong>${escapeHtml(parsed.name || "(未识别站点名)")}</strong>
-    <span class="meta">#${escapeHtml(app.id)} · ${escapeHtml(app.nick)} · ${escapeHtml(app.createdAt)} · ${escapeHtml(app.status)}</span>
-  </header>
-  <ul class="fields">
-    <li>站点名称：${escapeHtml(parsed.name)}</li>
-    <li>站点描述：${escapeHtml(parsed.desc)}</li>
-    <li>站点链接：<a href="${escapeHtml(parsed.siteurl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(parsed.siteurl)}</a></li>
-    <li>头像链接：<a href="${escapeHtml(parsed.avatar)}" target="_blank" rel="noopener noreferrer">${escapeHtml(parsed.avatar)}</a></li>
-    <li>邮箱：${escapeHtml(parsed.email || "(未填)")}</li>
-  </ul>
-  <p class="flags">${flags.join(" ")}</p>
-  <p class="note">反链检测：${escapeHtml(app.backlink.note)}${app.backlink.checkedUrl ? ` · <a href="${escapeHtml(app.backlink.checkedUrl)}" target="_blank" rel="noopener noreferrer">检测地址</a>` : ""}</p>
-  ${app.unparsed.length > 0 ? `<details><summary>未识别的行（${app.unparsed.length}）</summary><pre>${escapeHtml(app.unparsed.join("\n"))}</pre></details>` : ""}
+		const siteurl = parsed.siteurl || "";
+		const avatar = parsed.avatar || "";
+		const email = parsed.email || "";
+		const name = parsed.name || "";
+		// 前端搜索用的索引：站名、域名、邮箱、简介、id、来源昵称
+		const searchIndex = [
+			name,
+			siteurl,
+			hostLabel(siteurl),
+			email,
+			parsed.desc,
+			app.id,
+			app.nick,
+		]
+			.join(" ")
+			.toLowerCase();
+
+		const links: string[] = [];
+		if (siteurl) {
+			links.push(
+				`<a class="chip" href="${escapeHtml(siteurl)}" target="_blank" rel="noopener noreferrer">访问站点</a>`,
+			);
+		}
+		if (avatar) {
+			links.push(
+				`<a class="chip" href="${escapeHtml(avatar)}" target="_blank" rel="noopener noreferrer">查看头像</a>`,
+			);
+		}
+		if (email) {
+			links.push(
+				`<a class="chip" href="mailto:${escapeHtml(email)}">写邮件</a>`,
+			);
+		}
+		if (app.backlink.checkedUrl) {
+			links.push(
+				`<a class="chip" href="${escapeHtml(app.backlink.checkedUrl)}" target="_blank" rel="noopener noreferrer">检测地址</a>`,
+			);
+		}
+
+		return `<article class="card" data-id="${escapeHtml(app.id)}" data-status="${escapeHtml(app.status)}" data-search="${escapeHtml(searchIndex)}">
+  <div class="card-top">
+    <div class="avatar">
+      ${avatar ? `<img src="${escapeHtml(avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
+      <span>${escapeHtml((name || "友").slice(0, 1))}</span>
+    </div>
+    <div class="head">
+      <h3>${escapeHtml(name || "(未识别站点名)")}</h3>
+      <div class="host">${
+				siteurl
+					? `<a href="${escapeHtml(siteurl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(hostLabel(siteurl))}</a>`
+					: "(无站点链接)"
+			}</div>
+    </div>
+    <div class="badges">${flags.join("")}</div>
+  </div>
+  ${parsed.desc ? `<p class="desc">${escapeHtml(parsed.desc)}</p>` : ""}
+  <div class="meta-row">
+    <span>#${escapeHtml(app.id)}</span>
+    <span class="sep">·</span>
+    <span>来源 ${escapeHtml(app.nick || "匿名")}</span>
+    <span class="sep">·</span>
+    <span title="${escapeHtml(app.createdAt)}">${escapeHtml(timeAgo(app.createdAt))}</span>
+    ${email ? `<span class="sep">·</span><span>${escapeHtml(email)}</span>` : ""}
+  </div>
+  ${links.length > 0 ? `<div class="links">${links.join("")}</div>` : ""}
+  <p class="backlink">反链检测：${escapeHtml(app.backlink.note || "未检测")}</p>
+  ${
+		app.unparsed.length > 0
+			? `<details><summary>未识别的行（${app.unparsed.length}）</summary><pre>${escapeHtml(app.unparsed.join("\n"))}</pre></details>`
+			: ""
+	}
   ${
 		app.status === "pending"
 			? `<div class="actions">
-      <button data-action="approve">通过</button>
-      <button data-action="reject" class="danger">拒绝</button>
-      <input data-note placeholder="审核备注（可选）">
-    </div>`
-			: `<p class="note">审核备注：${escapeHtml(app.reviewNote ?? "")}</p>`
+    <button class="btn primary" data-action="approve" type="button">通过</button>
+    <button class="btn danger" data-action="reject" type="button">拒绝</button>
+    <input class="note-input" data-note placeholder="审核备注（可选，会记进 KV）" maxlength="200">
+  </div>`
+			: app.reviewNote
+				? `<p class="review-note">审核备注：${escapeHtml(app.reviewNote)}</p>`
+				: ""
 	}
-  <details><summary>原始评论</summary><pre>${escapeHtml(app.raw)}</pre></details>
+  <details><summary>原始内容</summary><pre>${escapeHtml(app.raw)}</pre></details>
 </article>`;
 	};
 
-	return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+	// 默认落在「待审」；没有待审就直接给全部，免得一进来看到空列表
+	const initialTab = pending.length > 0 ? "pending" : "all";
+	const tab = (name: string, label: string, count: number): string =>
+		`<button class="tab${name === initialTab ? " is-active" : ""}" data-tab="${name}" type="button">${label}<span data-count>${count}</span></button>`;
+
+	return `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>友链审核 · ${escapeHtml(env.SITE_NAME || "本站")}</title>
 <style>
-:root{color-scheme:light dark}
-body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;max-width:900px;margin:0 auto;padding:24px 20px 80px;line-height:1.6}
-h1{font-size:1.4rem}
-.card{border:1px solid #d1d5db;border-radius:10px;padding:14px 16px;margin:14px 0}
-.card header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
-.meta{font-size:.8rem;opacity:.7}
-.fields{margin:10px 0;padding-left:0;list-style:none;font-size:.9rem}
-.flags{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-.flag{font-size:.75rem;padding:2px 8px;border-radius:999px;border:1px solid}
-.flag.good{color:#065f46;border-color:#6ee7b7;background:#ecfdf5}
-.flag.warn{color:#92400e;border-color:#fcd34d;background:#fffbeb}
-.flag.bad{color:#991b1b;border-color:#fca5a5;background:#fef2f2}
-.note{font-size:.8rem;opacity:.8;margin:6px 0}
-.actions{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
-button{padding:6px 14px;border-radius:8px;border:1px solid #9ca3af;background:transparent;cursor:pointer;font:inherit}
-button.danger{color:#b91c1c;border-color:#fca5a5}
-input{flex:1;min-width:160px;padding:6px 10px;border-radius:8px;border:1px solid #9ca3af;background:transparent;font:inherit}
-pre{white-space:pre-wrap;word-break:break-word;font-size:.8rem;opacity:.85}
-details{margin-top:8px;font-size:.85rem}
-h2{font-size:1.1rem;margin-top:32px}
-.snippet{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;overflow:auto;max-height:340px}
-@media(prefers-color-scheme:dark){.snippet{background:#111827;border-color:#374151}}
-</style></head><body>
-<h1>友链审核 · ${escapeHtml(env.SITE_NAME || "本站")}</h1>
-<p class="note">共 ${apps.length} 条，待审 ${pending.length} 条。审核通过后会写入 KV，并出现在下方的配置片段里。</p>
-<h2>待审（${pending.length}）</h2>
-${pending.length ? pending.map(card).join("\n") : `<p class="note">没有待审申请。</p>`}
-<h2>已通过（${approved.length}）· 待粘进 friendsConfig.ts</h2>
-${
-	approved.length
-		? `<p class="note">把下面的条目粘进 <code>src/config/friendsConfig.ts</code> 的 <code>friendsConfig</code> 数组，然后重新部署即可上线。</p>
-<div class="snippet"><pre id="snippet">${escapeHtml(toConfigSnippet(approved.map((app) => ({ ...app.parsed, id: app.id, approvedAt: app.reviewedAt ?? app.createdAt }))))}</pre></div>
-<div class="actions"><button id="copy-snippet" type="button">复制片段</button></div>`
-		: `<p class="note">还没有通过的申请。</p>`
-}
-<h2>已处理（${handled.length}）</h2>
-${handled.length ? handled.map(card).join("\n") : `<p class="note">暂无记录。</p>`}
+${ADMIN_STYLE}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="dot"></span>
+      <span>友链审核</span>
+      <small>${escapeHtml(env.SITE_NAME || "本站")}</small>
+    </div>
+    <div class="stats">
+      <span class="stat is-pending"><b>${pending.length}</b>待审</span>
+      <span class="stat is-approved"><b>${approved.length}</b>已通过</span>
+      <span class="stat"><b>${rejected.length}</b>已拒绝</span>
+      <span class="stat"><b>${apps.length}</b>全部</span>
+    </div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="tabs" role="tablist">
+    ${tab("pending", "待审", pending.length)}
+    ${tab("approved", "已通过", approved.length)}
+    ${tab("rejected", "已拒绝", rejected.length)}
+    ${tab("all", "全部", apps.length)}
+  </div>
+  <input class="search" id="q" type="search" placeholder="搜索站名 / 域名 / 邮箱 / 备注…" autocomplete="off">
+</div>
+
+<main>
+  <div class="list" id="list">
+    ${apps.length ? apps.map(card).join("\n") : ""}
+  </div>
+  <div class="empty" id="empty"${apps.length ? " hidden" : ""}>没有符合条件的申请。</div>
+
+  ${
+		approved.length
+			? `<div class="section-title">待上线<span class="badge">${approved.length}</span></div>
+  <div class="snippet-box">
+    <p>把下面的条目粘进 <code>src/config/friendsConfig.ts</code> 的 <code>friendsConfig</code> 数组，再重新部署即可生效 —— 友链列表是构建时读取的静态数组。</p>
+    <pre id="snippet">${escapeHtml(
+			toConfigSnippet(
+				approved.map((app) => ({
+					...app.parsed,
+					id: app.id,
+					approvedAt: app.reviewedAt ?? app.createdAt,
+				})),
+			),
+		)}</pre>
+    <div class="actions"><button class="btn" id="copy-snippet" type="button">复制片段</button></div>
+  </div>`
+			: ""
+	}
+</main>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
 <script>
 const TOKEN = new URL(location.href).searchParams.get("token") || "";
+const list = document.getElementById("list");
+const cards = Array.from(list.querySelectorAll(".card"));
+const tabs = Array.from(document.querySelectorAll("[data-tab]"));
+const search = document.getElementById("q");
+const empty = document.getElementById("empty");
+const toastEl = document.getElementById("toast");
+let filter = ${JSON.stringify(initialTab)};
+
+function toast(message) {
+  toastEl.textContent = message;
+  toastEl.classList.add("is-show");
+  clearTimeout(toastEl._timer);
+  toastEl._timer = setTimeout(() => toastEl.classList.remove("is-show"), 2200);
+}
+
+/** 按当前 tab + 搜索词过滤卡片，并把计数刷进 tab 上的小徽章 */
+function applyFilter() {
+  const term = (search.value || "").trim().toLowerCase();
+  let shown = 0;
+  for (const card of cards) {
+    const statusOk = filter === "all" || card.dataset.status === filter;
+    const termOk = !term || card.dataset.search.includes(term);
+    const visible = statusOk && termOk;
+    card.hidden = !visible;
+    if (visible) shown++;
+  }
+  empty.hidden = shown > 0 || cards.length === 0;
+  for (const tab of tabs) {
+    const name = tab.dataset.tab;
+    const count = cards.filter((card) => {
+      const statusOk = name === "all" || card.dataset.status === name;
+      const termOk = !term || card.dataset.search.includes(term);
+      return statusOk && termOk;
+    }).length;
+    const badge = tab.querySelector("[data-count]");
+    if (badge) badge.textContent = String(count);
+  }
+}
+
+for (const tab of tabs) {
+  tab.addEventListener("click", () => {
+    filter = tab.dataset.tab;
+    for (const other of tabs) other.classList.toggle("is-active", other === tab);
+    applyFilter();
+  });
+}
+search.addEventListener("input", applyFilter);
+applyFilter();
+
+// 审核后要整页刷新（片段和计数都要重算），但记住滚动位置，
+// 免得审完一条就被弹回页面顶部，还得重新滚下去。
+const SCROLL_KEY = "friends-admin-scroll";
+try {
+  const saved = sessionStorage.getItem(SCROLL_KEY);
+  if (saved) {
+    sessionStorage.removeItem(SCROLL_KEY);
+    requestAnimationFrame(() => window.scrollTo(0, Number(saved) || 0));
+  }
+} catch {}
+
 document.addEventListener("click", async (event) => {
   const copyBtn = event.target.closest("#copy-snippet");
   if (copyBtn) {
@@ -751,9 +1190,10 @@ document.addEventListener("click", async (event) => {
     try {
       await navigator.clipboard.writeText(text);
       copyBtn.textContent = "已复制";
+      toast("配置片段已复制到剪贴板");
       setTimeout(() => { copyBtn.textContent = "复制片段"; }, 1500);
     } catch {
-      alert("复制失败，请手动选中复制");
+      toast("复制失败，请手动选中复制");
     }
     return;
   }
@@ -763,21 +1203,31 @@ document.addEventListener("click", async (event) => {
   const card = btn.closest(".card");
   const id = card.dataset.id;
   const note = card.querySelector("[data-note]")?.value || "";
-  btn.disabled = true;
+  const action = btn.dataset.action;
+  if (action === "reject" && !confirm("确定拒绝这条申请吗？")) return;
+
+  const buttons = Array.from(card.querySelectorAll("button[data-action]"));
+  for (const other of buttons) other.disabled = true;
+  btn.textContent = action === "approve" ? "通过中…" : "拒绝中…";
+
   try {
     const resp = await fetch("/admin/review", {
       method: "POST",
       headers: { "content-type": "application/json", "x-admin-token": TOKEN },
-      body: JSON.stringify({ id, action: btn.dataset.action, note }),
+      body: JSON.stringify({ id, action, note }),
     });
     const data = await resp.json();
     if (!data.ok) throw new Error(data.error || "操作失败");
-    location.reload();
+    card.classList.add("is-leaving");
+    try { sessionStorage.setItem(SCROLL_KEY, String(window.scrollY)); } catch {}
+    setTimeout(() => location.reload(), 220);
   } catch (error) {
-    alert("操作失败：" + error.message);
-    btn.disabled = false;
+    toast("操作失败：" + (error.message || "未知错误"));
+    for (const other of buttons) other.disabled = false;
+    btn.textContent = action === "approve" ? "通过" : "拒绝";
   }
 });
 </script>
-</body></html>`;
+</body>
+</html>`;
 }

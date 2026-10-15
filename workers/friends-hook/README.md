@@ -203,11 +203,14 @@ Waline 会在**每次评论创建后**（不论最终审核状态）向这个地
 https://friends-hook.muyudada.dpdns.org/admin?token=<你的 ADMIN_TOKEN>
 ```
 
-页面分三块：
+页面是一张单页看板，全部卡片一次渲染完，靠前端过滤切换：
 
-1. **待审** — 每条显示解析出的字段、缺失字段标记、重复标记、反链检测结论、以及「未识别的行」和原始评论（便于人工核对）。点「通过」或「拒绝」。
-2. **已通过 · 待粘进 friendsConfig.ts** — 一键复制生成的配置片段。
-3. **已处理** — 已通过/已拒绝的记录。
+- **顶栏**：站点名 + 四个统计胶囊（待审 / 已通过 / 已拒绝 / 全部），数字实时反映当前队列。
+- **工具条**：四个 tab 做状态过滤（默认停在「待审」），右侧搜索框按站名 / 域名 / 邮箱 / 简介 / 备注 / 记录 id 实时筛选；搜不到时显示空态提示。
+- **卡片**：头像（抓不到就显示站名首字）、站名、域名、状态徽章（缺字段 / 疑似重复 / 反链结论 / 已处理）、简介、元信息行（记录 id、来源、时间、邮箱）、快捷链接（访问站点 / 查看头像 / 写邮件 / 检测地址）、反链检测结论、折叠的「原始内容」、以及待审卡片上的「通过 / 拒绝」按钮 + 备注输入框。
+- **配置片段**：已通过记录下方有「待粘进 friendsConfig.ts」区块，一键复制 TS 条目。
+- 深色模式跟随系统；窄屏下 tab 横向可滚、按钮撑满整行。
+- 审核动作是 fetch 打 `/admin/review`，成功后卡片淡出并刷新页面（刷新前把滚动位置存进 `sessionStorage`，回来还在原位）。
 
 > 带 token 的 URL 会进浏览器历史。介意的话改用请求头方式（`curl -H "x-admin-token: ..."`），或者看完就清一下历史。
 
@@ -265,7 +268,7 @@ https://friends-hook.muyudada.dpdns.org/admin?token=<你的 ADMIN_TOKEN>
 ```bash
 cd workers/friends-hook
 npx tsc --noEmit                          # 类型检查
-npx biome check src test-parse.ts         # 代码检查（从仓库根跑，用根 biome.json）
+npx biome check src test-parse.ts cdp-admin-test.mjs cdp-friends-test.mjs  # 代码检查（从仓库根跑，用根 biome.json）
 npx wrangler dev -c wrangler.jsonc        # 起本地服务，默认 http://127.0.0.1:8787
 ```
 
@@ -319,6 +322,23 @@ node workers/friends-hook/cdp-friends-test.mjs \
 >
 > 弹窗打开时 `[data-modal-root]` 会被搬到 `document.body` 上（`#content-wrapper` 的 `transform` 会成为 `position:fixed` 的包含块），所以测试里凡是弹窗内部的元素都要用 `[data-modal-root] ...` 打头选择器。
 
+### 浏览器端到端测试（审核页）
+
+```bash
+# 起 Worker，用宽松限额以便反复灌测试数据
+npx wrangler dev -c wrangler.jsonc --port 8795 \
+  --var ADMIN_TOKEN:test-token-123 --var VERIFY_COMMENT:0 \
+  --var BACKLINK_TIMEOUT_MS:2000
+
+# 然后跑（需要本机 Chrome）
+node workers/friends-hook/cdp-admin-test.mjs \
+  "http://127.0.0.1:8795/admin?token=test-token-123" "$env:TEMP\admin.png"
+```
+
+`cdp-admin-test.mjs` 用 CDP 驱动无头 Chrome，覆盖 22 项断言：标题与统计、四个 tab 的过滤与高亮、默认停在「待审」、卡片内容（域名而非完整 URL、反链结论、待审才有操作按钮、已处理无按钮）、搜索命中与空态、配置片段区、深色模式、窄屏无横向溢出、以及无控制台报错。它同时输出桌面与移动端两张截图（第二个参数是桌面截图路径，移动端自动加 `-mobile` 后缀）。
+
+> 队列为空时先灌几条测试数据：`GET /captcha` 拿题 → 算出答案 → `POST /apply`。注意 PowerShell 直接传含中文的 JSON 会丢字，要写成 UTF-8 文件再用 `curl --data-binary @file`。
+
 ### 手工模拟一次 webhook
 
 ```bash
@@ -369,7 +389,8 @@ workers/friends-hook/
 ├── tsconfig.json        独立于仓库根的 tsconfig
 ├── wrangler.jsonc       Worker 配置：KV 绑定 + vars
 ├── test-parse.ts        解析器自测（拿线上真实评论跑）
-├── cdp-friends-test.mjs 浏览器端到端测试（CDP 驱动无头 Chrome）
+├── cdp-friends-test.mjs 友链页表单向导的浏览器端到端测试（CDP 驱动无头 Chrome）
+├── cdp-admin-test.mjs   审核页的浏览器端到端测试（筛选 / 搜索 / 深色模式 / 窄屏）
 └── src/
     ├── index.ts         入口：路由、审核页、webhook 处理、表单接收
     ├── parse.ts         评论 HTML → 结构化字段
