@@ -24,13 +24,13 @@ pinned: false
 
 外观 Tab 底部多了两个区块。左边是配色风格 9 宫格，每格显示该方案下 primary / secondary / tertiary 三个色点；右边是背景纹理 6 宫格加一个透明度滑块。
 
-![设置面板](https://muyuimg.cc.cd/file/blog/shirone-m3e/panel-all.png)
+![设置面板](https://muyuimg.cc.cd/file/blog/shirone-m3e/panel-settings.webp)
 
 ### 1.2 九种配色风格
 
 同一套页面结构、同一个色相（250），只切换 Color Style，得到的气质完全不同：
 
-![九种配色风格对比](https://muyuimg.cc.cd/file/blog/shirone-m3e/styles-9.png)
+![九种配色风格对比](https://muyuimg.cc.cd/file/blog/shirone-m3e/styles-9.webp)
 
 可以看出来：`柔和`/`中性` 走低饱和灰调，`鲜艳`/`内容`/`保真` 是高饱和蓝，`水果沙拉` 偏青绿，`单色` 直接黑白灰。
 
@@ -38,7 +38,7 @@ pinned: false
 
 同一个 Color Style（鲜艳），只切换 Color Spec：
 
-![2021 与 2025 对比](https://muyuimg.cc.cd/file/blog/shirone-m3e/spec-2.png)
+![2021 与 2025 对比](https://muyuimg.cc.cd/file/blog/shirone-m3e/spec-2.webp)
 
 差异不算剧烈但确实存在——2025 版的容器色对比度更高，界面层次感更强一些。
 
@@ -46,11 +46,11 @@ pinned: false
 
 这是我觉得最漂亮的部分。纹理是「主题色渐变 + SVG 图案遮罩」叠出来的，所以它**会跟着配色方案一起变**：
 
-![六种背景纹理](https://muyuimg.cc.cd/file/blog/shirone-m3e/texture-zoom-6.png)
+![六种背景纹理](https://muyuimg.cc.cd/file/blog/shirone-m3e/texture-zoom-6.webp)
 
 暗色模式下的表现：
 
-![暗色模式纹理](https://muyuimg.cc.cd/file/blog/shirone-m3e/textures-dark-3.png)
+![暗色模式纹理](https://muyuimg.cc.cd/file/blog/shirone-m3e/textures-dark-3.webp)
 
 > 演示图里为了看清图案，把透明度拉到了 100%。实际默认是 12%，是一个非常克制的程度。
 
