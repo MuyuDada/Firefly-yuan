@@ -29,6 +29,15 @@ export type DisplaySettingsConfig = {
 	// 卡片风格跟随主题色开关
 	cardFollowThemeSwitchable: boolean;
 
+	// 配色风格（Color Style）切换开关
+	colorStyleSwitchable: boolean;
+
+	// 配色规范版本（Color Spec）切换开关
+	colorSpecSwitchable: boolean;
+
+	// 背景纹理（Background Texture）开关
+	textureSwitchable: boolean;
+
 	// ── 壁纸 (Wallpaper) ──────────────────────────────────
 
 	// 壁纸模式切换开关

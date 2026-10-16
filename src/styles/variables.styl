@@ -6,6 +6,11 @@
 /* ===== 主题相关变量 ===== */
 :root
   --primary: oklch(0.70 0.14 var(--hue))
+  // --secondary / --tertiary 供背景纹理（src/styles/texture.css）的渐变使用。
+  // 开启 Color Style 后由 src/utils/color-scheme-utils.ts 用 M3 角色色覆盖；
+  // 关闭时保留这里的 oklch 兜底，保证纹理依然有合理的取色。
+  --secondary: unquote("oklch(0.68 0.11 calc(var(--hue) + 40))")
+  --tertiary: unquote("oklch(0.72 0.12 calc(var(--hue) - 40))")
   --page-bg: oklch(0.95 0.01 var(--hue))
   --card-bg: white
   --card-bg-transparent: unquote("rgb(255 255 255 / var(--card-transparent-opacity, 0.6))")
@@ -90,6 +95,9 @@
 /* 暗色主题变量 */
 :root.dark
   --primary: oklch(0.75 0.14 var(--hue))
+  /* 纹理渐变的暗色兜底（见上方 :root 的说明） */
+  --secondary: unquote("oklch(0.72 0.11 calc(var(--hue) + 40))")
+  --tertiary: unquote("oklch(0.76 0.12 calc(var(--hue) - 40))")
   --page-bg: oklch(0.16 0.014 var(--hue))
   --card-bg: oklch(0.23 0.015 var(--hue))
   --card-bg-transparent: unquote("rgb(23 23 23 / var(--card-transparent-opacity, 0.6))")

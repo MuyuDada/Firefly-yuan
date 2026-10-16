@@ -10,6 +10,13 @@ export type {
 	BooknavItem,
 	BooknavPageConfig,
 } from "./booknavConfig";
+export type {
+	ColorSchemeConfig,
+	ColorSpec,
+	ColorStyle,
+	TextureConfig,
+	TexturePreset,
+} from "./colorSchemeConfig";
 export type { CommentConfig } from "./commentConfig";
 export type { CoverImageConfig } from "./coverImageConfig";
 export type {

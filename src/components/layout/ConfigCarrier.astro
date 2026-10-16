@@ -1,5 +1,10 @@
 ---
-import { backgroundWallpaper, siteConfig } from "@/config";
+import {
+	backgroundWallpaper,
+	colorSchemeConfig,
+	siteConfig,
+	textureConfig,
+} from "@/config";
 ---
 
 <!-- 全局配置载体 -->
@@ -7,5 +12,9 @@ import { backgroundWallpaper, siteConfig } from "@/config";
   id="config-carrier"
   data-hue={siteConfig.themeColor.hue}
   data-wallpaper-mode={backgroundWallpaper.mode}
+  data-color-style={colorSchemeConfig.defaultStyle}
+  data-color-spec={colorSchemeConfig.defaultSpec}
+  data-texture-preset={textureConfig.defaultPreset}
+  data-texture-opacity={textureConfig.defaultOpacity}
 >
 </div>

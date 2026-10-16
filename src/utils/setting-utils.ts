@@ -24,6 +24,7 @@ import {
 	sakuraConfig,
 	siteConfig,
 } from "../config";
+import { refreshColorScheme } from "./color-scheme-utils";
 import { isHomePage as checkIsHomePage } from "./layout-utils";
 
 // Declare global functions
@@ -92,6 +93,8 @@ export function setHue(hue: number): void {
 		return;
 	}
 	r.style.setProperty("--hue", String(hue));
+	// 色相是 M3 配色的源色，变化后需要重新生成角色色（Color Style/Spec 启用时）
+	refreshColorScheme();
 }
 
 export function applyThemeToDocument(theme: LIGHT_DARK_MODE): void {
@@ -152,6 +155,11 @@ export function applyThemeToDocument(theme: LIGHT_DARK_MODE): void {
 	// Set the theme for Expressive Code based on current mode
 	if (needsCodeThemeUpdate) {
 		document.documentElement.setAttribute("data-theme", expectedTheme);
+	}
+
+	// 明暗变化会让 M3 重新选取角色色（深/浅色方案不同），需刷新
+	if (needsThemeChange) {
+		refreshColorScheme();
 	}
 }
 
@@ -220,6 +228,9 @@ export function setupSystemThemeListener(): void {
 
 		// 触发自定义事件通知其他组件（仅在真正切换时触发）
 		window.dispatchEvent(new CustomEvent("theme-change"));
+
+		// 明暗变化会让 M3 重新选取角色色，需刷新
+		refreshColorScheme();
 	};
 
 	// 立即调用一次以设置初始状态

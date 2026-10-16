@@ -59,14 +59,37 @@ import {
 	setWallpaperMode,
 	setWavesEnabled,
 } from "@utils/setting-utils";
-import { onMount } from "svelte";
+import { onDestroy, onMount } from "svelte";
 import Icon from "@/components/common/Icon.svelte";
 import {
 	backgroundWallpaper,
 	displaySettingsConfig,
 	siteConfig,
 } from "@/config";
+import type {
+	ColorSpec,
+	ColorStyle,
+	TexturePreset,
+} from "@/types/colorSchemeConfig";
 import type { FullscreenWallpaperLayout, WALLPAPER_MODE } from "@/types/config";
+import {
+	buildSchemePreview,
+	COLOR_SPEC_ORDER,
+	COLOR_STYLE_ORDER,
+	getColorSpec,
+	getColorStyle,
+	getDefaultColorSpec,
+	getDefaultColorStyle,
+	getDefaultTextureOpacity,
+	getDefaultTexturePreset,
+	getTextureOpacity,
+	getTexturePreset,
+	setColorSpec,
+	setColorStyle,
+	setTextureOpacity,
+	setTexturePreset,
+	TEXTURE_PRESET_ORDER,
+} from "@/utils/color-scheme-utils";
 
 type OverlaySliderItem = {
 	key: "opacity" | "blur" | "cardOpacity";
@@ -135,6 +158,112 @@ const defaultCardBorderEnabled = getDefaultCardBorderEnabled();
 let cardFollowThemeEnabled = $state(false);
 const defaultCardFollowThemeEnabled = getDefaultCardFollowThemeEnabled();
 
+// ── Color Style / Color Spec / Background Texture ──────────────────────
+let colorStyle = $state<ColorStyle>(getDefaultColorStyle());
+const defaultColorStyle = getDefaultColorStyle();
+let colorSpec = $state<ColorSpec>(getDefaultColorSpec());
+const defaultColorSpec = getDefaultColorSpec();
+let texturePreset = $state<TexturePreset>(getDefaultTexturePreset());
+const defaultTexturePreset = getDefaultTexturePreset();
+let textureOpacity = $state(getDefaultTextureOpacity());
+const defaultTextureOpacity = getDefaultTextureOpacity();
+
+/** 当前是否暗色 —— 配色预览需要按亮/暗分别取色 */
+let isDarkTheme = $state(false);
+
+/**
+ * 9 种 Color Style 的色板预览（每格 3 个色点，与 Shirone 的网格布局一致）。
+ * 跟随当前色相与明暗，切换风格时即时反映实际效果。
+ */
+const colorStylePreviews = $derived.by(() => {
+	const currentHue = typeof hue === "number" ? hue : getDefaultHue();
+	return COLOR_STYLE_ORDER.map((style) => ({
+		style,
+		colors: buildSchemePreview(style, colorSpec, isDarkTheme, currentHue),
+	}));
+});
+
+function selectColorStyle(style: ColorStyle) {
+	if (colorStyle === style) return;
+	colorStyle = style;
+	setColorStyle(style);
+}
+
+function selectColorSpec(spec: ColorSpec) {
+	if (colorSpec === spec) return;
+	colorSpec = spec;
+	setColorSpec(spec);
+}
+
+function selectTexturePreset(preset: TexturePreset) {
+	if (texturePreset === preset) return;
+	texturePreset = preset;
+	setTexturePreset(preset);
+}
+
+function resetColorStyle() {
+	colorStyle = defaultColorStyle;
+	setColorStyle(defaultColorStyle);
+}
+
+function resetColorSpec() {
+	colorSpec = defaultColorSpec;
+	setColorSpec(defaultColorSpec);
+}
+
+function resetTexturePreset() {
+	texturePreset = defaultTexturePreset;
+	setTexturePreset(defaultTexturePreset);
+}
+
+/** Color Style → i18n 标签键 */
+const colorStyleLabelKey: Record<ColorStyle, I18nKey> = {
+	tonalSpot: I18nKey.colorStyleTonalSpot,
+	vibrant: I18nKey.colorStyleVibrant,
+	content: I18nKey.colorStyleContent,
+	expressive: I18nKey.colorStyleExpressive,
+	rainbow: I18nKey.colorStyleRainbow,
+	fruitSalad: I18nKey.colorStyleFruitSalad,
+	monochrome: I18nKey.colorStyleMonochrome,
+	neutral: I18nKey.colorStyleNeutral,
+	fidelity: I18nKey.colorStyleFidelity,
+};
+
+/** Background Texture → i18n 标签键 */
+const texturePresetLabelKey: Record<TexturePreset, I18nKey> = {
+	none: I18nKey.texturePresetNone,
+	starlight: I18nKey.texturePresetStarlight,
+	"cyber-dots": I18nKey.texturePresetCyberDots,
+	topography: I18nKey.texturePresetTopography,
+	geometric: I18nKey.texturePresetGeometric,
+	sakura: I18nKey.texturePresetSakura,
+};
+
+/** Background Texture → 图标（已加入本地离线白名单 src/constants/icons-data.json） */
+const texturePresetIcons: Record<TexturePreset, string> = {
+	none: "material-symbols:block-rounded",
+	starlight: "material-symbols:auto-awesome-outline-rounded",
+	"cyber-dots": "material-symbols:grid-view-rounded",
+	topography: "material-symbols:waves-rounded",
+	geometric: "material-symbols:category-outline-rounded",
+	sakura: "material-symbols:local-florist-outline-rounded",
+};
+
+function resetColorScheme() {
+	if (isColorStyleSwitchable) resetColorStyle();
+	if (isColorSpecSwitchable) resetColorSpec();
+}
+
+function resetTextureSettings() {
+	if (isTextureSwitchable) {
+		resetTexturePreset();
+		if (textureOpacity !== defaultTextureOpacity) {
+			textureOpacity = defaultTextureOpacity;
+			setTextureOpacity(defaultTextureOpacity);
+		}
+	}
+}
+
 const isWallpaperSwitchable = displaySettingsConfig.wallpaperModeSwitchable;
 const isFullscreenLayoutSwitchable = $derived(
 	displaySettingsConfig.fullscreenLayoutSwitchable &&
@@ -162,6 +291,11 @@ const isInputFireSwitchable = displaySettingsConfig.inputFireSwitchable;
 const isCardBorderSwitchable = displaySettingsConfig.cardBorderSwitchable;
 const isCardFollowThemeSwitchable =
 	displaySettingsConfig.cardFollowThemeSwitchable;
+const isColorStyleSwitchable = displaySettingsConfig.colorStyleSwitchable;
+const isColorSpecSwitchable = displaySettingsConfig.colorSpecSwitchable;
+const isTextureSwitchable = displaySettingsConfig.textureSwitchable;
+// 配色风格与规范同属一个配色区块，任一可切换即显示该区块
+const hasColorSchemeSettings = isColorStyleSwitchable || isColorSpecSwitchable;
 // 是否有任何横幅设置可显示（后续添加新设置时在此处添加条件）
 const hasBannerSettings =
 	isWavesSwitchable ||
@@ -223,7 +357,9 @@ const hasAnyContent = $derived(
 		allowLayoutSwitch ||
 		hasBannerSettings ||
 		hasOverlaySettings ||
-		isSakuraSwitchable,
+		isSakuraSwitchable ||
+		hasColorSchemeSettings ||
+		isTextureSwitchable,
 );
 
 // --- Tab visibility ---
@@ -231,7 +367,9 @@ const hasAppearanceTab = $derived(
 	showThemeColor ||
 		allowLayoutSwitch ||
 		isCardBorderSwitchable ||
-		isCardFollowThemeSwitchable,
+		isCardFollowThemeSwitchable ||
+		hasColorSchemeSettings ||
+		isTextureSwitchable,
 );
 const hasWallpaperTab = $derived(
 	isWallpaperSwitchable ||
@@ -646,6 +784,23 @@ onMount(() => {
 	overlayBlur = getStoredOverlayBlur();
 	overlayCardOpacity = getStoredOverlayCardOpacity();
 
+	// 从localStorage读取配色风格 / 配色规范 / 背景纹理
+	colorStyle = getColorStyle();
+	colorSpec = getColorSpec();
+	texturePreset = getTexturePreset();
+	textureOpacity = getTextureOpacity();
+
+	// 配色预览需要知道当前是亮色还是暗色；主题切换时同步刷新
+	isDarkTheme = document.documentElement.classList.contains("dark");
+	const themeObserver = new MutationObserver(() => {
+		isDarkTheme = document.documentElement.classList.contains("dark");
+	});
+	themeObserver.observe(document.documentElement, {
+		attributes: true,
+		attributeFilter: ["class"],
+	});
+	onDestroy(() => themeObserver.disconnect());
+
 	// 从localStorage读取用户偏好布局
 	const savedLayout = localStorage.getItem("postListLayout");
 	if (savedLayout && (savedLayout === "list" || savedLayout === "grid")) {
@@ -888,6 +1043,133 @@ $effect(() => {
 					</div>
 				</button>
 				{/if}
+			</div>
+		</div>
+		{/if}
+
+		<!-- Color Scheme Section: Color Style + Color Spec -->
+		{#if hasColorSchemeSettings}
+		<div>
+			<div class="section-title">
+				{i18n(I18nKey.colorStyle)}
+				<button aria-label="Reset to Default" class="btn-regular rounded-md active:scale-90"
+						class:opacity-0={colorStyle === defaultColorStyle && colorSpec === defaultColorSpec}
+						class:pointer-events-none={colorStyle === defaultColorStyle && colorSpec === defaultColorSpec}
+						disabled={colorStyle === defaultColorStyle && colorSpec === defaultColorSpec}
+						aria-hidden={colorStyle === defaultColorStyle && colorSpec === defaultColorSpec ? "true" : undefined}
+						onclick={resetColorScheme}>
+					<div class="text-(--btn-content)">
+						<Icon icon="fa7-solid:arrow-rotate-left" class="text-[0.75rem]"></Icon>
+					</div>
+				</button>
+			</div>
+			{#if isColorStyleSwitchable}
+			<!-- 3 列网格，每格显示 primary/secondary/tertiary 三个色点 -->
+			<div class="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label={i18n(I18nKey.colorStyle)}>
+				{#each colorStylePreviews as item (item.style)}
+					<button
+						role="radio"
+						aria-checked={colorStyle === item.style}
+						aria-label={i18n(colorStyleLabelKey[item.style])}
+						title={i18n(colorStyleLabelKey[item.style])}
+						class="btn-regular rounded-md py-1.5 px-1 flex flex-col items-center gap-1 active:scale-95 transition-all"
+						class:bg-(--btn-regular-bg-hover)={colorStyle === item.style}
+						class:opacity-60={colorStyle !== item.style}
+						onclick={() => selectColorStyle(item.style)}
+					>
+						<span class="flex items-center -space-x-1">
+							<span class="w-3.5 h-3.5 rounded-full ring-1 ring-black/10 dark:ring-white/20"
+								  style={`background:${item.colors.primary}`}></span>
+							<span class="w-3.5 h-3.5 rounded-full ring-1 ring-black/10 dark:ring-white/20"
+								  style={`background:${item.colors.secondary}`}></span>
+							<span class="w-3.5 h-3.5 rounded-full ring-1 ring-black/10 dark:ring-white/20"
+								  style={`background:${item.colors.tertiary}`}></span>
+						</span>
+						<span class="text-[0.65rem] leading-tight truncate w-full text-center">
+							{i18n(colorStyleLabelKey[item.style])}
+						</span>
+					</button>
+				{/each}
+			</div>
+			{/if}
+			{#if isColorSpecSwitchable}
+			<div class="mt-2">
+				<div class="text-xs text-(--content-meta) mb-1">{i18n(I18nKey.colorSpec)}</div>
+				<div class="flex gap-2" role="radiogroup" aria-label={i18n(I18nKey.colorSpec)}>
+					{#each COLOR_SPEC_ORDER as spec (spec)}
+						<button
+							role="radio"
+							aria-checked={colorSpec === spec}
+							class="flex-1 btn-regular rounded-md py-1.5 px-2 text-xs font-medium active:scale-95 transition-all"
+							class:bg-(--btn-regular-bg-hover)={colorSpec === spec}
+							class:opacity-60={colorSpec !== spec}
+							onclick={() => selectColorSpec(spec)}
+						>
+							{spec === "2021" ? i18n(I18nKey.colorSpec2021) : i18n(I18nKey.colorSpec2025)}
+						</button>
+					{/each}
+				</div>
+			</div>
+			{/if}
+		</div>
+		{/if}
+
+		<!-- Background Texture Section -->
+		{#if isTextureSwitchable}
+		<div>
+			<div class="section-title">
+				{i18n(I18nKey.backgroundTexture)}
+				<button aria-label="Reset to Default" class="btn-regular rounded-md active:scale-90"
+						class:opacity-0={texturePreset === defaultTexturePreset && textureOpacity === defaultTextureOpacity}
+						class:pointer-events-none={texturePreset === defaultTexturePreset && textureOpacity === defaultTextureOpacity}
+						disabled={texturePreset === defaultTexturePreset && textureOpacity === defaultTextureOpacity}
+						aria-hidden={texturePreset === defaultTexturePreset && textureOpacity === defaultTextureOpacity ? "true" : undefined}
+						onclick={resetTextureSettings}>
+					<div class="text-(--btn-content)">
+						<Icon icon="fa7-solid:arrow-rotate-left" class="text-[0.75rem]"></Icon>
+					</div>
+				</button>
+			</div>
+			<div class="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label={i18n(I18nKey.backgroundTexture)}>
+				{#each TEXTURE_PRESET_ORDER as preset (preset)}
+					<button
+						role="radio"
+						aria-checked={texturePreset === preset}
+						aria-label={i18n(texturePresetLabelKey[preset])}
+						title={i18n(texturePresetLabelKey[preset])}
+						class="btn-regular rounded-md py-2 px-1 flex flex-col items-center gap-1 active:scale-95 transition-all"
+						class:bg-(--btn-regular-bg-hover)={texturePreset === preset}
+						class:opacity-60={texturePreset !== preset}
+						onclick={() => selectTexturePreset(preset)}
+					>
+						<Icon icon={texturePresetIcons[preset]} class="text-[1.25rem] shrink-0"></Icon>
+						<span class="text-[0.65rem] leading-tight truncate w-full text-center">
+							{i18n(texturePresetLabelKey[preset])}
+						</span>
+					</button>
+				{/each}
+			</div>
+			<div class="mt-2">
+				<div class="text-xs text-(--content-meta) mb-1 flex items-center justify-between">
+					<span>{i18n(I18nKey.textureOpacity)}</span>
+					<span class="transition bg-(--btn-regular-bg) rounded-md px-2 font-bold text-(--btn-content)">
+						{Math.round(textureOpacity * 100)}%
+					</span>
+				</div>
+				<div class="w-full h-6 px-1 bg-(--btn-regular-bg) rounded-md select-none">
+					<input
+						aria-label={i18n(I18nKey.textureOpacity)}
+						type="range"
+						min="0"
+						max="100"
+						step="1"
+						class="slider"
+						style="width: 100%"
+						value={Math.round(textureOpacity * 100)}
+						oninput={(e) => { textureOpacity = Number(e.currentTarget.value) / 100; }}
+						onchange={(e) => setTextureOpacity(Number(e.currentTarget.value) / 100)}
+					/>
+				</div>
 			</div>
 		</div>
 		{/if}

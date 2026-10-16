@@ -40,8 +40,8 @@ export type {
 	LicenseConfig,
 	MermaidConfig,
 	MusicPlayerConfig,
-	NavBarConfig,
 	NativeCursorMode,
+	NavBarConfig,
 	PageLoaderBackdrop,
 	PageLoaderConfig,
 	PageLoaderStyle,
@@ -69,6 +69,7 @@ export { announcementConfig } from "./announcementConfig"; // 公告配置
 export { backgroundWallpaper } from "./backgroundWallpaper"; // 背景壁纸配置
 export { booknavConfig, booknavPageConfig } from "./booknavConfig"; // 书签导航配置
 // 功能配置
+export { colorSchemeConfig, textureConfig } from "./colorSchemeConfig"; // 配色风格与背景纹理配置
 export { commentConfig } from "./commentConfig"; // 评论系统配置
 export { coverImageConfig } from "./coverImageConfig"; // 封面图配置
 export { deviceStatusConfig } from "./deviceStatusConfig"; // 电脑状态组件配置
@@ -94,8 +95,8 @@ export { licenseConfig } from "./licenseConfig"; // 许可证配置
 export { mermaidConfig } from "./mermaidConfig"; // Mermaid 图表配置
 export { musicPlayerConfig } from "./musicConfig"; // 音乐播放器配置
 export { navBarConfig, navBarSearchConfig } from "./navBarConfig"; // 导航栏配置与搜索配置
-export { live2dWidgetConfig, spineModelConfig } from "./pioConfig"; // 看板娘配置
 export { pageLoaderConfig } from "./pageLoaderConfig"; // 全屏页面加载动画配置
+export { live2dWidgetConfig, spineModelConfig } from "./pioConfig"; // 看板娘配置
 export { plantumlConfig } from "./plantumlConfig"; // PlantUML 图表配置
 export { profileConfig } from "./profileConfig"; // 用户资料配置
 // 布局配置

@@ -3,8 +3,8 @@ import GoogleAnalytics from "@components/analytics/GoogleAnalytics.astro";
 import La51Analytics from "@components/analytics/La51Analytics.astro";
 import MicrosoftClarity from "@components/analytics/MicrosoftClarity.astro";
 import UmamiAnalytics from "@components/analytics/UmamiAnalytics.astro";
-import CodeGroupManager from "@components/features/CodeGroupManager.astro";
 import ClickParticleEffect from "@components/features/ClickParticleEffect.astro";
+import CodeGroupManager from "@components/features/CodeGroupManager.astro";
 import CursorEffect from "@components/features/CursorEffect.astro";
 import FairyDustEffect from "@components/features/FairyDustEffect.astro";
 import FancyboxManager from "@components/features/FancyboxManager.astro";
@@ -15,20 +15,22 @@ import MusicManager from "@components/features/MusicManager.astro";
 import MusicPlayerView from "@components/features/MusicPlayerView.astro";
 import PageLoader from "@components/features/PageLoader.astro";
 import SakuraEffect from "@components/features/SakuraEffect.astro";
-import WelcomeToast from "@components/widget/WelcomeToast.astro";
+import TitleChange from "@components/features/TitleChange.astro";
 import WavesEffect from "@components/features/WavesEffect.astro";
 import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
-import TitleChange from "@components/features/TitleChange.astro";
+import WelcomeToast from "@components/widget/WelcomeToast.astro";
 
 import {
 	analyticsConfig,
 	backgroundWallpaper,
+	colorSchemeConfig,
 	displaySettingsConfig,
 	expressiveCodeConfig,
 	musicPlayerConfig,
 	navbarMode,
 	profileConfig,
 	siteConfig,
+	textureConfig,
 } from "@/config";
 import {
 	BANNER_HEIGHT,
@@ -365,6 +367,12 @@ const ogImageAlt = propsOgImageAlt ?? pageTitle;
         baseUrl: import.meta.env.BASE_URL,
         cardTransparentOpacity: backgroundWallpaper.overlay?.cardOpacity ?? 0.6,
         fullscreenLayout,
+        schemeEnabled: colorSchemeConfig.enable,
+        defaultColorStyle: colorSchemeConfig.defaultStyle,
+        defaultColorSpec: colorSchemeConfig.defaultSpec,
+        textureEnabled: textureConfig.enable,
+        defaultTexturePreset: textureConfig.defaultPreset,
+        defaultTextureOpacity: textureConfig.defaultOpacity,
       }}
     >
       // 主题初始化 - 与setting-utils.ts保持一致
@@ -409,6 +417,48 @@ const ogImageAlt = propsOgImageAlt ?? pageTitle;
       // Load the hue from local storage
       const hue = localStorage.getItem("hue") || configHue;
       document.documentElement.style.setProperty("--hue", hue);
+
+      // Color Style / Color Spec：回放上次生成的 M3 配色。
+      // 配色计算依赖 @material/material-color-utilities（数千行），不能塞进首帧内联脚本，
+      // 因此运行时会把它写入 localStorage 的 mc-scheme-cache；这里只做「签名校验 + 回放」。
+      // 签名格式见 src/utils/color-scheme-utils.ts 的 colorSchemeSignature()，改动需同步。
+      (function applyCachedColorScheme() {
+        if (!schemeEnabled) return;
+        try {
+          const raw = localStorage.getItem("mc-scheme-cache");
+          if (!raw) return;
+          const cached = JSON.parse(raw);
+          const style = localStorage.getItem("mc-style") || defaultColorStyle;
+          const spec = localStorage.getItem("mc-spec") || defaultColorSpec;
+          const signature =
+            style + "|" + spec + "|" + (isDark ? "dark" : "light") + "|" + (Number.parseFloat(hue) || 0);
+          if (cached?.sig !== signature || !cached.vars) return;
+          for (const [name, value] of Object.entries(cached.vars)) {
+            document.documentElement.style.setProperty(name, value);
+          }
+        } catch {
+          // 缓存损坏/不可读：退化为运行时计算，仅多一次重算
+        }
+      })();
+
+      // Background Texture：首帧直接落到 <html> 的 data-texture-preset，
+      // 避免刷新时「先无纹理 → 再弹出纹理」的闪烁。
+      (function applyInitialTexture() {
+        if (!textureEnabled) return;
+        try {
+          const preset = localStorage.getItem("texture-preset") || defaultTexturePreset;
+          document.documentElement.dataset.texturePreset = preset;
+          const opacity = Number.parseFloat(
+            localStorage.getItem("texture-opacity") || "",
+          );
+          document.documentElement.style.setProperty(
+            "--texture-opacity",
+            String(Number.isFinite(opacity) ? opacity : defaultTextureOpacity),
+          );
+        } catch {
+          document.documentElement.dataset.texturePreset = defaultTexturePreset;
+        }
+      })();
 
       // 设置卡片透明度（全屏透明模式下使用），优先使用用户自定义值
       const storedCardOpacity = localStorage.getItem("overlayCardOpacity");
@@ -564,6 +614,8 @@ const ogImageAlt = propsOgImageAlt ?? pageTitle;
     <!-- 页面顶部渐变高光效果 - 只在full和semifull模式下显示 -->
     {shouldShowTopHighlight && <div class="top-gradient-highlight" />}
     <ConfigCarrier />
+    <!-- 背景纹理画布：底色由 src/styles/texture.css 按 data-texture-preset 决定 -->
+    <div id="m3e-texture-canvas" aria-hidden="true"></div>
     <MusicManager />
     <slot />
 

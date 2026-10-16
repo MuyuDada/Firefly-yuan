@@ -484,6 +484,31 @@ enum I18nKey {
 	cardBorder = "cardBorder",
 	cardFollowTheme = "cardFollowTheme",
 
+	// 配色风格（Color Style / Color Spec）
+	colorStyle = "colorStyle",
+	colorStyleTonalSpot = "colorStyleTonalSpot",
+	colorStyleVibrant = "colorStyleVibrant",
+	colorStyleContent = "colorStyleContent",
+	colorStyleExpressive = "colorStyleExpressive",
+	colorStyleRainbow = "colorStyleRainbow",
+	colorStyleFruitSalad = "colorStyleFruitSalad",
+	colorStyleMonochrome = "colorStyleMonochrome",
+	colorStyleNeutral = "colorStyleNeutral",
+	colorStyleFidelity = "colorStyleFidelity",
+	colorSpec = "colorSpec",
+	colorSpec2021 = "colorSpec2021",
+	colorSpec2025 = "colorSpec2025",
+
+	// 背景纹理（Background Texture）
+	backgroundTexture = "backgroundTexture",
+	textureOpacity = "textureOpacity",
+	texturePresetNone = "texturePresetNone",
+	texturePresetStarlight = "texturePresetStarlight",
+	texturePresetCyberDots = "texturePresetCyberDots",
+	texturePresetTopography = "texturePresetTopography",
+	texturePresetGeometric = "texturePresetGeometric",
+	texturePresetSakura = "texturePresetSakura",
+
 	// 文章布局
 	postListLayout = "postListLayout",
 	postListLayoutList = "postListLayoutList",

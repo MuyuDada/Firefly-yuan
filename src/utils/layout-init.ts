@@ -1,3 +1,4 @@
+import { applyColorAndTexture } from "@/utils/color-scheme-utils";
 import {
 	registerContentOverflowListeners,
 	scheduleContentOverflowEnhancements,
@@ -54,6 +55,8 @@ export function initLayout(): void {
 	setupSwupTransitions();
 	initFullscreenWallpaper();
 	registerContentOverflowListeners();
+	// 配色与纹理：#config-carrier 存在后即可计算（其后各步骤均不依赖配色结果）
+	applyColorAndTexture();
 	// 滚动路径不再读取布局；先在初始化时填充侧边栏 top 容器可见性缓存
 	refreshSidebarStickyState();
 	initScroll();

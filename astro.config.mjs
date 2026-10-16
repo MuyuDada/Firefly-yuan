@@ -351,7 +351,35 @@ export default defineConfig({
 		}),
 	},
 	vite: {
-		plugins: [tailwindcss()],
+		plugins: [
+			// @material/material-color-utilities 的 ESM 相对导入缺少 .js 扩展名
+			// （如 color_spec_2025.js 里 `from './dynamic_color'`），Node 原生 ESM 解析器
+			// 无法加载。Astro 7 走 Vite 8 的 environment API：prerender/ssr 环境的外部化列表
+			// 由 Astro 自身爬取的非框架包推导，用户侧的 vite.ssr.noExternal 不生效，
+			// 必须在 configEnvironment 钩子里显式加进 resolve.noExternal 才会被打包。
+			{
+				name: "material-color-utilities-bundle-fix",
+				configEnvironment(_name, options) {
+					if (options.resolve?.noExternal === true) return;
+					const current = options.resolve?.noExternal ?? [];
+					if (current.includes("@material/material-color-utilities")) return;
+					return {
+						resolve: {
+							noExternal: [
+								...current,
+								"@material/material-color-utilities",
+							],
+						},
+					};
+				},
+			},
+			tailwindcss(),
+		],
+		// @material/material-color-utilities 的 ESM 相对导入缺少 .js 扩展名，
+		// Node 原生 ESM 解析器无法加载，必须让 Vite 打包进 SSR 产物而不是外部化。
+		ssr: {
+			noExternal: ["@material/material-color-utilities"],
+		},
 		server: {
 			watch: {
 				ignored: ["**/package/**", "**/Firefly-docs/**"],
