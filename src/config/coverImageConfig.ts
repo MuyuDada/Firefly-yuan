@@ -22,7 +22,7 @@ export const coverImageConfig: CoverImageConfig = {
 	enableInPost: true,
 
 	// 是否使用标题和元数据叠加在封面上的布局
-	enableInPostOverlay: false,
+	enableInPostOverlay: true,
 
 	// 是否显示转圈圈加载动画，会替代掉LQIP
 	showLoading: false,
@@ -32,9 +32,10 @@ export const coverImageConfig: CoverImageConfig = {
 		enable: true,
 		// 封面图API列表
 		apis: [
-			"https://t.alcy.cc/pc",
+			"https://acg.yaohud.cn/dm/adaptive.php",
 			"https://www.dmoe.cc/random.php",
 			"https://uapis.cn/api/v1/random/image?category=acg&type=pc",
+			"https://api.komll.com/images",
 		],
 	},
 };

@@ -38,15 +38,21 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 	src: {
 		// 桌面背景图片（支持单张或多张随机）
 		// desktop: "assets/images/DesktopWallpaper/d1.avif",
-		desktop: "https://t.alcy.cc/pc",
+		desktop: [
+			// "https://t.alcy.cc/pc",
+			"https://acg.yaohud.cn/dm/adaptive.php",
+		],
 		// 移动背景图片（支持单张或多张随机）
 		// mobile: "assets/images/MobileWallpaper/m1.avif",
-		mobile: "https://t.alcy.cc/mp",
+		mobile: ["https://acg.yaohud.cn/dm/adaptive.php"],
 		// 背景视频播放地址
 		// 支持单个视频路径（字符串）或多个视频循环（数组，参考上面壁纸配置）
 		// 支持远程视频URL，本地视频请放在 public/assets/videos/ 目录下
 		// playerUrl: "/assets/videos/firefly.mp4",
-		playerUrl: "https://bed.twoleaf.cn/file/1785658612716_firefly.mp4",
+		playerUrl: [
+			"https://muyuimg.cc.cd/file/blog/wIg7cXXF.mp4",
+			// "https://muyuimg.cc.cd/file/blog/mO60HwjF.mp4",
+		],
 	},
 	// 横幅壁纸和全屏壁纸共享配置
 	common: {
@@ -63,10 +69,7 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 			// 主页横幅主标题字体大小
 			titleSize: "4.5rem",
 			// 主页横幅副标题
-			subtitle: [
-				"Welcome to my blog!",
-				"欢迎来到我的博客！",
-			],
+			subtitle: ["Welcome to my blog!", "欢迎来到我的博客！"],
 			// 主页横幅副标题字体大小
 			subtitleSize: "1.5rem",
 			typewriter: {
