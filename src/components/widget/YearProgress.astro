@@ -109,10 +109,12 @@ const displayYears = [currentYear, currentYear + 1];
         initial-value: 0;
     }
 
+    /* 亮色：浅色底 + 深色填充，与卡片主题一致 */
     .year-progress-widget__stage {
-        --yp-fill: oklch(0.96 0.01 var(--hue));
-        --yp-muted: oklch(0.52 0.02 var(--hue));
-        background: oklch(0.11 0.01 var(--hue));
+        --yp-fill: var(--deep-text);
+        --yp-muted: color-mix(in oklch, var(--content-meta) 72%, transparent);
+        background: color-mix(in oklch, var(--primary) 8%, var(--card-bg));
+        border: 1px solid var(--line-divider);
         border-radius: calc(var(--radius-large) - 0.35rem);
         clip-path: inset(0 100% 0 0);
         padding: 0.85rem 0.65rem 0.75rem;
@@ -190,10 +192,12 @@ const displayYears = [currentYear, currentYear + 1];
         }
     }
 
+    /* 暗色：深色底 + 亮色填充 */
     :root.dark .year-progress-widget__stage {
         --yp-fill: oklch(0.97 0.008 var(--hue));
         --yp-muted: oklch(0.5 0.018 var(--hue));
-        background: oklch(0.09 0.012 var(--hue));
+        border-color: rgb(255 255 255 / 0.08);
+        background: oklch(0.13 0.012 var(--hue));
     }
 
     @media (prefers-reduced-motion: reduce) {
