@@ -1,0 +1,193 @@
+---
+import { Icon } from "astro-icon/components";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import { type CalendarEvent, getUpcomingEvents } from "@/utils/calendar-events";
+
+interface Props {
+	/** 全部事件（含前后各一年），组件内部按类型筛选 */
+	allEvents: CalendarEvent[];
+	/** 图例统计 */
+	counts: Record<string, number>;
+	/** 向前查找的天数窗口 */
+	futureDays: number;
+	/** 每个小节最多显示几条 */
+	maxItems: number;
+}
+
+const { allEvents, counts, futureDays, maxItems } = Astro.props;
+
+const now = new Date();
+
+/** 每类取最近的若干条，同名事件只保留最近一次 */
+const pickUpcoming = (type: CalendarEvent["type"]): CalendarEvent[] => {
+	const pool = allEvents.filter((event) => event.type === type);
+	const collect = (days: number): CalendarEvent[] => {
+		const upcoming = getUpcomingEvents(pool, now, days);
+		const seen = new Set<string>();
+		const picked: CalendarEvent[] = [];
+		for (const event of upcoming) {
+			const key = `${event.type}-${event.name}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			picked.push(event);
+			if (picked.length >= maxItems) break;
+		}
+		return picked;
+	};
+	// 窗口内没有条目时向前放宽，避免出现空小节（如国庆后到元旦前无节假日）
+	const near = collect(futureDays);
+	return near.length > 0 ? near : collect(Math.max(futureDays, 400));
+};
+
+const sections = [
+	{
+		type: "holiday" as const,
+		label: i18n(I18nKey.calendarNearestHoliday),
+		typeLabel: i18n(I18nKey.calendarEventHoliday),
+		icon: "material-symbols:celebration",
+		items: pickUpcoming("holiday"),
+	},
+	{
+		type: "birthday" as const,
+		label: i18n(I18nKey.calendarNearestBirthday),
+		typeLabel: i18n(I18nKey.calendarEventBirthday),
+		icon: "material-symbols:cake",
+		items: pickUpcoming("birthday"),
+	},
+	{
+		type: "schedule" as const,
+		label: i18n(I18nKey.calendarNearestSchedule),
+		typeLabel: i18n(I18nKey.calendarEventSchedule),
+		icon: "material-symbols:event",
+		items: pickUpcoming("schedule"),
+	},
+];
+
+const countdownPrefix = i18n(I18nKey.calendarCountdownPrefix);
+const countdownSuffix = i18n(I18nKey.calendarCountdownSuffix);
+const countdownOngoingSuffix = i18n(I18nKey.calendarCountdownOngoingSuffix);
+const unitDay = i18n(I18nKey.calendarCountdownDay);
+const unitHour = i18n(I18nKey.calendarCountdownHour);
+const unitMinute = i18n(I18nKey.calendarCountdownMinute);
+const unitSecond = i18n(I18nKey.calendarCountdownSecond);
+const emptyText = i18n(I18nKey.noData);
+
+const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+/**
+ * 服务端先算一次，避免首帧出现 0。
+ * 当天的事件算到当天 23:59:59（进行中），其余算到当天 00:00（还有多久）。
+ */
+const countdownOf = (dateKey: string) => {
+	const [year, month, day] = dateKey.split("-").map(Number);
+	const ongoing = dateKey === todayKey;
+	const target = new Date(
+		year,
+		month - 1,
+		day,
+		ongoing ? 23 : 0,
+		ongoing ? 59 : 0,
+		ongoing ? 59 : 0,
+	).getTime();
+	const diff = Math.max(0, target - now.getTime());
+	return {
+		days: Math.floor(diff / 86400000),
+		hours: Math.floor((diff % 86400000) / 3600000),
+		minutes: Math.floor((diff % 3600000) / 60000),
+		seconds: Math.floor((diff % 60000) / 1000),
+	};
+};
+
+const legendOrder = [
+	"holiday",
+	"term",
+	"workday",
+	"birthday",
+	"schedule",
+	"post",
+] as const;
+
+const legendLabel: Record<string, string> = {
+	holiday: i18n(I18nKey.calendarEventHoliday),
+	term: i18n(I18nKey.calendarEventTerm),
+	workday: i18n(I18nKey.calendarEventWorkday),
+	birthday: i18n(I18nKey.calendarEventBirthday),
+	schedule: i18n(I18nKey.calendarEventSchedule),
+	post: i18n(I18nKey.calendarEventPost),
+};
+---
+
+<aside class="calendar-page__rail calendar-page__rail--left card-base">
+	<div class="event-overview" id="calendar-overview">
+		{
+			sections.map((section) => (
+				<div class="nearest-section">
+					<div class="nearest-section__head">
+						<span class={`nearest-section__icon cal-chip-${section.type}`}>
+							<Icon name={section.icon} />
+						</span>
+						<span class="nearest-section__label">{section.label}</span>
+					</div>
+
+					{section.items.length > 0 ? (
+						<div class="nearest-grid">
+							{section.items.map((event) => {
+								const left = countdownOf(event.dateKey);
+								const ongoing = event.dateKey === todayKey;
+								return (
+									<button
+										type="button"
+										class={`nearest-card nearest-card--${event.type}${ongoing ? " is-ongoing" : ""}`}
+										data-event-date={event.dateKey}
+										data-event-url={event.url ?? ""}
+										data-event-ongoing={ongoing ? "1" : ""}
+										title={event.name}
+									>
+										<span class="nearest-card__bar" aria-hidden="true" />
+										<span class="nearest-card__icon">
+											<Icon name={event.icon} />
+										</span>
+										<span class="nearest-card__body">
+											<span class="nearest-card__type">{section.typeLabel}</span>
+											<span class="nearest-card__name">{event.name}</span>
+											<span class="nearest-card__countdown">
+												<span>{countdownPrefix}</span>
+												<span class="nearest-card__countdown-name">{event.name}</span>
+												<span>{ongoing ? countdownOngoingSuffix : countdownSuffix}</span>
+												<span class="nearest-count">
+													<span class="nearest-count__num" data-countdown="days">{left.days}</span>
+													<span class="nearest-count__unit">{unitDay}</span>
+													<span class="nearest-count__num" data-countdown="hours">{left.hours}</span>
+													<span class="nearest-count__unit">{unitHour}</span>
+													<span class="nearest-count__num" data-countdown="minutes">{left.minutes}</span>
+													<span class="nearest-count__unit">{unitMinute}</span>
+													<span class="nearest-count__num" data-countdown="seconds">{left.seconds}</span>
+													<span class="nearest-count__unit">{unitSecond}</span>
+												</span>
+											</span>
+										</span>
+									</button>
+								);
+							})}
+						</div>
+					) : (
+						<p class="empty">{emptyText}</p>
+					)}
+				</div>
+			))
+		}
+	</div>
+
+	<div class="cal-legend">
+		{
+			legendOrder.map((type) => (
+				<span class="cal-legend__item">
+					<span class={`cal-legend__dot cal-dot-${type}`} aria-hidden="true" />
+					{legendLabel[type]}
+					<span class="cal-legend__count">{counts[type] ?? 0}</span>
+				</span>
+			))
+		}
+	</div>
+</aside>

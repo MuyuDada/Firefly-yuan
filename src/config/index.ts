@@ -49,6 +49,7 @@ export type {
 	ProfileConfig,
 	SakuraConfig,
 	SidebarLayoutConfig,
+	SiteCalendarConfig,
 	SiteConfig,
 	SponsorConfig,
 	SponsorItem,
@@ -68,6 +69,7 @@ export { announcementConfig } from "./announcementConfig"; // 公告配置
 // 样式配置
 export { backgroundWallpaper } from "./backgroundWallpaper"; // 背景壁纸配置
 export { booknavConfig, booknavPageConfig } from "./booknavConfig"; // 书签导航配置
+export { calendarConfig } from "./calendarConfig"; // 站点日历页面配置
 // 功能配置
 export { colorSchemeConfig, textureConfig } from "./colorSchemeConfig"; // 配色风格与背景纹理配置
 export { commentConfig } from "./commentConfig"; // 评论系统配置

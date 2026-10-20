@@ -98,6 +98,7 @@ export type SiteConfig = {
 		dynamic: boolean; // 动态页面开关
 		music: boolean; // 音乐可视化页面开关
 		projects: boolean; // 项目展示页开关
+		calendar: boolean; // 站点日历页面开关
 	};
 
 	// 分类导航栏开关

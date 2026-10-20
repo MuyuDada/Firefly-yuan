@@ -59,6 +59,9 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 			// 音乐可视化
 			LinkPresets.Music,
 
+			// 站点日历
+			LinkPresets.Calendar,
+
 			// 项目
 			LinkPresets.Projects,
 
@@ -205,6 +208,12 @@ export const LinkPresets: Record<string, NavBarLink> = {
 		url: "/music/",
 		icon: "material-symbols:music-note-rounded",
 		pageKey: "music",
+	},
+	Calendar: {
+		name: "站点日历",
+		url: "/calendar/",
+		icon: "material-symbols:calendar-month",
+		pageKey: "calendar",
 	},
 	Projects: {
 		name: "项目",

@@ -11,6 +11,16 @@ export type {
 	BooknavPageConfig,
 } from "./booknavConfig";
 export type {
+	BuiltinHoliday,
+	CalendarBirthday,
+	CalendarDateRule,
+	CalendarDateType,
+	CalendarRecurringFreq,
+	CalendarSchedule,
+	CalendarScheduleRecurring,
+	SiteCalendarConfig,
+} from "./calendarConfig";
+export type {
 	ColorSchemeConfig,
 	ColorSpec,
 	ColorStyle,

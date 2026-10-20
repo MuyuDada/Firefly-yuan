@@ -1,0 +1,86 @@
+---
+import { Icon } from "astro-icon/components";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+
+interface Props {
+	/** 当前年份 */
+	year: number;
+	/** 当前年份已过百分比 0-100 */
+	yearProgress: number;
+	/** 12 个月的进度 0-100 */
+	monthProgress: number[];
+}
+
+const { year, yearProgress, monthProgress } = Astro.props;
+
+const displayYears = [year, year + 1];
+const hint = i18n(I18nKey.calendarHeroHint);
+
+const monthKeys = [
+	I18nKey.calendarJanuary,
+	I18nKey.calendarFebruary,
+	I18nKey.calendarMarch,
+	I18nKey.calendarApril,
+	I18nKey.calendarMay,
+	I18nKey.calendarJune,
+	I18nKey.calendarJuly,
+	I18nKey.calendarAugust,
+	I18nKey.calendarSeptember,
+	I18nKey.calendarOctober,
+	I18nKey.calendarNovember,
+	I18nKey.calendarDecember,
+];
+---
+
+<section class="calendar-hero" id="calendar-hero">
+	<button
+		type="button"
+		class="calendar-hero__core"
+		id="calendar-hero-core"
+		aria-label={hint}
+	>
+		<div class="calendar-hero__stage" id="calendar-hero-stage">
+			<div class="calendar-hero__years">
+				{
+					displayYears.map((item, index) => (
+						<span
+							class="calendar-hero__glyph calendar-hero__glyph--year"
+							style={`--progress-target: ${index === 0 ? yearProgress : 0}; --glyph-delay: ${index * 90}ms`}
+						>
+							{item}
+						</span>
+					))
+				}
+			</div>
+			<div class="calendar-hero__months">
+				{
+					monthProgress.map((progress, index) => (
+						<span
+							class="calendar-hero__glyph calendar-hero__glyph--month"
+							style={`--progress-target: ${progress}; --glyph-delay: ${180 + index * 45}ms`}
+							title={i18n(monthKeys[index])}
+						>
+							{index + 1}
+						</span>
+					))
+				}
+			</div>
+		</div>
+
+		<span class="calendar-hero__hint">{hint}</span>
+	</button>
+
+	<div class="calendar-hero__footer">
+		<button
+			type="button"
+			class="calendar-hero__scroll"
+			id="calendar-scroll-down"
+			aria-label={hint}
+		>
+			<span class="calendar-hero__scroll-icon">
+				<Icon name="material-symbols:keyboard-arrow-down-rounded" />
+			</span>
+		</button>
+	</div>
+</section>

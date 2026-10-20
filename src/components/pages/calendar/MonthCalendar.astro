@@ -1,0 +1,171 @@
+---
+import { Icon } from "astro-icon/components";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type { CalendarEvent, OfficialDay } from "@/utils/calendar-events";
+import type { CalendarCell } from "@/utils/calendar-grid-utils";
+
+interface Props {
+	year: number;
+	month: number;
+	weeks: CalendarCell[][];
+	eventsByDate: Record<string, CalendarEvent[]>;
+	lunarLabels: Record<string, string>;
+	/** 日期 -> 法定节假日/调休信息，用于格子右上角的「休」「班」角标 */
+	officialDays: Record<string, OfficialDay>;
+	showLunar: boolean;
+	isCurrentMonth: boolean;
+}
+
+const {
+	year,
+	month,
+	weeks,
+	eventsByDate,
+	lunarLabels,
+	officialDays,
+	showLunar,
+	isCurrentMonth,
+} = Astro.props;
+
+const weekdayKeys = [
+	I18nKey.calendarSunday,
+	I18nKey.calendarMonday,
+	I18nKey.calendarTuesday,
+	I18nKey.calendarWednesday,
+	I18nKey.calendarThursday,
+	I18nKey.calendarFriday,
+	I18nKey.calendarSaturday,
+];
+
+const monthKeys = [
+	I18nKey.calendarJanuary,
+	I18nKey.calendarFebruary,
+	I18nKey.calendarMarch,
+	I18nKey.calendarApril,
+	I18nKey.calendarMay,
+	I18nKey.calendarJune,
+	I18nKey.calendarJuly,
+	I18nKey.calendarAugust,
+	I18nKey.calendarSeptember,
+	I18nKey.calendarOctober,
+	I18nKey.calendarNovember,
+	I18nKey.calendarDecember,
+];
+
+const monthTitle = `${year} ${i18n(monthKeys[month - 1])}`;
+const MAX_CHIPS = 3;
+---
+
+<section class="calendar-page__main card-base" id="calendar-month" aria-label={monthTitle}>
+	<header class="calendar-toolbar">
+		<h2 class="calendar-toolbar__title" id="calendar-month-title">{monthTitle}</h2>
+		<div class="calendar-toolbar__actions">
+			<button
+				type="button"
+				class="back-today-btn"
+				id="calendar-back-today"
+				title={i18n(I18nKey.calendarBackToday)}
+				aria-label={i18n(I18nKey.calendarBackToday)}
+			>
+				<Icon name="material-symbols:today" />
+				<span>{i18n(I18nKey.calendarBackToday)}</span>
+			</button>
+			<button
+				type="button"
+				class="nav-btn"
+				id="calendar-prev-month"
+				title={i18n(I18nKey.calendarPrevMonth)}
+				aria-label={i18n(I18nKey.calendarPrevMonth)}
+			>
+				<Icon name="material-symbols:chevron-left" class="nav-btn__icon" />
+			</button>
+			<button
+				type="button"
+				class="nav-btn"
+				id="calendar-next-month"
+				title={i18n(I18nKey.calendarNextMonth)}
+				aria-label={i18n(I18nKey.calendarNextMonth)}
+			>
+				<Icon name="material-symbols:chevron-right" class="nav-btn__icon" />
+			</button>
+		</div>
+	</header>
+
+	<div class="calendar-grid-wrap">
+		<div class="weekday-row">
+			{
+				weekdayKeys.map((key, index) => (
+					<span class={index === 0 || index === 6 ? "is-weekend" : ""}>
+						{i18n(key)}
+					</span>
+				))
+			}
+		</div>
+
+		<div class="cells-grid" id="calendar-cells">
+			{
+				weeks.flat().map((cell) => {
+					const events = eventsByDate[cell.dateKey] ?? [];
+					const visible = events.slice(0, MAX_CHIPS);
+					const rest = events.length - visible.length;
+					const lunar = showLunar ? lunarLabels[cell.dateKey] : undefined;
+					const official = officialDays[cell.dateKey];
+					const classes = [
+						"day-cell",
+						cell.inMonth ? "" : "is-outside",
+						cell.isToday ? "is-today" : "",
+						isCurrentMonth && cell.isToday ? "is-selected" : "",
+						official ? (official.rest ? "is-rest" : "is-work") : "",
+					]
+						.filter(Boolean)
+						.join(" ");
+					return (
+						<button
+							type="button"
+							class={classes}
+							data-date={cell.dateKey}
+							data-in-month={cell.inMonth ? "1" : "0"}
+							aria-pressed={cell.isToday && isCurrentMonth ? "true" : "false"}
+							aria-label={`${cell.dateKey}${lunar ? ` ${lunar}` : ""}${official ? ` ${official.name}` : ""}`}
+						>
+							<span class="cell-header">
+								<span class="day-num">{cell.date.getDate()}</span>
+								{lunar && <span class="lunar-num">{lunar}</span>}
+								{official && (
+									<span
+										class={`cell-badge ${official.rest ? "cell-badge--rest" : "cell-badge--work"}`}
+										title={official.name}
+										aria-hidden="true"
+									>
+										{official.rest
+											? i18n(I18nKey.calendarRestDay)
+											: i18n(I18nKey.calendarWorkDay)}
+									</span>
+								)}
+							</span>
+							<span class="cell-events">
+								{visible.map((event) => (
+									<span class={`event-chip cal-chip-${event.type}`}>
+										<span class="chip-bar" aria-hidden="true" />
+										<span class="chip-title">{event.name}</span>
+									</span>
+								))}
+								{rest > 0 && (
+									<span class="more-chip">
+										{i18n(I18nKey.calendarMoreEvents).replace("{count}", String(rest))}
+									</span>
+								)}
+							</span>
+							<span class="cell-dots">
+								{events.slice(0, 4).map((event) => (
+									<span class={`dot cal-dot-${event.type}`} aria-hidden="true" />
+								))}
+							</span>
+						</button>
+					);
+				})
+			}
+		</div>
+	</div>
+</section>

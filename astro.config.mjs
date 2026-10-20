@@ -278,6 +278,9 @@ export default defineConfig({
 				if (pathname === "/sponsor/" && !siteConfig.pages.sponsor) {
 					return false;
 				}
+				if (pathname === "/calendar/" && !siteConfig.pages.calendar) {
+					return false;
+				}
 				return true;
 			},
 		}),

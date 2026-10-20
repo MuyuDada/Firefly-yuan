@@ -1,0 +1,109 @@
+---
+import { Icon } from "astro-icon/components";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type { CalendarEvent, OfficialDay } from "@/utils/calendar-events";
+import { formatDateI18n } from "@/utils/date-utils";
+
+interface Props {
+	/** 初始（今天）的事件 */
+	initialDateKey: string;
+	initialEvents: CalendarEvent[];
+	/** 全年全部事件，仅用于汇总需要预渲染的图标集合 */
+	allEvents: CalendarEvent[];
+	/** 日期 -> 农历写法 */
+	lunarLabels: Record<string, string>;
+	/** 日期 -> 法定节假日 / 调休补班 */
+	officialDays: Record<string, OfficialDay>;
+}
+
+const { initialDateKey, initialEvents, allEvents, lunarLabels, officialDays } =
+	Astro.props;
+
+const initialDate = new Date(`${initialDateKey}T00:00:00`);
+const initialTitle = formatDateI18n(initialDate);
+const emptyText = i18n(I18nKey.calendarNoEvents);
+const restLabel = i18n(I18nKey.calendarRestDay);
+const workLabel = i18n(I18nKey.calendarWorkDay);
+const initialOfficial = officialDays[initialDateKey];
+
+// 客户端切换日期时按图标名取 svg，只需预渲染去重后的少量图标
+const uniqueIcons = [...new Set(allEvents.map((event) => event.icon))].sort();
+---
+
+<aside class="calendar-page__rail calendar-page__rail--right card-base">
+	<h2 class="cal-rail__title">
+		<Icon name="material-symbols:event-note" class="cal-rail__icon" />
+		{i18n(I18nKey.calendarDayEvents)}
+	</h2>
+
+	<div
+		class="detail-panel"
+		id="calendar-detail"
+		data-date={initialDateKey}
+		data-empty-text={emptyText}
+	>
+		<p class="detail-panel__date" id="calendar-detail-date">{initialTitle}</p>
+		<span class="detail-panel__lunar" id="calendar-detail-lunar">
+			{lunarLabels[initialDateKey] ?? ""}
+		</span>
+		<span
+			class={`detail-panel__official${initialOfficial ? (initialOfficial.rest ? " is-rest" : " is-work") : " is-hidden"}`}
+			id="calendar-detail-official"
+			data-rest-label={restLabel}
+			data-work-label={workLabel}
+		>
+			{initialOfficial
+				? `${initialOfficial.name} · ${initialOfficial.rest ? restLabel : workLabel}`
+				: ""}
+		</span>
+
+		<div id="calendar-detail-events">
+			{
+				initialEvents.length > 0 ? (
+					initialEvents.map((event) => (
+						<a
+							href={event.url ?? undefined}
+							class={`event-card event-card--${event.type}${event.url ? " event-card--clickable" : ""}`}
+							data-event-id={event.id}
+						>
+							<span class="card-bar" aria-hidden="true" />
+							<span class="card-icon">
+								<Icon name={event.icon} />
+							</span>
+							<span class="card-body">
+								<span class="card-title">{event.name}</span>
+								{event.note && <span class="card-note">{event.note}</span>}
+								{event.lunar && <span class="card-note">{event.lunar}</span>}
+							</span>
+							{event.url && (
+								<span class="card-arrow">
+									<Icon name="material-symbols:chevron-right" />
+								</span>
+							)}
+						</a>
+					))
+				) : (
+					<p class="empty">{emptyText}</p>
+				)
+			}
+		</div>
+	</div>
+</aside>
+
+<!--
+	图标模板：每个用到的图标只渲染一次（而不是每个事件一份卡片），
+	客户端切换日期时复制对应 svg 并自行拼装卡片，避免把几百份 DOM 塞进首屏。
+-->
+<div id="calendar-icon-templates" hidden>
+	{
+		uniqueIcons.map((icon) => (
+			<template data-icon={icon}>
+				<Icon name={icon} />
+			</template>
+		))
+	}
+	<template data-icon="__arrow__">
+		<Icon name="material-symbols:chevron-right" />
+	</template>
+</div>

@@ -35,6 +35,8 @@ const pages = resolvePageToggles({
 	mal: false,
 	// 音乐可视化页面开关
 	music: true,
+	// 站点日历页面开关
+	calendar: true,
 
 	// ── 关于 (About) ──────────────────────────────────
 

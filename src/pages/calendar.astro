@@ -1,0 +1,778 @@
+---
+import Footer from "@/components/layout/Footer.astro";
+import HeaderTopRow from "@/components/layout/HeaderTopRow.astro";
+import NavMenuPanel from "@/components/layout/NavMenuPanel.astro";
+import CalendarHero from "@/components/pages/calendar/CalendarHero.astro";
+import EventDetail from "@/components/pages/calendar/EventDetail.astro";
+import EventOverview from "@/components/pages/calendar/EventOverview.astro";
+import MonthCalendar from "@/components/pages/calendar/MonthCalendar.astro";
+import { calendarConfig, navbarMode, siteConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import Layout from "@/layouts/Layout.astro";
+import {
+	buildOfficialDayMap,
+	buildYearEvents,
+	type CalendarEvent,
+	type OfficialDay,
+} from "@/utils/calendar-events";
+import { getMonthMatrix } from "@/utils/calendar-grid-utils";
+import { getSortedPosts } from "@/utils/content-utils";
+import {
+	formatDateKey,
+	lunarDayShort,
+	solarToLunar,
+	startOfDay,
+} from "@/utils/lunar-utils";
+import { resolveNavMenuLinks } from "@/utils/nav-menu-utils";
+import { getPostUrlBySlug } from "@/utils/url-utils";
+import "@/styles/pages/calendar.css";
+
+if (!siteConfig.pages.calendar) {
+	return Astro.redirect("/404/");
+}
+
+const title = calendarConfig.title;
+const description = calendarConfig.description;
+
+const now = new Date();
+const today = startOfDay(now);
+const todayKey = formatDateKey(today);
+const currentYear = now.getFullYear();
+const currentMonth = now.getMonth() + 1;
+
+// ── 年度进度（Hero 用） ──────────────────────────────────────────────
+const isLeapYear = (year: number) =>
+	(year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+const daysInYear = isLeapYear(currentYear) ? 366 : 365;
+const dayOfYear = Math.floor(
+	(now.getTime() - new Date(currentYear, 0, 0).getTime()) / 86400000,
+);
+const yearProgress = (dayOfYear / daysInYear) * 100;
+const daysInCurrentMonth = new Date(
+	currentYear,
+	now.getMonth() + 1,
+	0,
+).getDate();
+const monthProgress = Array.from({ length: 12 }, (_, month) => {
+	if (month < now.getMonth()) return 100;
+	if (month > now.getMonth()) return 0;
+	return (now.getDate() / daysInCurrentMonth) * 100;
+});
+
+// ── 文章事件 ────────────────────────────────────────────────────────
+const posts = await getSortedPosts();
+const postInputs = posts.map((post) => ({
+	id: post.id,
+	title: post.data.title,
+	published: post.data.published,
+	url: getPostUrlBySlug(post.id),
+}));
+
+// ── 事件聚合：今年与前后各一年，保证翻月/翻年都能取到数据 ──────────────
+const years = [currentYear - 1, currentYear, currentYear + 1];
+const allEvents: CalendarEvent[] = [];
+for (const year of years) {
+	allEvents.push(...buildYearEvents(year, postInputs));
+}
+// 去重（跨年边界上的事件可能出现两次）
+const eventMap = new Map<string, CalendarEvent>();
+for (const event of allEvents) eventMap.set(event.id, event);
+const events = [...eventMap.values()];
+
+// 日期 -> 事件
+const eventsByDate: Record<string, CalendarEvent[]> = {};
+for (const event of events) {
+	if (!eventsByDate[event.dateKey]) eventsByDate[event.dateKey] = [];
+	eventsByDate[event.dateKey].push(event);
+}
+
+// 日期 -> 农历写法（初一显示月名，其余显示日名）
+const lunarLabels: Record<string, string> = {};
+if (calendarConfig.show.lunarDate) {
+	const cnMonths = [
+		"",
+		"正月",
+		"二月",
+		"三月",
+		"四月",
+		"五月",
+		"六月",
+		"七月",
+		"八月",
+		"九月",
+		"十月",
+		"冬月",
+		"腊月",
+	];
+	for (const year of years) {
+		const cursor = new Date(year, 0, 1);
+		while (cursor.getFullYear() === year) {
+			const lunar = solarToLunar(cursor);
+			if (lunar) {
+				lunarLabels[formatDateKey(cursor)] =
+					lunar.day === 1
+						? `${lunar.isLeap ? "闰" : ""}${cnMonths[lunar.month]}`
+						: lunarDayShort(lunar.day);
+			}
+			cursor.setDate(cursor.getDate() + 1);
+		}
+	}
+}
+
+// 图例统计（只统计今年）
+const counts: Record<string, number> = {
+	holiday: 0,
+	term: 0,
+	workday: 0,
+	birthday: 0,
+	schedule: 0,
+	post: 0,
+};
+for (const event of events) {
+	if (event.date.getFullYear() !== currentYear) continue;
+	counts[event.type] = (counts[event.type] ?? 0) + 1;
+}
+
+// 日期 -> 法定节假日 / 调休（用于格子角标）；覆盖前后各一年，翻月时也能取到
+const officialDays: Record<string, OfficialDay> = {};
+for (const year of years) {
+	Object.assign(officialDays, buildOfficialDayMap(year));
+}
+// 「休」「班」角标文案（客户端翻月时也要用）
+const restLabel = i18n(I18nKey.calendarRestDay);
+const workLabel = i18n(I18nKey.calendarWorkDay);
+
+// ── 中栏：当前月的网格 ──────────────────────────────────────────────
+const weeks = getMonthMatrix(currentYear, currentMonth, now);
+
+// ── 右栏：今天的事件 ────────────────────────────────────────────────
+const todayEvents = eventsByDate[todayKey] ?? [];
+
+// 月份名（供客户端翻月时同步标题，避免依赖 DOM 文本）
+const monthNames = [
+	I18nKey.calendarJanuary,
+	I18nKey.calendarFebruary,
+	I18nKey.calendarMarch,
+	I18nKey.calendarApril,
+	I18nKey.calendarMay,
+	I18nKey.calendarJune,
+	I18nKey.calendarJuly,
+	I18nKey.calendarAugust,
+	I18nKey.calendarSeptember,
+	I18nKey.calendarOctober,
+	I18nKey.calendarNovember,
+	I18nKey.calendarDecember,
+].map((key) => i18n(key));
+
+// 供客户端翻月使用的数据
+const clientPayload = {
+	eventsByDate,
+	lunarLabels,
+	officialDays,
+	restLabel,
+	workLabel,
+	todayKey,
+	initialYear: currentYear,
+	initialMonth: currentMonth,
+	minYear: years[0],
+	maxYear: years[years.length - 1],
+	monthNames,
+	moreTemplate: i18n(I18nKey.calendarMoreEvents),
+	emptyText: i18n(I18nKey.calendarNoEvents),
+	maxChips: 3,
+};
+---
+
+<Layout title={`${title} | ${siteConfig.title}`} description={description}>
+	<HeaderTopRow
+		navbarMode={navbarMode}
+		navbarWidthFull={siteConfig.navbar.widthFull ?? false}
+	/>
+	<NavMenuPanel links={resolveNavMenuLinks()} />
+
+	<main id="swup-container" class="transition-swup-main">
+		<h1 class="sr-only">{title}</h1>
+
+		<CalendarHero
+			year={currentYear}
+			yearProgress={yearProgress}
+			monthProgress={monthProgress}
+		/>
+
+		<div class="calendar-page" id="calendar-main-content">
+			<header class="calendar-page__intro">
+				<h2 class="calendar-page__title">{title}</h2>
+				<p class="calendar-page__subtitle">{description}</p>
+			</header>
+
+			<div class="calendar-page__shell">
+				<EventOverview
+					allEvents={events}
+					counts={counts}
+					futureDays={calendarConfig.overview.futureDays}
+					maxItems={2}
+				/>
+
+				<MonthCalendar
+					year={currentYear}
+					month={currentMonth}
+					weeks={weeks}
+					eventsByDate={eventsByDate}
+					lunarLabels={lunarLabels}
+					officialDays={officialDays}
+					showLunar={calendarConfig.show.lunarDate}
+					isCurrentMonth={true}
+				/>
+
+				<EventDetail
+					initialDateKey={todayKey}
+					initialEvents={todayEvents}
+					allEvents={events}
+					lunarLabels={lunarLabels}
+					officialDays={officialDays}
+				/>
+			</div>
+		</div>
+
+		<script
+			is:inline
+			type="application/json"
+			id="calendar-client-payload"
+			set:html={JSON.stringify(clientPayload)}
+		/>
+	</main>
+
+	<div class="calendar-page-footer">
+		<Footer />
+	</div>
+
+	<script is:inline>
+		(function () {
+			// Swup 软导航会重跑内联脚本，用全局守卫避免重复绑定
+			if (window.__siteCalendarInit) {
+				if (window.__siteCalendarRefresh) window.__siteCalendarRefresh();
+				return;
+			}
+			window.__siteCalendarInit = true;
+
+			var payload = readPayload();
+			if (!payload) return;
+
+			var state = {
+				year: payload.initialYear,
+				month: payload.initialMonth,
+				selected: payload.todayKey,
+			};
+
+			function readPayload() {
+				var el = document.getElementById("calendar-client-payload");
+				if (!el) return null;
+				try {
+					return JSON.parse(el.textContent || "{}");
+				} catch (error) {
+					return null;
+				}
+			}
+
+			function pad(value) {
+				return String(value).length < 2 ? "0" + value : String(value);
+			}
+
+			function toKey(date) {
+				return (
+					date.getFullYear() +
+					"-" +
+					pad(date.getMonth() + 1) +
+					"-" +
+					pad(date.getDate())
+				);
+			}
+
+			function eventsOf(key) {
+				return (payload.eventsByDate && payload.eventsByDate[key]) || [];
+			}
+
+			function lunarOf(key) {
+				return (payload.lunarLabels && payload.lunarLabels[key]) || "";
+			}
+
+			function officialOf(key) {
+				return (payload.officialDays && payload.officialDays[key]) || null;
+			}
+
+			function escapeHtml(value) {
+				return String(value)
+					.replace(/&/g, "&amp;")
+					.replace(/</g, "&lt;")
+					.replace(/>/g, "&gt;")
+					.replace(/"/g, "&quot;");
+			}
+
+			// 与服务端 getMonthMatrix 保持一致：周日开头、6 行 × 7 列
+			function buildMatrix(year, month) {
+				var first = new Date(year, month - 1, 1);
+				var cursor = new Date(first);
+				cursor.setDate(cursor.getDate() - first.getDay());
+				var weeks = [];
+				for (var w = 0; w < 6; w++) {
+					var week = [];
+					for (var d = 0; d < 7; d++) {
+						var day = new Date(
+							cursor.getFullYear(),
+							cursor.getMonth(),
+							cursor.getDate(),
+						);
+						week.push({
+							date: day,
+							key: toKey(day),
+							inMonth: day.getMonth() === month - 1,
+						});
+						cursor.setDate(cursor.getDate() + 1);
+					}
+					weeks.push(week);
+				}
+				return weeks;
+			}
+
+			function renderGrid() {
+				var grid = document.getElementById("calendar-cells");
+				if (!grid) return;
+				var weeks = buildMatrix(state.year, state.month);
+				var html = "";
+				for (var w = 0; w < weeks.length; w++) {
+					for (var d = 0; d < weeks[w].length; d++) {
+						html += cellHtml(weeks[w][d]);
+					}
+				}
+				grid.innerHTML = html;
+			}
+
+			function cellHtml(cell) {
+				var events = eventsOf(cell.key);
+				var visible = events.slice(0, payload.maxChips || 3);
+				var rest = events.length - visible.length;
+				var lunar = lunarOf(cell.key);
+				var official = officialOf(cell.key);
+				var classes = ["day-cell"];
+				if (!cell.inMonth) classes.push("is-outside");
+				if (cell.key === payload.todayKey) classes.push("is-today");
+				if (cell.key === state.selected) classes.push("is-selected");
+				if (official) classes.push(official.rest ? "is-rest" : "is-work");
+
+				var html =
+					'<button type="button" class="' +
+					classes.join(" ") +
+					'" data-date="' +
+					cell.key +
+					'" data-in-month="' +
+					(cell.inMonth ? "1" : "0") +
+					'">';
+				html +=
+					'<span class="cell-header"><span class="day-num">' +
+					cell.date.getDate() +
+					"</span>";
+				if (lunar) {
+					html += '<span class="lunar-num">' + escapeHtml(lunar) + "</span>";
+				}
+				if (official) {
+					html +=
+						'<span class="cell-badge ' +
+						(official.rest ? "cell-badge--rest" : "cell-badge--work") +
+						'" title="' +
+						escapeHtml(official.name) +
+						'" aria-hidden="true">' +
+						escapeHtml(
+							official.rest ? payload.restLabel || "休" : payload.workLabel || "班",
+						) +
+						"</span>";
+				}
+				html += "</span>";
+				html += '<span class="cell-events">';
+				for (var i = 0; i < visible.length; i++) {
+					html +=
+						'<span class="event-chip cal-chip-' +
+						visible[i].type +
+						'"><span class="chip-bar" aria-hidden="true"></span>' +
+						'<span class="chip-title">' +
+						escapeHtml(visible[i].name) +
+						"</span></span>";
+				}
+				if (rest > 0) {
+					html +=
+						'<span class="more-chip">' +
+						escapeHtml(
+							(payload.moreTemplate || "+{count}").replace(
+								"{count}",
+								String(rest),
+							),
+						) +
+						"</span>";
+				}
+				html += "</span>";
+				html += '<span class="cell-dots">';
+				var dots = events.slice(0, 4);
+				for (var k = 0; k < dots.length; k++) {
+					html +=
+						'<span class="dot cal-dot-' +
+						dots[k].type +
+						'" aria-hidden="true"></span>';
+				}
+				html += "</span></button>";
+				return html;
+			}
+
+			function formatLong(key) {
+				var parts = key.split("-");
+				var date = new Date(
+					Number(parts[0]),
+					Number(parts[1]) - 1,
+					Number(parts[2]),
+				);
+				try {
+					return new Intl.DateTimeFormat(
+						document.documentElement.lang || "zh-CN",
+						{ year: "numeric", month: "long", day: "numeric" },
+					).format(date);
+				} catch (error) {
+					return key;
+				}
+			}
+
+			// 从图标模板里取 svg（同一图标只渲染一次），避免每张卡片都内联一份 path
+			function iconHtml(name) {
+				var holder = document.getElementById("calendar-icon-templates");
+				if (!holder) return "";
+				var template = holder.querySelector(
+					'[data-icon="' + String(name).replace(/"/g, "") + '"]',
+				);
+				if (!template) return "";
+				var svg = template.content
+					? template.content.firstElementChild
+					: template.firstElementChild;
+				return svg ? svg.outerHTML : "";
+			}
+
+			function cardHtml(event) {
+				var clickable = event.url ? " event-card--clickable" : "";
+				var html =
+					"<" +
+					(event.url ? "a" : "span") +
+					(event.url ? ' href="' + escapeHtml(event.url) + '"' : "") +
+					' class="event-card event-card--' +
+					event.type +
+					clickable +
+					'" data-event-id="' +
+					escapeHtml(event.id) +
+					'">';
+				html += '<span class="card-bar" aria-hidden="true"></span>';
+				html += '<span class="card-icon">' + iconHtml(event.icon) + "</span>";
+				html += '<span class="card-body">';
+				html += '<span class="card-title">' + escapeHtml(event.name) + "</span>";
+				if (event.note) {
+					html += '<span class="card-note">' + escapeHtml(event.note) + "</span>";
+				}
+				if (event.lunar) {
+					html += '<span class="card-note">' + escapeHtml(event.lunar) + "</span>";
+				}
+				html += "</span>";
+				if (event.url) {
+					html += '<span class="card-arrow">' + iconHtml("__arrow__") + "</span>";
+				}
+				html += "</" + (event.url ? "a" : "span") + ">";
+				return html;
+			}
+
+			function renderDetail(key) {
+				var panel = document.getElementById("calendar-detail");
+				if (!panel) return;
+				panel.setAttribute("data-date", key);
+
+				var dateEl = document.getElementById("calendar-detail-date");
+				if (dateEl) dateEl.textContent = formatLong(key);
+
+				var lunarEl = document.getElementById("calendar-detail-lunar");
+				if (lunarEl) lunarEl.textContent = lunarOf(key);
+
+				var officialEl = document.getElementById("calendar-detail-official");
+				if (officialEl) {
+					var day = officialOf(key);
+					if (day) {
+						var restTag = day.rest
+							? officialEl.getAttribute("data-rest-label") || "休"
+							: officialEl.getAttribute("data-work-label") || "班";
+						officialEl.textContent = day.name + " · " + restTag;
+						officialEl.classList.remove("is-hidden");
+						officialEl.classList.toggle("is-rest", day.rest);
+						officialEl.classList.toggle("is-work", !day.rest);
+					} else {
+						officialEl.textContent = "";
+						officialEl.classList.add("is-hidden");
+						officialEl.classList.remove("is-rest", "is-work");
+					}
+				}
+
+				var box = document.getElementById("calendar-detail-events");
+				if (!box) return;
+
+				var events = eventsOf(key);
+				if (events.length === 0) {
+					box.innerHTML =
+						'<p class="empty">' +
+						escapeHtml(payload.emptyText || "") +
+						"</p>";
+					return;
+				}
+
+				var html = "";
+				for (var i = 0; i < events.length; i++) {
+					html += cardHtml(events[i]);
+				}
+				box.innerHTML = html;
+			}
+
+			function renderMonthTitle() {
+				var el = document.getElementById("calendar-month-title");
+				if (!el) return;
+				var label =
+					(payload.monthNames && payload.monthNames[state.month - 1]) ||
+					String(state.month);
+				el.textContent = state.year + " " + label;
+			}
+
+			function update() {
+				renderGrid();
+				renderMonthTitle();
+				renderDetail(state.selected);
+			}
+
+			function shiftMonth(delta) {
+				var month = state.month + delta;
+				var year = state.year;
+				if (month < 1) {
+					month = 12;
+					year -= 1;
+				} else if (month > 12) {
+					month = 1;
+					year += 1;
+				}
+				// 只允许在预计算的三年度范围内翻月，超出范围没有数据
+				if (year < payload.minYear || year > payload.maxYear) return;
+				state.year = year;
+				state.month = month;
+				// 翻月后若选中日不在新月份，选中该月 1 日
+				var parts = state.selected.split("-");
+				if (Number(parts[0]) !== year || Number(parts[1]) !== month) {
+					state.selected = year + "-" + pad(month) + "-01";
+				}
+				update();
+			}
+
+			function onGridClick(event) {
+				var cell = event.target.closest(".day-cell");
+				if (!cell) return;
+				var key = cell.getAttribute("data-date");
+				if (!key) return;
+				state.selected = key;
+				var selected = document.querySelectorAll(".day-cell.is-selected");
+				for (var i = 0; i < selected.length; i++) {
+					selected[i].classList.remove("is-selected");
+				}
+				cell.classList.add("is-selected");
+				renderDetail(key);
+			}
+
+			function backToToday() {
+				var parts = payload.todayKey.split("-");
+				state.year = Number(parts[0]);
+				state.month = Number(parts[1]);
+				state.selected = payload.todayKey;
+				update();
+			}
+
+			// 选中某一天（左栏卡片点击 / 事件联动都走这里）
+			function selectDate(key) {
+				if (!key) return;
+				var parts = key.split("-");
+				var year = Number(parts[0]);
+				var month = Number(parts[1]);
+				if (year < payload.minYear || year > payload.maxYear) return;
+				state.year = year;
+				state.month = month;
+				state.selected = key;
+				update();
+			}
+
+			// ── 左栏倒计时（每秒刷新） ──────────────────────────────
+			function updateCountdowns() {
+				var cards = document.querySelectorAll(".nearest-card[data-event-date]");
+				if (!cards.length) return;
+				var nowMs = Date.now();
+				for (var i = 0; i < cards.length; i++) {
+					var card = cards[i];
+					var parts = card.getAttribute("data-event-date").split("-");
+					var ongoing = card.getAttribute("data-event-ongoing") === "1";
+					// 当天的事件算到当天 23:59:59，其余算到当天 00:00
+					var target = new Date(
+						Number(parts[0]),
+						Number(parts[1]) - 1,
+						Number(parts[2]),
+						ongoing ? 23 : 0,
+						ongoing ? 59 : 0,
+						ongoing ? 59 : 0,
+					).getTime();
+					var diff = target - nowMs;
+					if (diff < 0) diff = 0;
+					var values = {
+						days: Math.floor(diff / 86400000),
+						hours: Math.floor((diff % 86400000) / 3600000),
+						minutes: Math.floor((diff % 3600000) / 60000),
+						seconds: Math.floor((diff % 60000) / 1000),
+					};
+					for (var field in values) {
+						var node = card.querySelector('[data-countdown="' + field + '"]');
+						if (node) node.textContent = String(values[field]);
+					}
+				}
+			}
+
+			function bindOverview() {
+				var overview = document.getElementById("calendar-overview");
+				if (overview && !overview.dataset.bound) {
+					overview.dataset.bound = "1";
+					overview.addEventListener("click", function (event) {
+						var card = event.target.closest(".nearest-card");
+						if (!card) return;
+						var url = card.getAttribute("data-event-url");
+						if (url) {
+							window.location.href = url;
+							return;
+						}
+						selectDate(card.getAttribute("data-event-date"));
+					});
+				}
+				updateCountdowns();
+			}
+
+			// 其他组件（如右栏事件卡片）也可以请求选中某天
+			document.addEventListener("calendar:select-date", function (event) {
+				selectDate(event.detail);
+			});
+
+			// ── Hero ────────────────────────────────────────────────
+			function playHero(replay) {
+				var stage = document.getElementById("calendar-hero-stage");
+				if (!stage) return;
+				// 首次播放后不再因为软导航刷新而重播，避免动画闪一下
+				if (!replay && stage.classList.contains("is-ready")) return;
+				stage.classList.remove("is-ready");
+				stage.classList.toggle("is-replay", !!replay);
+				// 强制回流，保证动画能重播
+				void stage.offsetWidth;
+				stage.classList.add("is-ready");
+			}
+
+			function updateScrollHint() {
+				var scrollBtn = document.getElementById("calendar-scroll-down");
+				if (!scrollBtn) return;
+				if (window.scrollY > 120) scrollBtn.classList.add("is-hidden");
+				else scrollBtn.classList.remove("is-hidden");
+			}
+
+			function bindHero() {
+				var core = document.getElementById("calendar-hero-core");
+				var scrollBtn = document.getElementById("calendar-scroll-down");
+				var mainContent = document.getElementById("calendar-main-content");
+				if (core && !core.dataset.bound) {
+					core.dataset.bound = "1";
+					core.addEventListener("click", function () {
+						playHero(true);
+					});
+				}
+				if (scrollBtn && !scrollBtn.dataset.bound) {
+					scrollBtn.dataset.bound = "1";
+					scrollBtn.addEventListener("click", function () {
+						if (mainContent) {
+							mainContent.scrollIntoView({
+								behavior: "smooth",
+								block: "start",
+							});
+						}
+					});
+				}
+				updateScrollHint();
+			}
+
+			function bind() {
+				var grid = document.getElementById("calendar-cells");
+				var prev = document.getElementById("calendar-prev-month");
+				var next = document.getElementById("calendar-next-month");
+				var todayBtn = document.getElementById("calendar-back-today");
+
+				if (grid && !grid.dataset.bound) {
+					grid.dataset.bound = "1";
+					grid.addEventListener("click", onGridClick);
+				}
+				if (prev && !prev.dataset.bound) {
+					prev.dataset.bound = "1";
+					prev.addEventListener("click", function () {
+						shiftMonth(-1);
+					});
+				}
+				if (next && !next.dataset.bound) {
+					next.dataset.bound = "1";
+					next.addEventListener("click", function () {
+						shiftMonth(1);
+					});
+				}
+				if (todayBtn && !todayBtn.dataset.bound) {
+					todayBtn.dataset.bound = "1";
+					todayBtn.addEventListener("click", backToToday);
+				}
+			}
+
+			function init() {
+				bind();
+				bindHero();
+				bindOverview();
+				playHero(false);
+				update();
+			}
+
+			function refresh() {
+				var next = readPayload();
+				if (!next) return;
+				// 保留用户当前浏览的月份，只刷新数据源
+				payload = next;
+				bind();
+				bindHero();
+				bindOverview();
+				playHero(false);
+				update();
+			}
+
+			window.__siteCalendarRefresh = refresh;
+
+			if (document.readyState === "loading") {
+				document.addEventListener("DOMContentLoaded", init, { once: true });
+			} else {
+				init();
+			}
+
+			window.addEventListener("scroll", updateScrollHint, { passive: true });
+
+			// 倒计时每秒走一格；软导航后 DOM 被替换时自动失效重绑
+			if (window.__siteCalendarTimer) clearInterval(window.__siteCalendarTimer);
+			window.__siteCalendarTimer = setInterval(function () {
+				if (document.getElementById("calendar-overview")) updateCountdowns();
+			}, 1000);
+
+			document.addEventListener("astro:page-load", function () {
+				if (document.getElementById("calendar-main-content")) refresh();
+			});
+			document.addEventListener("swup:contentReplaced", function () {
+				if (document.getElementById("calendar-main-content")) refresh();
+			});
+		})();
+	</script>
+</Layout>
