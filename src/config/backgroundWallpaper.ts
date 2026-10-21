@@ -39,7 +39,7 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 		// 桌面背景图片（支持单张或多张随机）
 		// desktop: "assets/images/DesktopWallpaper/d1.avif",
 		desktop: [
-			// "https://t.alcy.cc/pc",
+			"https://t.alcy.cc/pc",
 			"https://acg.yaohud.cn/dm/adaptive.php",
 		],
 		// 移动背景图片（支持单张或多张随机）

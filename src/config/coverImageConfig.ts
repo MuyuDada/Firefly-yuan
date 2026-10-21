@@ -32,6 +32,7 @@ export const coverImageConfig: CoverImageConfig = {
 		enable: true,
 		// 封面图API列表
 		apis: [
+			"https://t.alcy.cc/pc",
 			"https://acg.yaohud.cn/dm/adaptive.php",
 			"https://www.dmoe.cc/random.php",
 			"https://uapis.cn/api/v1/random/image?category=acg&type=pc",
