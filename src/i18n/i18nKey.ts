@@ -15,6 +15,7 @@ enum I18nKey {
 	navArticles = "navArticles",
 	navSocial = "navSocial",
 	navMine = "navMine",
+	navEntertainment = "navEntertainment",
 	navAbout = "navAbout",
 	navLinks = "navLinks",
 
@@ -212,6 +213,12 @@ enum I18nKey {
 	projectStatusDeveloping = "projectStatusDeveloping",
 	projectStatusPublished = "projectStatusPublished",
 	projectStatusArchived = "projectStatusArchived",
+
+	// 设备展示页
+	devices = "devices",
+	devicesSubtitle = "devicesSubtitle",
+	devicesViewDetails = "devicesViewDetails",
+	devicesNoResults = "devicesNoResults",
 
 	// 番组计划筛选和状态文本
 	bangumiTitle = "bangumiTitle",

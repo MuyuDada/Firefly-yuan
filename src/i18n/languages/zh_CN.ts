@@ -18,6 +18,7 @@ export const zh_CN: Translation = {
 	[Key.navArticles]: "文章",
 	[Key.navSocial]: "社交",
 	[Key.navMine]: "我的",
+	[Key.navEntertainment]: "娱乐",
 	[Key.navAbout]: "关于",
 	[Key.navLinks]: "链接",
 	[Key.all]: "全部",
@@ -170,6 +171,13 @@ export const zh_CN: Translation = {
 	[Key.projectStatusDeveloping]: "开发中",
 	[Key.projectStatusPublished]: "已发布",
 	[Key.projectStatusArchived]: "已归档",
+
+	// 设备展示页
+	[Key.devices]: "我的设备",
+	[Key.devicesSubtitle]: "这里展示了我日常使用的各类设备",
+	[Key.devicesViewDetails]: "查看详情",
+	[Key.devicesNoResults]: "该分类下暂无设备",
+
 	[Key.guestbook]: "留言",
 	[Key.guestbookDescription]: "欢迎在这里留下你的足迹，分享你的想法和建议",
 	[Key.untitled]: "无标题",

@@ -281,6 +281,9 @@ export default defineConfig({
 				if (pathname === "/calendar/" && !siteConfig.pages.calendar) {
 					return false;
 				}
+				if (pathname === "/devices/" && !siteConfig.pages.devices) {
+					return false;
+				}
 				return true;
 			},
 		}),

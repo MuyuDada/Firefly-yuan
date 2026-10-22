@@ -18,6 +18,7 @@ export const en: Translation = {
 	[Key.navArticles]: "Articles",
 	[Key.navSocial]: "Social",
 	[Key.navMine]: "Mine",
+	[Key.navEntertainment]: "Entertainment",
 	[Key.navAbout]: "About",
 	[Key.navLinks]: "Links",
 	[Key.all]: "All",
@@ -179,6 +180,13 @@ export const en: Translation = {
 	[Key.projectStatusDeveloping]: "In Development",
 	[Key.projectStatusPublished]: "Published",
 	[Key.projectStatusArchived]: "Archived",
+
+	// Devices page
+	[Key.devices]: "My Devices",
+	[Key.devicesSubtitle]: "The devices I use every day",
+	[Key.devicesViewDetails]: "View details",
+	[Key.devicesNoResults]: "No devices in this category",
+
 	[Key.guestbook]: "Guestbook",
 	[Key.guestbookDescription]:
 		"Welcome to leave your mark here, share your thoughts and suggestions",

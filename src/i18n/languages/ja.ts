@@ -18,6 +18,7 @@ export const ja: Translation = {
 	[Key.navArticles]: "記事",
 	[Key.navSocial]: "ソーシャル",
 	[Key.navMine]: "マイ",
+	[Key.navEntertainment]: "エンタメ",
 	[Key.navAbout]: "について",
 	[Key.navLinks]: "リンク",
 	[Key.all]: "すべて",
@@ -175,6 +176,13 @@ export const ja: Translation = {
 	[Key.projectStatusDeveloping]: "開発中",
 	[Key.projectStatusPublished]: "公開済み",
 	[Key.projectStatusArchived]: "アーカイブ",
+
+	// デバイス紹介ページ
+	[Key.devices]: "マイデバイス",
+	[Key.devicesSubtitle]: "普段使っているデバイスを紹介します",
+	[Key.devicesViewDetails]: "詳細を見る",
+	[Key.devicesNoResults]: "このカテゴリにはデバイスがありません",
+
 	[Key.guestbook]: "ゲストブック",
 	[Key.guestbookDescription]:
 		"ここに足跡を残して、あなたの考えや提案を共有してください",

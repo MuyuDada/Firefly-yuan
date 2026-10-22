@@ -18,6 +18,7 @@ export const ko: Translation = {
 	[Key.navArticles]: "글",
 	[Key.navSocial]: "소셜",
 	[Key.navMine]: "마이",
+	[Key.navEntertainment]: "엔터테인먼트",
 	[Key.navAbout]: "소개",
 	[Key.navLinks]: "링크",
 	[Key.all]: "전체",
@@ -175,6 +176,13 @@ export const ko: Translation = {
 	[Key.projectStatusDeveloping]: "개발 중",
 	[Key.projectStatusPublished]: "출시됨",
 	[Key.projectStatusArchived]: "보관됨",
+
+	// 기기 소개 페이지
+	[Key.devices]: "내 기기",
+	[Key.devicesSubtitle]: "제가 일상에서 사용하는 기기들입니다",
+	[Key.devicesViewDetails]: "자세히 보기",
+	[Key.devicesNoResults]: "이 분류에는 기기가 없습니다",
+
 	[Key.guestbook]: "방명록",
 	[Key.guestbookDescription]:
 		"이곳에 흔적을 남기고 생각과 제안을 공유해 주세요",

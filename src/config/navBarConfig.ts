@@ -30,6 +30,9 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 
 			// 系列
 			LinkPresets.Series,
+
+			// 站点日历（按日期浏览文章与事件）
+			LinkPresets.Calendar,
 		],
 	});
 
@@ -56,20 +59,28 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 			// 动态
 			LinkPresets.Dynamic,
 
-			// 音乐可视化
-			LinkPresets.Music,
-
-			// 站点日历
-			LinkPresets.Calendar,
-
 			// 项目
 			LinkPresets.Projects,
+
+			// 设备
+			LinkPresets.Devices,
 
 			// 相册
 			LinkPresets.Gallery,
 
 			// 书签导航
 			LinkPresets.Booknav,
+		],
+	});
+
+	// 娱乐及其子菜单（音乐可视化与 ACG 收藏/追番类页面）
+	links.push({
+		name: "娱乐",
+		url: "#",
+		icon: "material-symbols:live-tv",
+		children: [
+			// 音乐可视化
+			LinkPresets.Music,
 
 			// 哔哩哔哩追番
 			LinkPresets.Bilibili,
@@ -214,6 +225,12 @@ export const LinkPresets: Record<string, NavBarLink> = {
 		url: "/calendar/",
 		icon: "material-symbols:calendar-month",
 		pageKey: "calendar",
+	},
+	Devices: {
+		name: "设备",
+		url: "/devices/",
+		icon: "material-symbols:devices",
+		pageKey: "devices",
 	},
 	Projects: {
 		name: "项目",

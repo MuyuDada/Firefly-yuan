@@ -13,6 +13,7 @@ const NAVBAR_DEFAULT_NAMES: Record<string, I18nKey> = {
 	文章: I18nKey.navArticles,
 	社交: I18nKey.navSocial,
 	我的: I18nKey.navMine,
+	娱乐: I18nKey.navEntertainment,
 	关于: I18nKey.navAbout,
 	链接: I18nKey.navLinks,
 	// 页面
@@ -26,6 +27,7 @@ const NAVBAR_DEFAULT_NAMES: Record<string, I18nKey> = {
 	动态: I18nKey.dynamic,
 	音乐: I18nKey.music,
 	站点日历: I18nKey.calendar,
+	设备: I18nKey.devices,
 	项目: I18nKey.projects,
 	相册: I18nKey.gallery,
 	书签导航: I18nKey.booknav,

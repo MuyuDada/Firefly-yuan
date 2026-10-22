@@ -34,6 +34,11 @@ export type {
 	DeviceStatusKeywordIcon,
 	DeviceStatusState,
 } from "./deviceStatusConfig";
+export type {
+	Device,
+	DeviceCategory,
+	DevicesConfig,
+} from "./devicesConfig";
 export type { DisplaySettingsConfig } from "./displaySettingsConfig";
 export type { DynamicConfig } from "./dynamicConfig";
 export type {

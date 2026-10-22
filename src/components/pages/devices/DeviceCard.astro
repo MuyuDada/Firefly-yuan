@@ -1,0 +1,112 @@
+---
+import { Icon } from "astro-icon/components";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+
+interface Props {
+	name: string;
+	image?: string;
+	specs: string;
+	description: string;
+	link: string;
+	price?: string;
+	category: string;
+	index?: number;
+}
+
+const {
+	name,
+	image,
+	specs,
+	description,
+	link,
+	price,
+	category,
+	index = 0,
+} = Astro.props;
+
+// 依次错开的入场延迟，避免整页卡片同时淡入
+const animationDelay = `${Math.min(index, 12) * 40}ms`;
+---
+
+<a
+	href={link}
+	target="_blank"
+	rel="noopener noreferrer"
+	class="device-card group relative block overflow-hidden rounded-xl border border-(--line-divider) bg-(--card-bg) transition-all duration-300 hover:-translate-y-1 hover:border-(--primary)/50 hover:shadow-xl onload-animation"
+	data-category={category}
+	style={`animation-delay: ${animationDelay}`}
+	aria-label={name}
+>
+	<!-- 设备图：等高容器 + 渐变底色，图片等比缩放不裁切 -->
+	<div class="relative p-5 pb-0">
+		<div
+			class="flex h-44 items-center justify-center overflow-hidden rounded-lg bg-linear-to-br from-(--card-bg) to-(--btn-regular-bg)"
+		>
+			{image ? (
+				<img
+					src={image}
+					alt={name}
+					class="h-full max-h-full w-auto object-contain drop-shadow-md transition-transform duration-500 group-hover:scale-105"
+					loading="lazy"
+					decoding="async"
+				/>
+			) : (
+				<Icon
+					name="material-symbols:devices"
+					class="text-6xl text-(--content-meta) opacity-30"
+				/>
+			)}
+		</div>
+	</div>
+
+	<div class="p-5 pt-4">
+		<!-- 名称 + 右上角外链箭头 -->
+		<div class="mb-3 flex items-start justify-between gap-2">
+			<h3
+				class="text-lg font-bold text-black/90 transition-colors group-hover:text-(--primary) dark:text-white/90"
+			>
+				{name}
+			</h3>
+			<Icon
+				name="material-symbols:open-in-new"
+				class="shrink-0 text-lg text-(--primary) opacity-0 transition-opacity group-hover:opacity-100"
+			/>
+		</div>
+
+		<!-- 规格胶囊 -->
+		<div
+			class="mb-3 inline-flex items-center gap-1.5 rounded-full bg-(--btn-regular-bg) px-3 py-1 text-sm text-black/70 dark:text-white/70"
+		>
+			<Icon name="material-symbols:settings" class="text-base" />
+			<span class="font-medium">{specs}</span>
+		</div>
+
+		<!-- 价格胶囊（可选） -->
+		{price && (
+			<div
+				class="mb-3 inline-flex items-center gap-1.5 rounded-full bg-(--primary)/10 px-3 py-1 text-sm font-bold text-(--primary)"
+			>
+				<Icon name="material-symbols:payments" class="text-base" />
+				<span>{price}</span>
+			</div>
+		)}
+
+		<p
+			class="mb-3 line-clamp-2 text-sm leading-relaxed text-black/60 dark:text-white/60"
+			title={description}
+		>
+			{description}
+		</p>
+
+		<!-- 底部虚线分隔：悬停才显形的「查看详情」 -->
+		<div
+			class="flex items-center justify-between border-t border-dashed border-black/10 pt-3 opacity-0 transition-opacity group-hover:opacity-100 dark:border-white/10"
+		>
+			<span class="text-sm font-medium text-(--primary)">
+				{i18n(I18nKey.devicesViewDetails)}
+			</span>
+			<Icon name="material-symbols:arrow-forward" class="text-lg text-(--primary)" />
+		</div>
+	</div>
+</a>

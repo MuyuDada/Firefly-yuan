@@ -37,6 +37,8 @@ const pages = resolvePageToggles({
 	music: true,
 	// 站点日历页面开关
 	calendar: true,
+	// 设备展示页开关
+	devices: true,
 
 	// ── 关于 (About) ──────────────────────────────────
 

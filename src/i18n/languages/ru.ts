@@ -18,6 +18,7 @@ export const ru: Translation = {
 	[Key.navArticles]: "Статьи",
 	[Key.navSocial]: "Соцсети",
 	[Key.navMine]: "Моё",
+	[Key.navEntertainment]: "Развлечения",
 	[Key.navAbout]: "Обо мне",
 	[Key.navLinks]: "Ссылки",
 	[Key.all]: "Все",
@@ -177,6 +178,13 @@ export const ru: Translation = {
 	[Key.projectStatusDeveloping]: "В разработке",
 	[Key.projectStatusPublished]: "Опубликовано",
 	[Key.projectStatusArchived]: "В архиве",
+
+	// Страница устройств
+	[Key.devices]: "Мои устройства",
+	[Key.devicesSubtitle]: "Устройства, которыми я пользуюсь каждый день",
+	[Key.devicesViewDetails]: "Подробнее",
+	[Key.devicesNoResults]: "В этой категории нет устройств",
+
 	[Key.guestbook]: "Гостевая книга",
 	[Key.guestbookDescription]:
 		"Добро пожаловать, оставьте свой след здесь, поделитесь своими мыслями и предложениями",

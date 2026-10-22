@@ -1,0 +1,151 @@
+---
+import { Icon } from "astro-icon/components";
+import DeviceCard from "@/components/pages/devices/DeviceCard.astro";
+import { siteConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import "@/styles/pages/common.css";
+import "@/styles/pages/card-grid.css";
+import {
+	listDeviceCategories,
+	listDevicesWithCategory,
+} from "@/utils/devices-utils";
+
+// 检查页面是否启用
+if (!siteConfig.pages.devices) {
+	return Astro.redirect("/404/");
+}
+
+const title = i18n(I18nKey.devices);
+const description = i18n(I18nKey.devicesSubtitle);
+
+// 展开数据：每台设备带上自己的分类，供卡片打 data-category
+const devices = listDevicesWithCategory();
+const categories = listDeviceCategories();
+---
+
+<MainGridLayout title={title} description={description}>
+	<section class="page-shell">
+		<!-- 标题面板 -->
+		<header class="card-base page-header">
+			<div class="page-heading">
+				<div class="page-icon" aria-hidden="true">
+					<Icon name="material-symbols:devices" />
+				</div>
+				<div>
+					<h2>{title}</h2>
+					{description && <p>{description}</p>}
+				</div>
+			</div>
+			<div class="page-count" aria-label={title}>
+				<Icon name="material-symbols:devices" />
+				<strong>{devices.length}</strong>
+				<span>{title}</span>
+			</div>
+
+			<!-- 分类筛选（整行；与标题分行） -->
+			{devices.length > 0 && (
+				<device-filter style="grid-column: 1 / -1">
+					<div class="flex flex-wrap items-center gap-2">
+						<button
+							data-category="all"
+							class="category-pill inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200"
+							data-active
+						>
+							<Icon name="material-symbols:devices" class="text-base" />
+							{i18n(I18nKey.all)}
+							<span class="pill-count">{devices.length}</span>
+						</button>
+						{categories.map((c) => (
+							<button
+								data-category={c.name}
+								class="category-pill inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200"
+							>
+								<Icon name={c.icon} class="text-base" />
+								{c.name}
+								<span class="pill-count">{c.count}</span>
+							</button>
+						))}
+					</div>
+				</device-filter>
+			)}
+		</header>
+
+		<!-- 设备卡片网格 -->
+		{devices.length > 0 ? (
+			<div class="card-grid" style="--card-grid-min-width: 300px">
+				{devices.map((device, index) => (
+					<DeviceCard
+						name={device.name}
+						image={device.image}
+						specs={device.specs}
+						description={device.description}
+						link={device.link}
+						price={device.price}
+						category={device.category}
+						index={index}
+					/>
+				))}
+			</div>
+		) : (
+			<div class="card-base flex flex-col items-center justify-center py-16 text-neutral-400 dark:text-neutral-500">
+				<Icon name="material-symbols:devices" class="text-6xl mb-4 opacity-50" />
+				<p class="text-lg">{i18n(I18nKey.devicesNoResults)}</p>
+			</div>
+		)}
+
+		<!-- 筛选无结果空态 -->
+		<div
+			class="devices-empty hidden flex-col items-center justify-center py-12 text-neutral-400 dark:text-neutral-500"
+		>
+			<Icon name="material-symbols:devices-off" class="text-5xl mb-3 opacity-60" />
+			<div class="text-sm">{i18n(I18nKey.devicesNoResults)}</div>
+		</div>
+	</section>
+
+	<script slot="head" is:inline>
+		if (!customElements.get("device-filter")) {
+			class DeviceFilter extends HTMLElement {
+				selectedCategory = "all";
+				connectedCallback() {
+					this.addEventListener("click", this.handleClick);
+				}
+				disconnectedCallback() {
+					this.removeEventListener("click", this.handleClick);
+				}
+				handleClick(e) {
+					const button = e.target.closest("button");
+					if (!button) return;
+					const category = button.dataset.category;
+					if (!category) return;
+					this.selectedCategory = category;
+					this.querySelectorAll("button").forEach((b) =>
+						b.removeAttribute("data-active"),
+					);
+					button.setAttribute("data-active", "");
+					this.applyFilter();
+				}
+				applyFilter() {
+					const container = this.closest(".page-shell");
+					if (!container) return;
+					const cards = container.querySelectorAll(".device-card");
+					let hasVisible = false;
+					cards.forEach((card) => {
+						const match =
+							this.selectedCategory === "all" ||
+							card.dataset.category === this.selectedCategory;
+						card.style.display = match ? "" : "none";
+						if (match) hasVisible = true;
+					});
+					const empty = container.querySelector(".devices-empty");
+					if (empty) {
+						empty.classList.toggle("hidden", hasVisible);
+						empty.classList.toggle("flex", !hasVisible);
+					}
+				}
+			}
+			customElements.define("device-filter", DeviceFilter);
+		}
+	</script>
+</MainGridLayout>
