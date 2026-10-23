@@ -9,6 +9,10 @@ declare global {
 		// UAPI 天气接口的 key：访客额度被限流（429）时作为兜底使用。
 		// 只从部署平台环境变量注入，禁止写进 src/config（会提交到仓库）。
 		readonly PUBLIC_UAPI_KEY?: string;
+		// 高德开放平台「Web端(JS API)」Key 与安全密钥，用于 /places/ 足迹地图。
+		// 只从部署平台环境变量注入，禁止写进 src/config（会提交到仓库）。
+		readonly PUBLIC_AMAP_KEY?: string;
+		readonly PUBLIC_AMAP_SECURITY_CODE?: string;
 	}
 
 	interface ITOCManager {

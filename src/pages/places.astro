@@ -1,0 +1,1723 @@
+---
+import { Icon } from "astro-icon/components";
+import Comment from "@/components/comment/index.astro";
+import PlaceCard from "@/components/pages/places/PlaceCard.astro";
+import { commentConfig, siteConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import "@/styles/pages/common.css";
+import "@/styles/pages/places.css";
+import {
+	getPlaceCategoryOptions,
+	getPlaces,
+	getPlacesStats,
+	getPlaceYearOptions,
+	toClientPlaces,
+} from "@/utils/places-utils";
+
+// 检查页面是否启用
+if (!siteConfig.pages.places) {
+	return Astro.redirect("/404/");
+}
+
+const title = i18n(I18nKey.placesTitle);
+const subtitle = i18n(I18nKey.placesSubtitle);
+
+const places = await getPlaces();
+const stats = getPlacesStats(places);
+const years = getPlaceYearOptions(places);
+const categories = getPlaceCategoryOptions(places);
+const clientPlaces = toClientPlaces(places);
+
+const mapConfig = siteConfig.placesMap ?? {};
+// 密钥优先读部署环境变量（不进仓库），其次才读 siteConfig 里的占位配置
+const amapKey = (
+	import.meta.env.PUBLIC_AMAP_KEY ||
+	mapConfig.amapKey ||
+	""
+).trim();
+const amapSecurityJsCode = (
+	import.meta.env.PUBLIC_AMAP_SECURITY_CODE ||
+	mapConfig.amapSecurityJsCode ||
+	""
+).trim();
+const ownerLocation = mapConfig.ownerLocation ?? null;
+
+// 一次性把地图需要的数据塞进 JSON 脚本，避免 define:vars 在 Swup 重入时丢失
+const payload = {
+	places: clientPlaces,
+	amapKey,
+	amapSecurityJsCode,
+	ownerLocation,
+	i18n: {
+		viewPost: i18n(I18nKey.placesViewPost),
+		needKey: i18n(I18nKey.placesNeedAmapKey),
+		loadFailed: i18n(I18nKey.placesMapLoadFailed),
+	},
+};
+// `<` 转义，避免内容里出现 </script> 截断脚本
+const payloadJson = JSON.stringify(payload).replace(/</g, "\\u003c");
+
+const statItems = [
+	{
+		value: stats.locations,
+		label: i18n(I18nKey.placesStatLocations),
+		icon: "material-symbols:location-city",
+	},
+	{
+		value: stats.visits,
+		label: i18n(I18nKey.placesStatVisits),
+		icon: "material-symbols:pin-drop",
+	},
+	{
+		value: stats.thisYear,
+		label: i18n(I18nKey.placesStatThisYear),
+		icon: "material-symbols:calendar-today",
+	},
+];
+
+// 评论系统是否可用（与留言板 / 打赏页同一套判断）
+const isCommentEnabled = !!commentConfig?.type && commentConfig.type !== "none";
+---
+
+<MainGridLayout title={title} description={subtitle}>
+	<section class="page-shell places-page">
+		<article class="card-base places-main">
+			<!-- 标题 -->
+			<header class="places-hero">
+				<span class="places-eyebrow">Places</span>
+				<h2 class="places-hero-title">{title}</h2>
+				{subtitle && <p class="places-hero-desc">{subtitle}</p>}
+			</header>
+
+			{
+				places.length > 0 && (
+					<div class="places-stat-pills">
+						{statItems.map((item) => (
+							<span class="places-stat-pill">
+								<Icon name={item.icon} />
+								<b>{item.value}</b>
+								<span class="places-stat-pill-label">{item.label}</span>
+							</span>
+						))}
+					</div>
+				)
+			}
+
+			{
+				places.length > 0 ? (
+					<>
+					<!-- 地图 -->
+					<section class="places-map-section">
+						<h3 class="places-section-title">
+							{i18n(I18nKey.placesMap)}
+						</h3>
+
+						<!-- 筛选：年份 / 分类 -->
+						<div class="places-filters">
+							<div class="places-filter-group">
+								<button
+									type="button"
+									data-filter="year"
+									data-value="all"
+									class="places-pill is-active"
+								>
+									{i18n(I18nKey.placesFilterAll)}
+								</button>
+								{years.map((year) => (
+									<button
+										type="button"
+										data-filter="year"
+										data-value={String(year)}
+										class="places-pill"
+									>
+										{year}
+									</button>
+								))}
+							</div>
+							<div class="places-filter-group">
+								<button
+									type="button"
+									data-filter="category"
+									data-value="all"
+									class="places-pill is-active"
+								>
+									{i18n(I18nKey.placesFilterAll)}
+								</button>
+								{categories.map((category) => (
+									<button
+										type="button"
+										data-filter="category"
+										data-value={category}
+										class="places-pill"
+									>
+										{category}
+									</button>
+								))}
+							</div>
+						</div>
+
+						<div class="places-map-wrap" data-locked="true">
+							<div id="places-map"></div>
+
+							<!-- 自绘弹窗层：不依赖 AMap.InfoWindow，位置由 lngLatToContainer 计算 -->
+							<div class="places-popup-layer" hidden></div>
+
+							<!-- 点击解锁遮罩：防止页面滚动被地图吃掉 -->
+							<button
+								type="button"
+								class="places-map-lock"
+								data-map-action="unlock"
+								aria-label={i18n(I18nKey.placesMapUnlock)}
+							>
+								<span class="places-map-lock-inner">
+									<Icon name="material-symbols:lock" />
+									<span>{i18n(I18nKey.placesMapLocked)}</span>
+								</span>
+							</button>
+
+							<!-- 锁定 / 解锁切换 -->
+							<button
+								type="button"
+								class="places-map-lock-btn"
+								data-map-action="toggle-lock"
+								title={i18n(I18nKey.placesMapLockTitle)}
+								aria-label={i18n(I18nKey.placesMapLockTitle)}
+							>
+								<Icon
+									name="material-symbols:lock"
+									class="places-lock-on"
+								/>
+								<Icon
+									name="material-symbols:lock-open"
+									class="places-lock-off"
+								/>
+							</button>
+
+							<!-- 地图设置：区域高亮模式 + 内建控件 -->
+							<div class="places-map-settings">
+								<button
+									type="button"
+									class="places-map-btn"
+									data-map-action="toggle-settings"
+									aria-expanded="false"
+									title={i18n(I18nKey.placesMapSettings)}
+									aria-label={i18n(I18nKey.placesMapSettings)}
+								>
+									<Icon name="material-symbols:tune" />
+								</button>
+
+								<div class="places-settings-panel" hidden>
+									<div class="places-settings-group">
+										<span class="places-settings-label">
+											{i18n(I18nKey.placesHighlightMode)}
+										</span>
+										<div class="places-segmented">
+											<button
+												type="button"
+												data-highlight-mode="off"
+											>
+												{i18n(I18nKey.placesHighlightOff)}
+											</button>
+											<button
+												type="button"
+												data-highlight-mode="always"
+												class="is-active"
+											>
+												{i18n(I18nKey.placesHighlightAlways)}
+											</button>
+											<button
+												type="button"
+												data-highlight-mode="hover"
+											>
+												{i18n(I18nKey.placesHighlightHover)}
+											</button>
+										</div>
+									</div>
+
+									<button
+										type="button"
+										class="places-settings-row"
+										data-map-action="toggle-controls"
+										aria-pressed="true"
+									>
+										<span>
+											{i18n(I18nKey.placesBuiltinControls)}
+										</span>
+										<span
+											class="places-cluster-switch"
+											aria-hidden="true"
+										>
+											<span />
+										</span>
+									</button>
+								</div>
+							</div>
+
+							<div class="places-map-controls">
+								<button
+									type="button"
+									class="places-map-btn"
+									data-map-action="fullscreen"
+									title={i18n(I18nKey.placesFullscreen)}
+									aria-label={i18n(I18nKey.placesFullscreen)}
+								>
+									<Icon name="material-symbols:fullscreen" />
+								</button>
+								<button
+									type="button"
+									class="places-map-btn"
+									data-map-action="refresh"
+									title={i18n(I18nKey.placesRefresh)}
+									aria-label={i18n(I18nKey.placesRefresh)}
+								>
+									<Icon name="material-symbols:refresh" />
+								</button>
+								<button
+									type="button"
+									class="places-map-btn"
+									data-map-action="zoom-in"
+									title={i18n(I18nKey.placesZoomIn)}
+									aria-label={i18n(I18nKey.placesZoomIn)}
+								>
+									<Icon name="material-symbols:add" />
+								</button>
+								<button
+									type="button"
+									class="places-map-btn"
+									data-map-action="zoom-out"
+									title={i18n(I18nKey.placesZoomOut)}
+									aria-label={i18n(I18nKey.placesZoomOut)}
+								>
+									<Icon name="material-symbols:remove" />
+								</button>
+							</div>
+
+							<!-- 集群显示开关（对齐 footprintmap 的控制条） -->
+							<button
+								type="button"
+								class="places-cluster-toggle"
+								data-map-action="toggle-cluster"
+								aria-pressed="true"
+							>
+								<span>{i18n(I18nKey.placesClusterDisplay)}</span>
+								<span class="places-cluster-switch" aria-hidden="true">
+									<span />
+								</span>
+							</button>
+
+							<!-- 无 Key / 加载中 / 加载失败 -->
+							<div
+								class="places-map-overlay"
+								data-state={amapKey ? "loading" : "hint"}
+							>
+								<Icon
+									name={
+										amapKey
+											? "material-symbols:hourglass-empty"
+											: "material-symbols:key-off"
+									}
+								/>
+								<p>
+									{amapKey
+										? i18n(I18nKey.placesMap)
+										: i18n(I18nKey.placesNeedAmapKey)}
+								</p>
+							</div>
+						</div>
+
+						<p class="places-map-credit">
+							{i18n(I18nKey.placesMapCredit)}
+						</p>
+					</section>
+
+					<!-- 地点列表 -->
+					<div class="places-list-head">
+						<h3>
+							<Icon name="material-symbols:format-list-bulleted" />
+							{i18n(I18nKey.placesList)}
+						</h3>
+						<span class="places-list-count">
+							{places.length} / {places.length}
+						</span>
+					</div>
+
+					<div class="places-masonry">
+						{clientPlaces.map((place, index) => (
+							<PlaceCard place={place} index={index} />
+						))}
+					</div>
+
+					<div class="places-empty" hidden>
+						<Icon name="material-symbols:location-off" />
+						<span>{i18n(I18nKey.placesNoData)}</span>
+					</div>
+				</>
+			) : (
+				<div class="places-empty">
+					<Icon name="material-symbols:location-off" />
+					<span>{i18n(I18nKey.placesNoData)}</span>
+					<span>{i18n(I18nKey.placesNoDataHint)}</span>
+				</div>
+			)
+		}
+		</article>
+
+		<!-- 评论区 -->
+		{
+			isCommentEnabled && (
+				<div class="mt-4">
+					<Comment customPath="/places/" title="places" />
+				</div>
+			)
+		}
+
+		<!-- 客户端数据 -->
+		<script
+			is:inline
+			type="application/json"
+			id="places-client-payload"
+			set:html={payloadJson}
+		/>
+
+		<!-- 地图与筛选逻辑：Swup 软导航会重跑，用全局守卫避免重复绑定 -->
+		<script is:inline>
+			(function () {
+				"use strict";
+
+				var PAYLOAD_ID = "places-client-payload";
+				var MUNICIPALITIES = { 北京: 1, 上海: 1, 天津: 1, 重庆: 1 };
+
+				function readPayload() {
+					var el = document.getElementById(PAYLOAD_ID);
+					if (!el) return null;
+					try {
+						return JSON.parse(el.textContent || "{}");
+					} catch (error) {
+						return null;
+					}
+				}
+
+				// 已初始化过（Swup 切页回到本页）→ 只刷新，不重复定义
+				var existing = window.__placesPage;
+				if (existing && typeof existing.refresh === "function") {
+					existing.refresh();
+					return;
+				}
+
+				var state = {
+					payload: null,
+					places: [],
+					visibleCoords: [],
+					coordMap: {},
+					year: "all",
+					category: "all",
+					AMap: null,
+					map: null,
+					placeMarkers: [],
+					clusterMarkers: [],
+					clusterMembers: {},
+					clusterSeq: 0,
+					clusterEnabled: true,
+					highlightMode: "always",
+					hoveredId: null,
+					controlsVisible: true,
+					scaleControl: null,
+					toolBar: null,
+					popupPlace: null,
+					districtSearch: null,
+					polygons: [],
+					highlightTimers: [],
+					themeObserver: null,
+					resizeTimers: [],
+					fullscreenBound: false,
+					locked: true,
+					lockObserver: null,
+				};
+
+				var api = { refresh: function () {} };
+				window.__placesPage = api;
+
+				/* ── 主题 ─────────────────────────────────── */
+
+				function isDarkTheme() {
+					var root = document.documentElement;
+					if (root.classList.contains("dark")) return true;
+					var theme = root.getAttribute("data-theme") || "";
+					return theme.indexOf("dark") !== -1;
+				}
+
+				function currentMapStyle() {
+					return isDarkTheme()
+						? "amap://styles/dark"
+						: "amap://styles/whitesmoke";
+				}
+
+				/* ── 数据筛选 ─────────────────────────────── */
+
+				function visiblePlaces() {
+					var list = [];
+					for (var i = 0; i < state.places.length; i++) {
+						var place = state.places[i];
+						if (
+							state.year !== "all" &&
+							place.years.indexOf(Number(state.year)) === -1
+						) {
+							continue;
+						}
+						if (state.category !== "all" && place.category !== state.category) {
+							continue;
+						}
+						list.push(place);
+					}
+					return list;
+				}
+
+				function findPlace(id) {
+					for (var i = 0; i < state.places.length; i++) {
+						if (state.places[i].id === id) return state.places[i];
+					}
+					return null;
+				}
+
+				function updateListCount(count) {
+					var el = document.querySelector(".places-list-count");
+					if (!el) return;
+					el.textContent = count + " / " + state.places.length;
+				}
+
+				function updateEmptyState(count) {
+					var el = document.querySelector(".places-empty");
+					if (!el) return;
+					if (count === 0) {
+						el.removeAttribute("hidden");
+					} else {
+						el.setAttribute("hidden", "");
+					}
+				}
+
+				function applyFilter(fit) {
+					var list = visiblePlaces();
+
+					var cards = document.querySelectorAll("[data-place-id]");
+					for (var i = 0; i < cards.length; i++) {
+						var card = cards[i];
+						var match = false;
+						for (var k = 0; k < list.length; k++) {
+							if (list[k].id === card.getAttribute("data-place-id")) {
+								match = true;
+								break;
+							}
+						}
+						card.classList.toggle("is-filtered-out", !match);
+					}
+
+					updateListCount(list.length);
+					updateEmptyState(list.length);
+
+					closePopup();
+					clearHighlight();
+
+					if (state.map) {
+						renderMarkers(list);
+						applyHighlight();
+						if (fit) fitView();
+					}
+				}
+
+				function resetFilterButtons() {
+					var buttons = document.querySelectorAll(".places-pill");
+					for (var i = 0; i < buttons.length; i++) {
+						buttons[i].classList.remove("is-active");
+					}
+					var alls = document.querySelectorAll(
+						'.places-pill[data-value="all"]',
+					);
+					for (var j = 0; j < alls.length; j++) alls[j].classList.add("is-active");
+				}
+
+				/* ── 地图加载 ─────────────────────────────── */
+
+				function loadAmap(key, securityCode) {
+					if (window.__placesAmapPromise) return window.__placesAmapPromise;
+
+					window._AMapSecurityConfig = window._AMapSecurityConfig || {};
+					if (securityCode) {
+						window._AMapSecurityConfig.securityJsCode = securityCode;
+					}
+
+					window.__placesAmapPromise = new Promise(function (resolve, reject) {
+						function ready() {
+							if (!window.AMapLoader) {
+								reject(new Error("AMapLoader 未加载"));
+								return;
+							}
+							window.AMapLoader.load({
+								key: key,
+								version: "2.0",
+								plugins: [
+									"AMap.MarkerCluster",
+									"AMap.DistrictSearch",
+									"AMap.Scale",
+									"AMap.ToolBar",
+								],
+							})
+								.then(resolve)
+								.catch(reject);
+						}
+
+						if (window.AMapLoader) {
+							ready();
+							return;
+						}
+
+						var script = document.querySelector(
+							"script[data-places-amap-loader]",
+						);
+						if (script) {
+							script.addEventListener("load", ready);
+							script.addEventListener("error", function () {
+								reject(new Error("loader.js 加载失败"));
+							});
+							return;
+						}
+
+						script = document.createElement("script");
+						script.src = "https://webapi.amap.com/loader.js";
+						script.async = true;
+						script.setAttribute("data-places-amap-loader", "");
+						script.onload = ready;
+						script.onerror = function () {
+							reject(new Error("loader.js 加载失败"));
+						};
+						document.head.appendChild(script);
+					});
+
+					// 失败不缓存，下次进入还能重试
+					window.__placesAmapPromise.catch(function () {
+						window.__placesAmapPromise = null;
+					});
+
+					return window.__placesAmapPromise;
+				}
+
+				function setOverlay(stateName, text) {
+					var overlay = document.querySelector(".places-map-overlay");
+					if (!overlay) return;
+					overlay.setAttribute("data-state", stateName);
+					if (text) {
+						var p = overlay.querySelector("p");
+						if (p) p.textContent = text;
+					}
+				}
+
+				function hideOverlay() {
+					setOverlay("hidden", "");
+				}
+
+				function waitForContainer(callback, attempt) {
+					var tries = attempt || 0;
+					var el = document.getElementById("places-map");
+					if (el && el.clientWidth > 40 && el.clientHeight > 40) {
+						callback(el);
+						return;
+					}
+					if (tries > 60) {
+						callback(el);
+						return;
+					}
+					requestAnimationFrame(function () {
+						waitForContainer(callback, tries + 1);
+					});
+				}
+
+				function bootMap() {
+					var payload = state.payload;
+					loadAmap(payload.amapKey, payload.amapSecurityJsCode)
+						.then(function (AMap) {
+							state.AMap = AMap;
+							waitForContainer(function (el) {
+								if (!el) return;
+								createMap(AMap, el);
+								applyFilter(true);
+								hideOverlay();
+							});
+						})
+						.catch(function (error) {
+							console.error("[places] 地图加载失败：", error);
+							setOverlay("error", payload.i18n.loadFailed);
+						});
+				}
+
+				function createMap(AMap, el) {
+					// destroyMap 会清空 state.AMap，销毁后要重新挂回来
+					destroyMap();
+					state.AMap = AMap;
+
+					state.map = new AMap.Map(el, {
+						viewMode: "2D",
+						zoom: 4,
+						center: [108.94, 34.34],
+						mapStyle: currentMapStyle(),
+						resizeEnable: true,
+						showLabel: true,
+					});
+
+					// 内建控件（比例尺 + 工具条），可用「地图控件」开关整体隐藏
+					state.scaleControl = new AMap.Scale();
+					state.map.addControl(state.scaleControl);
+					try {
+						state.toolBar = new AMap.ToolBar({
+							position: { right: "12px", bottom: "56px" },
+						});
+						state.map.addControl(state.toolBar);
+					} catch (error) {
+						state.toolBar = null;
+					}
+					if (!state.controlsVisible) {
+						removeBuiltinControls();
+					}
+
+					state.districtSearch = new AMap.DistrictSearch({
+						subdistrict: 0,
+						extensions: "all",
+						level: "district",
+					});
+
+					if (state.payload.ownerLocation) {
+						addOwnerMarker(AMap, state.payload.ownerLocation);
+					}
+
+					// 弹窗跟着地图走：拖动 / 缩放时重算位置
+					state.map.on("mapmove", positionPopup);
+					state.map.on("zoomchange", positionPopup);
+					state.map.on("moveend", positionPopup);
+					// 聚合随缩放/平移重算
+					state.map.on("zoomend", relayoutClusters);
+					state.map.on("moveend", relayoutClusters);
+
+					observeTheme();
+					scheduleResize();
+					bindFullscreen();
+				}
+
+				function destroyMap() {
+					clearHighlight();
+					clearMarkers();
+					state.visibleCoords = [];
+					if (state.map) {
+						try {
+							state.map.clearMap();
+							state.map.destroy();
+						} catch (error) {
+							/* 重复销毁时忽略 */
+						}
+						state.map = null;
+					}
+					closePopup();
+					state.districtSearch = null;
+					state.AMap = null;
+					if (state.themeObserver) {
+						state.themeObserver.disconnect();
+						state.themeObserver = null;
+					}
+					if (state.lockObserver) {
+						state.lockObserver.disconnect();
+						state.lockObserver = null;
+					}
+					for (var i = 0; i < state.resizeTimers.length; i++) {
+						clearTimeout(state.resizeTimers[i]);
+					}
+					state.resizeTimers = [];
+				}
+
+				function addOwnerMarker(AMap, location) {
+					if (
+						typeof location.lng !== "number" ||
+						typeof location.lat !== "number"
+					) {
+						return;
+					}
+					var label = (location.label || "").replace(/[<>&]/g, "");
+					var marker = new AMap.Marker({
+						position: [location.lng, location.lat],
+						content:
+							'<div class="places-owner"><span class="places-owner-dot"></span>' +
+							(label
+								? '<span class="places-owner-label">' + label + "</span>"
+								: "") +
+							"</div>",
+						zIndex: 200,
+					});
+					marker.setMap(state.map);
+				}
+
+				function observeTheme() {
+					if (state.themeObserver) state.themeObserver.disconnect();
+					if (typeof MutationObserver === "undefined") return;
+					var lastStyle = currentMapStyle();
+					state.themeObserver = new MutationObserver(function () {
+						var style = currentMapStyle();
+						if (style === lastStyle) return;
+						lastStyle = style;
+						if (state.map && state.map.setMapStyle) {
+							state.map.setMapStyle(style);
+						}
+					});
+					state.themeObserver.observe(document.documentElement, {
+						attributes: true,
+						attributeFilter: ["class", "data-theme"],
+					});
+				}
+
+				function scheduleResize() {
+					if (!state.map) return;
+					var delays = [0, 80, 200, 450, 900];
+					for (var i = 0; i < delays.length; i++) {
+						state.resizeTimers.push(
+							setTimeout(function () {
+								if (state.map && state.map.resize) state.map.resize();
+							}, delays[i]),
+						);
+					}
+				}
+
+				function bindFullscreen() {
+					if (state.fullscreenBound) return;
+					state.fullscreenBound = true;
+					document.addEventListener("fullscreenchange", function () {
+						setTimeout(scheduleResize, 120);
+					});
+				}
+
+				/* ── 点位与聚合 ───────────────────────────── */
+
+				function pinHtml(place) {
+					var cls = "places-pin" + (place.exact ? "" : " is-approx");
+					var inner =
+						place.visitCount > 1
+							? "<span>" + place.visitCount + "</span>"
+							: '<span class="places-pin-dot"></span>';
+					// data-place-id 供 DOM 事件委托识别（不依赖 AMap 的事件系统）
+					return (
+						'<div class="' +
+						cls +
+						'" data-place-id="' +
+						place.id +
+						'">' +
+						inner +
+						"</div>"
+					);
+				}
+
+				/**
+				 * 自己管点位：每处足迹一个 AMap.Marker，聚合也用像素网格自己算。
+				 * 不用 AMap.MarkerCluster —— 2.0 里它只认数据点、还会用自己的蓝色默认图标
+				 * 覆盖自定义 content（不报错、静默失效），坑太多。
+				 */
+				function renderMarkers(list) {
+					if (!state.AMap || !state.map) return;
+
+					clearMarkers();
+
+					var coords = [];
+					for (var i = 0; i < list.length; i++) {
+						var place = list[i];
+						if (place.lat === null || place.lng === null) continue;
+
+						var marker = new state.AMap.Marker({
+							position: [place.lng, place.lat],
+							content: pinHtml(place),
+							zIndex: 110,
+						});
+						marker.setMap(state.map);
+						state.placeMarkers.push({
+							marker: marker,
+							place: place,
+						});
+						coords.push({ lng: place.lng, lat: place.lat });
+					}
+
+					state.visibleCoords = coords;
+					relayoutClusters();
+				}
+
+				function clearMarkers() {
+					for (var i = 0; i < state.placeMarkers.length; i++) {
+						state.placeMarkers[i].marker.setMap(null);
+					}
+					state.placeMarkers = [];
+					clearClusterMarkers();
+				}
+
+				function clearClusterMarkers() {
+					for (var i = 0; i < state.clusterMarkers.length; i++) {
+						state.clusterMarkers[i].setMap(null);
+					}
+					state.clusterMarkers = [];
+					state.clusterMembers = {};
+					state.clusterSeq = 0;
+				}
+
+				/** 像素网格聚合：落进同一格的点收成一个气泡，点一下放大两级拆开 */
+				function relayoutClusters() {
+					if (!state.map) return;
+					clearClusterMarkers();
+
+					// 关掉「集群显示」时，全部按单点铺开
+					if (!state.clusterEnabled) {
+						for (var s = 0; s < state.placeMarkers.length; s++) {
+							state.placeMarkers[s].marker.show();
+						}
+						return;
+					}
+
+					var cell = 72;
+					var buckets = {};
+					var order = [];
+
+					for (var i = 0; i < state.placeMarkers.length; i++) {
+						var item = state.placeMarkers[i];
+						var point = null;
+						try {
+							point = state.map.lngLatToContainer([
+								item.place.lng,
+								item.place.lat,
+							]);
+						} catch (error) {
+							point = null;
+						}
+						if (!point) continue;
+						var key =
+							Math.floor(point.x / cell) +
+							":" +
+							Math.floor(point.y / cell);
+						if (!buckets[key]) {
+							buckets[key] = [];
+							order.push(key);
+						}
+						buckets[key].push(item);
+					}
+
+					for (var k = 0; k < order.length; k++) {
+						var group = buckets[order[k]];
+
+						if (group.length === 1) {
+							group[0].marker.show();
+							continue;
+						}
+
+						var sumLng = 0;
+						var sumLat = 0;
+						var places = [];
+						for (var g = 0; g < group.length; g++) {
+							group[g].marker.hide();
+							sumLng += group[g].place.lng;
+							sumLat += group[g].place.lat;
+							places.push(group[g].place);
+						}
+
+						var clusterId = "c" + ++state.clusterSeq;
+						state.clusterMembers[clusterId] = places;
+
+						var size = 36 + Math.min(places.length, 12) * 2;
+						var clusterMarker = new state.AMap.Marker({
+							position: [
+								sumLng / group.length,
+								sumLat / group.length,
+							],
+							content:
+								'<div class="places-cluster" data-cluster-id="' +
+								clusterId +
+								'" style="width:' +
+								size +
+								"px;height:" +
+								size +
+								'px"><span>' +
+								places.length +
+								"</span></div>",
+							zIndex: 150,
+						});
+						clusterMarker.setMap(state.map);
+						state.clusterMarkers.push(clusterMarker);
+					}
+				}
+
+				function zoomToCluster(places) {
+					if (!state.map || !places.length) return;
+					var lngs = [];
+					var lats = [];
+					for (var i = 0; i < places.length; i++) {
+						lngs.push(places[i].lng);
+						lats.push(places[i].lat);
+					}
+					var center = [
+						(Math.min.apply(null, lngs) +
+							Math.max.apply(null, lngs)) /
+							2,
+						(Math.min.apply(null, lats) +
+							Math.max.apply(null, lats)) /
+							2,
+					];
+					// 至少放大两级，保证拆得开；上限 18
+					var target = Math.min(18, state.map.getZoom() + 2);
+					state.map.setZoomAndCenter(target, center, false, 320);
+				}
+
+				/** 视野自适应：把所有可见点位框进来 */
+				function fitView() {
+					var coords = state.visibleCoords || [];
+					if (!state.map || !coords.length) return;
+
+					if (coords.length === 1) {
+						state.map.setZoomAndCenter(13, [
+							coords[0].lng,
+							coords[0].lat,
+						]);
+						return;
+					}
+
+					var minLng = coords[0].lng;
+					var maxLng = coords[0].lng;
+					var minLat = coords[0].lat;
+					var maxLat = coords[0].lat;
+					for (var i = 1; i < coords.length; i++) {
+						minLng = Math.min(minLng, coords[i].lng);
+						maxLng = Math.max(maxLng, coords[i].lng);
+						minLat = Math.min(minLat, coords[i].lat);
+						maxLat = Math.max(maxLat, coords[i].lat);
+					}
+
+					if (!state.AMap || !state.AMap.Bounds) return;
+					var bounds = new state.AMap.Bounds(
+						[minLng, minLat],
+						[maxLng, maxLat],
+					);
+					state.map.setBounds(bounds, false, [70, 70, 70, 70], 14);
+				}
+
+				/* ── 到访区域点亮（整省填充，对齐 footprintmap 的观感）─── */
+
+				var PROVINCE_FULL_NAMES = {
+					内蒙古: "内蒙古自治区",
+					广西: "广西壮族自治区",
+					西藏: "西藏自治区",
+					宁夏: "宁夏回族自治区",
+					新疆: "新疆维吾尔自治区",
+					香港: "香港特别行政区",
+					澳门: "澳门特别行政区",
+				};
+
+				function provinceName(province) {
+					var name = (province || "").trim();
+					if (!name) return "";
+					if (MUNICIPALITIES[name]) return name + "市";
+					if (PROVINCE_FULL_NAMES[name]) return PROVINCE_FULL_NAMES[name];
+					if (/(省|自治区|特别行政区)$/.test(name)) return name;
+					return name + "省";
+				}
+
+				function clearHighlight() {
+					for (var i = 0; i < state.highlightTimers.length; i++) {
+						clearTimeout(state.highlightTimers[i]);
+					}
+					state.highlightTimers = [];
+					for (var j = 0; j < state.polygons.length; j++) {
+						state.polygons[j].setMap(null);
+					}
+					state.polygons = [];
+				}
+
+				function drawProvince(name) {
+					if (!state.districtSearch || !state.map) return;
+					state.districtSearch.search(name, function (status, result) {
+						if (status !== "complete" || !result || !result.districtList) {
+							return;
+						}
+						var AMap = state.AMap;
+						if (!AMap || !state.map) return;
+
+						for (var i = 0; i < result.districtList.length; i++) {
+							var boundaries = result.districtList[i].boundaries;
+							if (!boundaries || !boundaries.length) continue;
+
+							// 岛屿多的省份（浙江 563 个环、福建广东同理）不能一个环一个 Polygon，
+							// 那样会瞬间建几百个覆盖物，直接把地图卡住、看起来像没点亮。
+							// 只画前若干个「点数最多」的环：主陆地 + 主要岛屿够了。
+							var rings = boundaries.slice().sort(function (a, b) {
+								return b.length - a.length;
+							});
+
+							var drawn = 0;
+							for (
+								var j = 0;
+								j < rings.length && drawn < 10;
+								j++
+							) {
+								var ring = rings[j];
+								if (!ring || ring.length < 12) continue;
+								try {
+									var polygon = new AMap.Polygon({
+										path: ring,
+										fillColor: "#3b82f6",
+										fillOpacity: 0.28,
+										strokeColor: "#3b82f6",
+										strokeOpacity: 0.65,
+										strokeWeight: 1.4,
+										bubble: true,
+										zIndex: 60,
+									});
+									polygon.setMap(state.map);
+									state.polygons.push(polygon);
+									drawn++;
+								} catch (error) {
+									/* 单个环画失败不影响其它 */
+								}
+							}
+						}
+					});
+				}
+
+				// 把当前筛选结果里出现过的省份整片点亮（每个省一次查询，限流 120ms）
+				function highlightAreas(list) {
+					clearHighlight();
+					if (!state.districtSearch || !state.map) return;
+
+					var names = [];
+					for (var i = 0; i < list.length; i++) {
+						var name = provinceName(list[i].province);
+						if (name && names.indexOf(name) === -1) names.push(name);
+					}
+					// 省份特别多时只点亮前 24 个，避免高德接口被刷
+					if (names.length > 24) names = names.slice(0, 24);
+
+					for (var k = 0; k < names.length; k++) {
+						state.highlightTimers.push(
+							(function (areaName) {
+								return setTimeout(function () {
+									drawProvince(areaName);
+								}, k * 120);
+							})(names[k]),
+						);
+					}
+				}
+
+				/* ── 高亮模式：关闭 / 永久点亮 / 悬浮高亮 ──────── */
+
+				function applyHighlight() {
+					if (!state.map) return;
+					state.hoveredId = null;
+
+					if (state.highlightMode === "off") {
+						clearHighlight();
+						return;
+					}
+					if (state.highlightMode === "always") {
+						highlightAreas(visiblePlaces());
+						return;
+					}
+					// hover：先清空，等鼠标移上去再点亮
+					clearHighlight();
+				}
+
+				function setHighlightMode(mode) {
+					state.highlightMode = mode;
+					var buttons = document.querySelectorAll("[data-highlight-mode]");
+					for (var i = 0; i < buttons.length; i++) {
+						buttons[i].classList.toggle(
+							"is-active",
+							buttons[i].getAttribute("data-highlight-mode") ===
+								mode,
+						);
+					}
+					applyHighlight();
+				}
+
+				/** 悬浮高亮：跟着鼠标当前所在点位点亮对应省份 */
+				function handleHover(event) {
+					if (state.highlightMode !== "hover" || !state.map) return;
+
+					var target = event.target;
+					var pin =
+						target && target.closest
+							? target.closest(".places-pin")
+							: null;
+					var id = pin ? pin.getAttribute("data-place-id") : null;
+
+					if (!id) {
+						if (state.hoveredId) {
+							state.hoveredId = null;
+							clearHighlight();
+						}
+						return;
+					}
+					if (state.hoveredId === id) return;
+
+					state.hoveredId = id;
+					var place = findPlace(id);
+					if (!place) return;
+					clearHighlight();
+					drawProvince(provinceName(place.province));
+				}
+
+				/* ── 内建控件开关 ─────────────────────────── */
+
+				function addBuiltinControls() {
+					if (!state.map) return;
+					if (state.scaleControl) state.map.addControl(state.scaleControl);
+					if (state.toolBar) state.map.addControl(state.toolBar);
+				}
+
+				function removeBuiltinControls() {
+					if (!state.map) return;
+					if (state.scaleControl) state.map.removeControl(state.scaleControl);
+					if (state.toolBar) state.map.removeControl(state.toolBar);
+				}
+
+				/* ── 弹窗 ─────────────────────────────────── */
+
+				function formatDate(place) {
+					return place.endDate
+						? place.date + " — " + place.endDate
+						: place.date;
+				}
+
+				function locationText(place) {
+					var parts = [];
+					var raw = [place.province, place.city, place.district];
+					for (var i = 0; i < raw.length; i++) {
+						var value = (raw[i] || "").trim();
+						if (value && parts.indexOf(value) === -1) parts.push(value);
+					}
+					return parts.join(" · ");
+				}
+
+				function buildGallery(images) {
+					var wrap = document.createElement("div");
+					wrap.className = "places-gallery";
+
+					var slides = [];
+					for (var i = 0; i < images.length; i++) {
+						var img = document.createElement("img");
+						img.className =
+							"places-gallery-slide" + (i === 0 ? " is-active" : "");
+						img.src = images[i];
+						img.alt = "";
+						img.loading = "lazy";
+						img.decoding = "async";
+						wrap.appendChild(img);
+						slides.push(img);
+					}
+
+					var index = 0;
+					var dots = [];
+
+					function go(next) {
+						index = (next + images.length) % images.length;
+						for (var k = 0; k < slides.length; k++) {
+							slides[k].classList.toggle("is-active", k === index);
+						}
+						for (var d = 0; d < dots.length; d++) {
+							dots[d].classList.toggle("is-active", d === index);
+						}
+					}
+
+					if (images.length > 1) {
+						var prev = document.createElement("button");
+						prev.type = "button";
+						prev.className = "places-gallery-nav is-prev";
+						prev.textContent = "‹";
+						prev.addEventListener("click", function () {
+							go(index - 1);
+						});
+
+						var next = document.createElement("button");
+						next.type = "button";
+						next.className = "places-gallery-nav is-next";
+						next.textContent = "›";
+						next.addEventListener("click", function () {
+							go(index + 1);
+						});
+
+						wrap.appendChild(prev);
+						wrap.appendChild(next);
+
+						var dotWrap = document.createElement("div");
+						dotWrap.className = "places-gallery-dots";
+						for (var j = 0; j < images.length; j++) {
+							(function (target) {
+								var dot = document.createElement("button");
+								dot.type = "button";
+								dot.className =
+									"places-gallery-dot" + (target === 0 ? " is-active" : "");
+								dot.addEventListener("click", function () {
+									go(target);
+								});
+								dotWrap.appendChild(dot);
+								dots.push(dot);
+							})(j);
+						}
+						wrap.appendChild(dotWrap);
+					}
+
+					return wrap;
+				}
+
+				function buildPopup(place) {
+					var payload = state.payload || {};
+					var labels = payload.i18n || {};
+
+					var root = document.createElement("div");
+					root.className = "places-popup";
+
+					var head = document.createElement("div");
+					head.className = "places-popup-head";
+					var title = document.createElement("strong");
+					title.className = "places-popup-title";
+					title.textContent = place.label;
+					var close = document.createElement("button");
+					close.type = "button";
+					close.className = "places-popup-close";
+					close.setAttribute("aria-label", "close");
+					close.innerHTML = "&times;";
+					close.addEventListener("click", function () {
+						closePopup();
+					});
+					head.appendChild(title);
+					head.appendChild(close);
+					root.appendChild(head);
+
+					var meta = document.createElement("div");
+					meta.className = "places-popup-meta";
+					meta.textContent =
+						formatDate(place) + " · " + locationText(place);
+					root.appendChild(meta);
+
+					var tags = document.createElement("div");
+					tags.className = "places-popup-tags";
+					if (place.category) {
+						tags.appendChild(tagChip(place.category));
+					}
+					if (place.visitCount > 1) {
+						tags.appendChild(tagChip("×" + place.visitCount));
+					}
+					if (tags.children.length) root.appendChild(tags);
+
+					if (place.experience) {
+						var text = document.createElement("p");
+						text.className = "places-popup-text";
+						text.textContent = place.experience;
+						root.appendChild(text);
+					}
+
+					if (place.images && place.images.length) {
+						root.appendChild(buildGallery(place.images));
+					}
+
+					if (place.link) {
+						var link = document.createElement("a");
+						link.className = "places-popup-link";
+						link.href = place.link;
+						link.textContent = labels.viewPost || "→";
+						if (/^https?:/i.test(place.link)) {
+							link.target = "_blank";
+							link.rel = "noopener noreferrer";
+						}
+						root.appendChild(link);
+					}
+
+					return root;
+				}
+
+				function tagChip(text) {
+					var chip = document.createElement("span");
+					chip.className = "places-popup-tag";
+					chip.textContent = text;
+					return chip;
+				}
+
+				/* ── 弹窗（自绘，不用 AMap.InfoWindow）─────────── */
+
+				function openPopup(place) {
+					if (!state.map) return;
+					if (place.lat === null || place.lng === null) return;
+
+					var layer = document.querySelector(".places-popup-layer");
+					if (!layer) return;
+
+					layer.innerHTML = "";
+					layer.appendChild(buildPopup(place));
+					layer.removeAttribute("hidden");
+					state.popupPlace = place;
+
+					state.map.setZoomAndCenter(
+						Math.max(state.map.getZoom(), 14),
+						[place.lng, place.lat],
+						false,
+						280,
+					);
+					positionPopup();
+				}
+
+				function closePopup() {
+					state.popupPlace = null;
+					var layer = document.querySelector(".places-popup-layer");
+					if (!layer) return;
+					layer.setAttribute("hidden", "");
+					layer.innerHTML = "";
+				}
+
+				/** 把弹窗摆到点位正上方；上方放不下就翻到下方，左右贴着边界收 */
+				function positionPopup() {
+					var place = state.popupPlace;
+					var layer = document.querySelector(".places-popup-layer");
+					var wrap = document.querySelector(".places-map-wrap");
+					if (!place || !layer || !wrap || !state.map) return;
+
+					var popup = layer.querySelector(".places-popup");
+					if (!popup) return;
+
+					var point = null;
+					try {
+						point = state.map.lngLatToContainer([
+							place.lng,
+							place.lat,
+						]);
+					} catch (error) {
+						return;
+					}
+					if (!point) return;
+
+					var width = popup.offsetWidth || 260;
+					var height = popup.offsetHeight || 200;
+					var wrapWidth = wrap.clientWidth;
+					var wrapHeight = wrap.clientHeight;
+
+					var left = point.x - width / 2;
+					var top = point.y - height - 18;
+					var placement = "top";
+
+					if (top < 8) {
+						top = point.y + 20;
+						placement = "bottom";
+					}
+					if (top + height > wrapHeight - 8) {
+						top = Math.max(8, wrapHeight - height - 8);
+					}
+					left = Math.max(8, Math.min(left, wrapWidth - width - 8));
+
+					popup.style.left = left + "px";
+					popup.style.top = top + "px";
+					popup.setAttribute("data-placement", placement);
+				}
+
+				/* ── 交互 ─────────────────────────────────── */
+
+				function scrollToMap() {
+					var wrap = document.querySelector(".places-map-wrap");
+					if (wrap && wrap.scrollIntoView) {
+						wrap.scrollIntoView({ behavior: "smooth", block: "center" });
+					}
+				}
+
+				function handleCardClick(id) {
+					var place = findPlace(id);
+					if (!place) return;
+					scrollToMap();
+					setLocked(false);
+					if (place.lat === null) return;
+					setTimeout(function () {
+						openPopup(place);
+					}, 320);
+				}
+
+				function toggleFullscreen(root) {
+					var wrap = root.querySelector(".places-map-wrap");
+					if (!wrap) return;
+					if (document.fullscreenElement) {
+						document.exitFullscreen();
+						return;
+					}
+					if (wrap.requestFullscreen) {
+						wrap.requestFullscreen();
+					} else {
+						wrap.classList.toggle("is-pseudo-fullscreen");
+					}
+				}
+
+				/* ── 地图锁定（默认锁定，点一下才可拖拽缩放）────────── */
+
+				function setLocked(locked) {
+					var wrap = document.querySelector(".places-map-wrap");
+					if (!wrap) return;
+					state.locked = locked;
+					wrap.setAttribute("data-locked", locked ? "true" : "false");
+					// 重新锁上时把弹窗一起收起来，避免遮罩下面留个半透明卡片
+					if (locked) closePopup();
+				}
+
+				function initLock() {
+					var wrap = document.querySelector(".places-map-wrap");
+					if (!wrap) return;
+
+					setLocked(true);
+
+					if (state.lockObserver) state.lockObserver.disconnect();
+					if (typeof IntersectionObserver === "undefined") return;
+
+					// 滚出视口后自动重新锁定，避免下次滚动时被地图吃掉
+					state.lockObserver = new IntersectionObserver(
+						function (entries) {
+							for (var i = 0; i < entries.length; i++) {
+								if (!entries[i].isIntersecting && !state.locked) {
+									setLocked(true);
+								}
+							}
+						},
+						{ threshold: 0.3 },
+					);
+					state.lockObserver.observe(wrap);
+				}
+
+				function handleMapAction(action, root) {
+					if (action === "fullscreen") {
+						toggleFullscreen(root);
+						return;
+					}
+					if (action === "unlock") {
+						setLocked(false);
+						return;
+					}
+					if (action === "toggle-lock") {
+						setLocked(!state.locked);
+						return;
+					}
+					if (action === "toggle-settings") {
+						var panel = root.querySelector(".places-settings-panel");
+						var trigger = root.querySelector(
+							'[data-map-action="toggle-settings"]',
+						);
+						if (!panel) return;
+						var willOpen = panel.hasAttribute("hidden");
+						if (willOpen) {
+							panel.removeAttribute("hidden");
+						} else {
+							panel.setAttribute("hidden", "");
+						}
+						if (trigger) {
+							trigger.setAttribute(
+								"aria-expanded",
+								willOpen ? "true" : "false",
+							);
+						}
+						return;
+					}
+					if (action === "toggle-controls") {
+						state.controlsVisible = !state.controlsVisible;
+						if (state.controlsVisible) {
+							addBuiltinControls();
+						} else {
+							removeBuiltinControls();
+						}
+						var ctlBtn = root.querySelector(
+							'[data-map-action="toggle-controls"]',
+						);
+						if (ctlBtn) {
+							ctlBtn.setAttribute(
+								"aria-pressed",
+								state.controlsVisible ? "true" : "false",
+							);
+						}
+						return;
+					}
+					if (action === "toggle-cluster") {
+						state.clusterEnabled = !state.clusterEnabled;
+						var btn = root.querySelector(".places-cluster-toggle");
+						if (btn) {
+							btn.setAttribute(
+								"aria-pressed",
+								state.clusterEnabled ? "true" : "false",
+							);
+						}
+						relayoutClusters();
+						return;
+					}
+					if (action === "refresh") {
+						state.year = "all";
+						state.category = "all";
+						resetFilterButtons();
+						applyFilter(true);
+						return;
+					}
+					// 锁定时缩放按钮不生效，避免绕过解锁遮罩
+					if (!state.map || state.locked) return;
+					if (action === "zoom-in") state.map.zoomIn();
+					if (action === "zoom-out") state.map.zoomOut();
+				}
+
+				/**
+				 * 地图内的点击一律走 DOM 委托（capture 阶段最先拿到），
+				 * 这样即使 AMap 的聚合插件吞掉了 marker 事件也照样能开弹窗。
+				 */
+				function bindMapClicks() {
+					var wrap = document.querySelector(".places-map-wrap");
+					if (!wrap) return;
+
+					wrap.addEventListener(
+						"click",
+						function (event) {
+							var target = event.target;
+							if (!target || !target.closest) return;
+
+							// 弹窗内部（含关闭按钮、轮播）交给元素自己的监听器
+							if (target.closest(".places-popup")) return;
+
+							var pin = target.closest(".places-pin");
+							if (pin) {
+								event.stopPropagation();
+								event.preventDefault();
+								var place = findPlace(
+									pin.getAttribute("data-place-id"),
+								);
+								if (place) openPopup(place);
+								return;
+							}
+
+							var cluster = target.closest(".places-cluster");
+							if (cluster) {
+								event.stopPropagation();
+								var members =
+									state.clusterMembers[
+										cluster.getAttribute("data-cluster-id")
+									];
+								if (members) zoomToCluster(members);
+								return;
+							}
+
+							// 点地图空白处关掉弹窗
+							if (state.popupPlace) {
+								event.stopPropagation();
+								closePopup();
+							}
+						},
+						true,
+					);
+
+					// 悬浮高亮：跟着鼠标所在点位点亮省份
+					wrap.addEventListener("mousemove", handleHover);
+					wrap.addEventListener("mouseleave", function () {
+						if (state.highlightMode !== "hover") return;
+						state.hoveredId = null;
+						clearHighlight();
+					});
+				}
+
+				function bindPageEvents() {
+					var root = document.querySelector(".places-page");
+					if (!root) return;
+
+					root.addEventListener("click", function (event) {
+						var target = event.target;
+						if (!target || !target.closest) return;
+
+						var actionBtn = target.closest("[data-map-action]");
+						if (actionBtn) {
+							handleMapAction(actionBtn.getAttribute("data-map-action"), root);
+							return;
+						}
+
+						var modeBtn = target.closest("[data-highlight-mode]");
+						if (modeBtn) {
+							setHighlightMode(
+								modeBtn.getAttribute("data-highlight-mode"),
+							);
+							return;
+						}
+
+						var filterBtn = target.closest("[data-filter]");
+						if (filterBtn) {
+							var group = filterBtn.getAttribute("data-filter");
+							var value = filterBtn.getAttribute("data-value") || "all";
+							if (group === "year") state.year = value;
+							if (group === "category") state.category = value;
+
+							var siblings = filterBtn.parentNode.querySelectorAll(
+								"[data-filter]",
+							);
+							for (var i = 0; i < siblings.length; i++) {
+								siblings[i].classList.remove("is-active");
+							}
+							filterBtn.classList.add("is-active");
+							applyFilter(true);
+							return;
+						}
+
+						if (target.closest("a")) return;
+
+						var card = target.closest("[data-place-id]");
+						if (card) {
+							handleCardClick(card.getAttribute("data-place-id"));
+						}
+					});
+				}
+
+				/* ── 生命周期 ─────────────────────────────── */
+
+				function initPage() {
+					var payload = readPayload();
+					if (!payload) return;
+
+					state.payload = payload;
+					state.places = payload.places || [];
+					state.year = "all";
+					state.category = "all";
+					// 页面每次进来都回到默认状态（DOM 也是按默认渲染的）
+					state.highlightMode = "always";
+					state.hoveredId = null;
+					state.controlsVisible = true;
+					state.clusterEnabled = true;
+
+					bindPageEvents();
+					bindMapClicks();
+					initLock();
+					updateListCount(state.places.length);
+					updateEmptyState(state.places.length);
+
+					if (!state.places.length) return;
+
+					if (payload.amapKey) {
+						bootMap();
+					}
+				}
+
+				api.destroy = function () {
+					destroyMap();
+					state.payload = null;
+					state.places = [];
+					state.visibleCoords = [];
+				};
+
+				api.refresh = function () {
+					api.destroy();
+					state.year = "all";
+					state.category = "all";
+					initPage();
+				};
+
+				// Swup 离开本页后销毁地图实例，避免 WebGL 上下文与事件监听泄漏
+				if (!window.__placesSwupBound) {
+					window.__placesSwupBound = true;
+					document.addEventListener("swup:contentReplaced", function () {
+						if (document.querySelector(".places-page")) return;
+						if (window.__placesPage && window.__placesPage.destroy) {
+							window.__placesPage.destroy();
+						}
+					});
+				}
+
+				initPage();
+			})();
+		</script>
+	</section>
+</MainGridLayout>

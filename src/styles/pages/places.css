@@ -1,0 +1,998 @@
+/* 足迹地图页（/places/）：标题 + 统计胶囊 + 地图 + 瀑布流地点列表 */
+
+/* ── 单卡片容器 ─────────────────────────────────────── */
+.places-main {
+	padding: 1.5rem;
+}
+
+@media (max-width: 640px) {
+	.places-main {
+		padding: 1rem;
+	}
+}
+
+/* ── 标题 ─────────────────────────────────────────── */
+.places-hero {
+	margin-bottom: 1.25rem;
+}
+
+.places-eyebrow {
+	display: block;
+	margin-bottom: 0.35rem;
+	color: var(--primary);
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	opacity: 0.9;
+}
+
+.places-hero-title {
+	margin: 0;
+	color: rgb(0 0 0 / 90%);
+	font-size: clamp(1.5rem, 2.6vw, 2rem);
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+:root.dark .places-hero-title {
+	color: rgb(255 255 255 / 92%);
+}
+
+.places-hero-desc {
+	margin: 0.4rem 0 0;
+	color: var(--content-meta);
+	font-size: 0.875rem;
+}
+
+/* ── 统计胶囊 ─────────────────────────────────────── */
+.places-stat-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-bottom: 1.5rem;
+}
+
+.places-stat-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.35rem 0.75rem;
+	border-radius: 999px;
+	background: var(--btn-regular-bg);
+	color: rgb(0 0 0 / 85%);
+	font-size: 0.8rem;
+	line-height: 1.3;
+}
+
+:root.dark .places-stat-pill {
+	color: rgb(255 255 255 / 88%);
+}
+
+.places-stat-pill svg {
+	color: var(--primary);
+	font-size: 0.95rem;
+}
+
+.places-stat-pill b {
+	color: var(--primary);
+	font-size: 0.9rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.places-stat-pill-label {
+	color: var(--content-meta);
+	font-size: 0.78rem;
+}
+
+/* ── 地图区块 ─────────────────────────────────────── */
+.places-map-section {
+	margin-bottom: 1.75rem;
+}
+
+.places-section-title {
+	margin: 0 0 0.75rem;
+	color: rgb(0 0 0 / 90%);
+	font-size: 1.05rem;
+	font-weight: 700;
+}
+
+:root.dark .places-section-title {
+	color: rgb(255 255 255 / 90%);
+}
+
+.places-map-credit {
+	margin: 0.5rem 0 0;
+	color: var(--content-meta);
+	font-size: 0.72rem;
+	text-align: center;
+}
+
+/* 筛选胶囊 */
+.places-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1rem;
+	margin-bottom: 0.9rem;
+}
+
+.places-filter-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+.places-pill {
+	padding: 0.3rem 0.7rem;
+	border: 1px solid var(--line-divider);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--content-meta);
+	font-size: 0.8rem;
+	font-weight: 500;
+	line-height: 1.4;
+	cursor: pointer;
+	transition:
+		background-color 0.2s ease,
+		color 0.2s ease,
+		border-color 0.2s ease;
+}
+
+.places-pill:hover {
+	background: var(--btn-regular-bg);
+	color: rgb(0 0 0 / 80%);
+}
+
+:root.dark .places-pill:hover {
+	color: rgb(255 255 255 / 85%);
+}
+
+.places-pill.is-active {
+	border-color: transparent;
+	background: var(--primary);
+	color: #fff;
+	font-weight: 600;
+}
+
+:root.dark .places-pill.is-active {
+	color: rgb(0 0 0 / 80%);
+}
+
+/* 地图容器 */
+.places-map-wrap {
+	position: relative;
+	overflow: hidden;
+	border-radius: 0.75rem;
+	background: var(--btn-regular-bg);
+}
+
+.places-map-wrap:fullscreen {
+	display: block;
+	border-radius: 0;
+}
+
+#places-map {
+	width: 100%;
+	height: 500px;
+}
+
+@media (max-width: 640px) {
+	#places-map {
+		height: 340px;
+	}
+}
+
+.places-map-wrap:fullscreen #places-map {
+	height: 100vh;
+}
+
+/* 点击解锁遮罩：锁定时盖住地图，避免整页滚动被地图吃掉 */
+.places-map-lock {
+	position: absolute;
+	inset: 0;
+	z-index: 12;
+	display: grid;
+	padding: 1rem;
+	border: none;
+	background: rgb(0 0 0 / 4%);
+	color: inherit;
+	cursor: pointer;
+	place-items: center;
+	transition:
+		opacity 0.2s ease,
+		background-color 0.2s ease;
+}
+
+.places-map-lock:hover {
+	background: rgb(0 0 0 / 10%);
+}
+
+.places-map-wrap[data-locked="false"] .places-map-lock {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.places-map-lock-inner {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	padding: 0.5rem 0.9rem;
+	border: 1px solid var(--line-divider);
+	border-radius: 999px;
+	background: var(--card-bg);
+	color: var(--content-meta);
+	font-size: 0.8rem;
+	font-weight: 600;
+	box-shadow: 0 4px 16px rgb(0 0 0 / 16%);
+}
+
+.places-map-lock-inner svg {
+	color: var(--primary);
+	font-size: 1rem;
+}
+
+/* 锁定 / 解锁切换按钮（左上角，对齐参考站位置） */
+.places-map-lock-btn {
+	position: absolute;
+	top: 0.6rem;
+	left: 0.6rem;
+	z-index: 20;
+	display: grid;
+	width: 2rem;
+	height: 2rem;
+	place-items: center;
+	border: 1px solid var(--line-divider);
+	border-radius: 0.5rem;
+	background: var(--card-bg);
+	color: var(--content-meta);
+	cursor: pointer;
+	box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+}
+
+.places-map-lock-btn:hover {
+	color: var(--primary);
+}
+
+.places-map-lock-btn svg {
+	font-size: 1.05rem;
+}
+
+.places-lock-off {
+	display: none;
+}
+
+.places-map-wrap[data-locked="false"] .places-lock-on {
+	display: none;
+}
+
+.places-map-wrap[data-locked="false"] .places-lock-off {
+	display: block;
+}
+
+/* 右上角控件 */
+.places-map-controls {
+	position: absolute;
+	top: 0.6rem;
+	right: 0.6rem;
+	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+}
+
+.places-map-btn {
+	display: grid;
+	width: 2rem;
+	height: 2rem;
+	place-items: center;
+	border: 1px solid var(--line-divider);
+	border-radius: 0.5rem;
+	background: var(--card-bg);
+	color: var(--content-meta);
+	cursor: pointer;
+	box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+	transition:
+		color 0.2s ease,
+		background-color 0.2s ease;
+}
+
+.places-map-btn:hover {
+	color: var(--primary);
+}
+
+.places-map-btn svg {
+	font-size: 1.15rem;
+}
+
+/* 无 Key / 加载中 / 失败 遮罩 */
+.places-map-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 15;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	padding: 1.5rem;
+	background: var(--card-bg);
+	color: var(--content-meta);
+	font-size: 0.85rem;
+	text-align: center;
+}
+
+.places-map-overlay[data-state="hidden"] {
+	display: none;
+}
+
+.places-map-overlay svg {
+	font-size: 2.25rem;
+	opacity: 0.5;
+}
+
+.places-map-overlay p {
+	max-width: 26rem;
+	margin: 0;
+	line-height: 1.6;
+}
+
+/* ── 地图上的点位（动态插入，需全局样式）───────────────── */
+/* 圆形数字标：锚点在圆心，和 footprintmap 的观感一致 */
+.places-pin {
+	position: relative;
+	display: grid;
+	width: 1.6rem;
+	height: 1.6rem;
+	place-items: center;
+	border: 2px solid rgb(255 255 255 / 92%);
+	border-radius: 50%;
+	background: linear-gradient(
+		140deg,
+		var(--primary),
+		color-mix(in oklch, var(--primary) 62%, #38bdf8)
+	);
+	color: #fff;
+	font-size: 0.68rem;
+	font-weight: 700;
+	line-height: 1;
+	box-shadow: 0 2px 8px rgb(0 0 0 / 28%);
+	cursor: pointer;
+	transform: translate(-50%, -50%);
+	transition:
+		transform 0.18s ease,
+		box-shadow 0.18s ease;
+}
+
+.places-pin:hover {
+	z-index: 5;
+	box-shadow: 0 6px 16px rgb(0 0 0 / 34%);
+	transform: translate(-50%, -50%) scale(1.15);
+}
+
+.places-pin.is-approx {
+	background: linear-gradient(
+		140deg,
+		color-mix(in oklch, var(--primary) 78%, #64748b),
+		color-mix(in oklch, var(--primary) 50%, #94a3b8)
+	);
+}
+
+.places-pin-dot {
+	display: block;
+	width: 0.4rem;
+	height: 0.4rem;
+	border-radius: 50%;
+	background: rgb(255 255 255 / 95%);
+}
+
+/* 聚合气泡：同一套圆标，只是更大、带数字 */
+.places-cluster {
+	display: grid;
+	place-items: center;
+	border: 3px solid rgb(255 255 255 / 92%);
+	border-radius: 50%;
+	background: linear-gradient(
+		140deg,
+		var(--primary),
+		color-mix(in oklch, var(--primary) 60%, #38bdf8)
+	);
+	color: #fff;
+	font-size: 0.82rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	box-shadow: 0 4px 14px rgb(0 0 0 / 26%);
+	transform: translate(-50%, -50%);
+	cursor: pointer;
+	transition: transform 0.18s ease;
+}
+
+.places-cluster:hover {
+	transform: translate(-50%, -50%) scale(1.08);
+}
+
+.places-owner {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+}
+
+.places-owner-dot {
+	width: 0.6rem;
+	height: 0.6rem;
+	border-radius: 50%;
+	background: #ef4444;
+	box-shadow: 0 0 0 4px rgb(239 68 68 / 22%);
+}
+
+.places-owner-label {
+	padding: 0.1rem 0.4rem;
+	border-radius: 999px;
+	background: rgb(239 68 68 / 90%);
+	color: #fff;
+	font-size: 0.65rem;
+	white-space: nowrap;
+}
+
+/* 地图设置面板（区域高亮模式 / 内建控件） */
+.places-map-settings {
+	position: absolute;
+	top: 0.6rem;
+	left: 3rem;
+	z-index: 22;
+}
+
+.places-settings-panel {
+	position: absolute;
+	top: 2.4rem;
+	left: 0;
+	width: 13.5rem;
+	padding: 0.75rem;
+	border: 1px solid var(--line-divider);
+	border-radius: 0.75rem;
+	background: var(--card-bg);
+	box-shadow: 0 10px 28px rgb(0 0 0 / 18%);
+}
+
+.places-settings-panel[hidden] {
+	display: none;
+}
+
+.places-settings-group {
+	margin-bottom: 0.6rem;
+}
+
+.places-settings-label {
+	display: block;
+	margin-bottom: 0.4rem;
+	color: var(--content-meta);
+	font-size: 0.72rem;
+	font-weight: 600;
+}
+
+.places-segmented {
+	display: flex;
+	gap: 0.25rem;
+	padding: 0.2rem;
+	border-radius: 0.55rem;
+	background: var(--btn-regular-bg);
+}
+
+.places-segmented button {
+	flex: 1;
+	padding: 0.28rem 0.15rem;
+	border: none;
+	border-radius: 0.4rem;
+	background: transparent;
+	color: var(--content-meta);
+	font-size: 0.72rem;
+	line-height: 1.3;
+	white-space: nowrap;
+	cursor: pointer;
+	transition:
+		background-color 0.2s ease,
+		color 0.2s ease;
+}
+
+.places-segmented button:hover {
+	color: rgb(0 0 0 / 80%);
+}
+
+:root.dark .places-segmented button:hover {
+	color: rgb(255 255 255 / 85%);
+}
+
+.places-segmented button.is-active {
+	background: var(--primary);
+	color: #fff;
+	font-weight: 600;
+}
+
+:root.dark .places-segmented button.is-active {
+	color: rgb(0 0 0 / 80%);
+}
+
+.places-settings-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	width: 100%;
+	padding: 0.45rem 0 0.1rem;
+	border: none;
+	border-top: 1px dashed var(--line-divider);
+	background: transparent;
+	color: var(--content-meta);
+	font-size: 0.75rem;
+	cursor: pointer;
+}
+
+.places-settings-row:hover {
+	color: var(--primary);
+}
+
+/* 集群显示开关（底部居中，对齐 footprintmap 的控制条） */
+.places-cluster-toggle {
+	position: absolute;
+	bottom: 0.7rem;
+	left: 50%;
+	z-index: 20;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.3rem 0.75rem;
+	border: 1px solid var(--line-divider);
+	border-radius: 999px;
+	background: var(--card-bg);
+	color: var(--content-meta);
+	font-size: 0.75rem;
+	cursor: pointer;
+	box-shadow: 0 2px 10px rgb(0 0 0 / 14%);
+	transform: translateX(-50%);
+}
+
+.places-cluster-switch {
+	position: relative;
+	display: block;
+	width: 1.8rem;
+	height: 1rem;
+	border-radius: 999px;
+	background: var(--btn-regular-bg);
+	transition: background-color 0.2s ease;
+}
+
+.places-cluster-switch > span {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 0.75rem;
+	height: 0.75rem;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+	transition: transform 0.2s ease;
+}
+
+/* 开关滑块状态：跟着 aria-pressed 走，集群开关和设置面板里的开关共用 */
+[aria-pressed="true"] .places-cluster-switch {
+	background: var(--primary);
+}
+
+[aria-pressed="true"] .places-cluster-switch > span {
+	transform: translateX(0.8rem);
+}
+
+/* 自绘弹窗层：铺满地图容器，本身不吃事件，只有弹窗本体可点 */
+.places-popup-layer {
+	position: absolute;
+	inset: 0;
+	z-index: 25;
+	pointer-events: none;
+}
+
+.places-popup-layer[hidden] {
+	display: none;
+}
+
+/* 弹窗内容 */
+.places-popup {
+	position: absolute;
+	width: 17.5rem;
+	max-width: 76vw;
+	/* 内容很高时（多图 + 长文案）不让它溢出地图容器 */
+	max-height: calc(100% - 16px);
+	overflow-y: auto;
+	padding: 0.85rem;
+	border: 1px solid var(--line-divider);
+	border-radius: 0.85rem;
+	background: var(--card-bg);
+	color: rgb(0 0 0 / 88%);
+	font-size: 0.8rem;
+	line-height: 1.6;
+	box-shadow: 0 12px 32px rgb(0 0 0 / 22%);
+	pointer-events: auto;
+}
+
+:root.dark .places-popup {
+	color: rgb(255 255 255 / 90%);
+}
+
+.places-popup-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.5rem;
+}
+
+.places-popup-title {
+	font-size: 0.95rem;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.places-popup-close {
+	flex: 0 0 auto;
+	width: 1.35rem;
+	height: 1.35rem;
+	border: none;
+	border-radius: 50%;
+	background: var(--btn-regular-bg);
+	color: var(--content-meta);
+	font-size: 0.95rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.places-popup-close:hover {
+	color: var(--primary);
+}
+
+.places-popup-meta {
+	margin-top: 0.2rem;
+	color: var(--content-meta);
+	font-size: 0.72rem;
+}
+
+.places-popup-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	margin-top: 0.45rem;
+}
+
+.places-popup-tag {
+	padding: 0.1rem 0.45rem;
+	border-radius: 999px;
+	background: color-mix(in oklch, var(--primary) 14%, transparent);
+	color: var(--primary);
+	font-size: 0.68rem;
+	font-weight: 600;
+}
+
+.places-popup-text {
+	margin: 0.45rem 0 0;
+	color: rgb(0 0 0 / 70%);
+}
+
+:root.dark .places-popup-text {
+	color: rgb(255 255 255 / 70%);
+}
+
+.places-popup-link {
+	display: inline-block;
+	margin-top: 0.5rem;
+	color: var(--primary);
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.places-popup-link:hover {
+	text-decoration: underline;
+}
+
+/* 弹窗内图片轮播 */
+.places-gallery {
+	position: relative;
+	overflow: hidden;
+	aspect-ratio: 4 / 3;
+	margin-top: 0.55rem;
+	border-radius: 0.6rem;
+	background: var(--btn-regular-bg);
+}
+
+.places-gallery-slide {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	opacity: 0;
+	transition: opacity 0.35s ease;
+}
+
+.places-gallery-slide.is-active {
+	opacity: 1;
+}
+
+.places-gallery-nav {
+	position: absolute;
+	top: 50%;
+	display: grid;
+	width: 1.55rem;
+	height: 1.55rem;
+	place-items: center;
+	border: none;
+	border-radius: 50%;
+	background: rgb(0 0 0 / 42%);
+	color: #fff;
+	font-size: 1rem;
+	line-height: 1;
+	cursor: pointer;
+	transform: translateY(-50%);
+}
+
+.places-gallery-nav.is-prev {
+	left: 0.35rem;
+}
+
+.places-gallery-nav.is-next {
+	right: 0.35rem;
+}
+
+.places-gallery-dots {
+	position: absolute;
+	right: 0;
+	bottom: 0.4rem;
+	left: 0;
+	display: flex;
+	justify-content: center;
+	gap: 0.25rem;
+}
+
+.places-gallery-dot {
+	width: 0.35rem;
+	height: 0.35rem;
+	padding: 0;
+	border: none;
+	border-radius: 999px;
+	background: rgb(255 255 255 / 55%);
+	cursor: pointer;
+	transition:
+		width 0.2s ease,
+		background-color 0.2s ease;
+}
+
+.places-gallery-dot.is-active {
+	width: 0.9rem;
+	background: #fff;
+}
+
+/* ── 地点列表 ───────────────────────────────────────── */
+.places-list-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin: 0.25rem 0 0.75rem;
+	padding: 0 0.25rem;
+}
+
+.places-list-head h3 {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	margin: 0;
+	color: rgb(0 0 0 / 90%);
+	font-size: 1rem;
+	font-weight: 700;
+}
+
+:root.dark .places-list-head h3 {
+	color: rgb(255 255 255 / 90%);
+}
+
+.places-list-count {
+	color: var(--content-meta);
+	font-size: 0.75rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.places-masonry {
+	columns: 1;
+	column-gap: 1rem;
+}
+
+@media (min-width: 640px) {
+	.places-masonry {
+		columns: 2;
+	}
+}
+
+.places-card {
+	break-inside: avoid;
+	margin: 0 0 1rem;
+	overflow: hidden;
+	border: 1px solid var(--line-divider);
+	border-radius: var(--radius-large);
+	background: var(--card-bg);
+	transition:
+		transform 0.3s ease,
+		box-shadow 0.3s ease,
+		border-color 0.3s ease;
+	cursor: pointer;
+}
+
+.places-card:hover {
+	border-color: color-mix(in oklch, var(--primary) 50%, transparent);
+	box-shadow: 0 12px 28px rgb(0 0 0 / 12%);
+	transform: translateY(-3px);
+}
+
+.places-card.is-filtered-out {
+	display: none;
+}
+
+.places-card-cover {
+	position: relative;
+	overflow: hidden;
+	aspect-ratio: 16 / 9;
+	background: var(--btn-regular-bg);
+}
+
+.places-card-cover img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform 0.5s ease;
+}
+
+.places-card:hover .places-card-cover img {
+	transform: scale(1.04);
+}
+
+.places-card-photos {
+	position: absolute;
+	right: 0.5rem;
+	bottom: 0.5rem;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.2rem;
+	padding: 0.1rem 0.4rem;
+	border-radius: 999px;
+	background: rgb(0 0 0 / 45%);
+	color: #fff;
+	font-size: 0.68rem;
+}
+
+.places-card-body {
+	padding: 0.9rem 1rem 1rem;
+}
+
+.places-card-top {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin-bottom: 0.45rem;
+}
+
+.places-card-top h4 {
+	margin: 0;
+	color: rgb(0 0 0 / 90%);
+	font-size: 1rem;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+:root.dark .places-card-top h4 {
+	color: rgb(255 255 255 / 90%);
+}
+
+.places-card-cat {
+	flex: 0 0 auto;
+	padding: 0.1rem 0.45rem;
+	border-radius: 999px;
+	background: color-mix(in oklch, var(--primary) 14%, transparent);
+	color: var(--primary);
+	font-size: 0.68rem;
+	font-weight: 600;
+}
+
+.places-card-meta {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	margin-bottom: 0.2rem;
+	color: var(--content-meta);
+	font-size: 0.75rem;
+	line-height: 1.5;
+}
+
+.places-card-meta svg {
+	flex: 0 0 auto;
+	font-size: 0.95rem;
+	opacity: 0.75;
+}
+
+.places-card-text {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	margin: 0.45rem 0 0;
+	overflow: hidden;
+	color: rgb(0 0 0 / 62%);
+	font-size: 0.8rem;
+	line-height: 1.6;
+}
+
+:root.dark .places-card-text {
+	color: rgb(255 255 255 / 62%);
+}
+
+.places-card-foot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin-top: 0.6rem;
+}
+
+.places-card-visit {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.15rem;
+	color: var(--content-meta);
+	font-size: 0.7rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.places-card-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.15rem;
+	color: var(--primary);
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.places-card-link:hover {
+	text-decoration: underline;
+}
+
+.places-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.35rem;
+	padding: 3rem 1rem;
+	border: 1px dashed var(--line-divider);
+	border-radius: var(--radius-large);
+	color: var(--content-meta);
+	font-size: 0.85rem;
+	text-align: center;
+}
+
+.places-empty svg {
+	font-size: 2.25rem;
+	opacity: 0.45;
+}
+
+.places-empty[hidden] {
+	display: none;
+}
+
+/* ── 小屏适配 ───────────────────────────────────────── */
+@media (max-width: 640px) {
+	#places-map {
+		height: 340px;
+	}
+
+	.places-popup {
+		width: 15.5rem;
+	}
+}

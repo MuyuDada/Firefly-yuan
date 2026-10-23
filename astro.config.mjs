@@ -284,6 +284,9 @@ export default defineConfig({
 				if (pathname === "/devices/" && !siteConfig.pages.devices) {
 					return false;
 				}
+				if (pathname === "/places/" && !siteConfig.pages.places) {
+					return false;
+				}
 				return true;
 			},
 		}),

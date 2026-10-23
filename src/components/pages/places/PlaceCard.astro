@@ -1,0 +1,90 @@
+---
+import { Icon } from "astro-icon/components";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type { PlaceClient } from "@/utils/places-utils";
+
+interface Props {
+	place: PlaceClient;
+	index?: number;
+}
+
+const { place, index = 0 } = Astro.props;
+
+// 依次错开的入场延迟，避免整页卡片同时淡入
+const animationDelay = `${Math.min(index, 12) * 40}ms`;
+
+// 省 · 市 · 区 去重（直辖市的省市会重复）
+const locationParts = [...new Set([place.province, place.city, place.district])]
+	.map((part) => part?.trim())
+	.filter(Boolean);
+const locationText = locationParts.join(" · ");
+
+const dateText = place.endDate
+	? `${place.date} — ${place.endDate}`
+	: place.date;
+const cover = place.images[0] || "";
+---
+
+<article
+	class="places-card group"
+	data-place-id={place.id}
+	style={`animation-delay: ${animationDelay}`}
+>
+	{
+		cover && (
+			<div class="places-card-cover">
+				<img src={cover} alt={place.label} loading="lazy" decoding="async" />
+				{place.images.length > 1 && (
+					<span class="places-card-photos">
+						<Icon name="material-symbols:photo-library" />
+						{place.images.length}
+					</span>
+				)}
+			</div>
+		)
+	}
+
+	<div class="places-card-body">
+		<div class="places-card-top">
+			<h4>{place.label}</h4>
+			{place.category && <span class="places-card-cat">{place.category}</span>}
+		</div>
+
+		<div class="places-card-meta">
+			<Icon name="material-symbols:calendar-month" />
+			<span>{dateText}</span>
+		</div>
+
+		{locationText && (
+			<div class="places-card-meta">
+				<Icon name="material-symbols:location-on" />
+				<span>{locationText}</span>
+			</div>
+		)}
+
+		{place.experience && <p class="places-card-text">{place.experience}</p>}
+
+		<div class="places-card-foot">
+			{place.visitCount > 1 && (
+				<span class="places-card-visit">
+					<Icon name="material-symbols:repeat" />×{place.visitCount}
+				</span>
+			)}
+
+			{place.link && (
+				<a
+					class="places-card-link"
+					href={place.link}
+					target={place.link.startsWith("http") ? "_blank" : undefined}
+					rel={place.link.startsWith("http")
+						? "noopener noreferrer"
+						: undefined}
+				>
+					{i18n(I18nKey.placesViewPost)}
+					<Icon name="material-symbols:arrow-forward" />
+				</a>
+			)}
+		</div>
+	</div>
+</article>

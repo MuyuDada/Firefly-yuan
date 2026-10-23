@@ -39,6 +39,8 @@ const pages = resolvePageToggles({
 	calendar: true,
 	// 设备展示页开关
 	devices: true,
+	// 足迹地图页面开关
+	places: true,
 
 	// ── 关于 (About) ──────────────────────────────────
 
@@ -57,8 +59,7 @@ export const siteConfig: SiteConfig = {
 	site_url: "https://muyudada.dpdns.org/",
 
 	// 站点描述
-	description:
-		"永远相信美好的事情即将发生!",
+	description: "永远相信美好的事情即将发生!",
 
 	// 站点关键词
 	keywords: [
@@ -364,6 +365,24 @@ export const siteConfig: SiteConfig = {
 			"*.myanimelist.net",
 			"*.vndb.org",
 		],
+	},
+
+	// ── 足迹地图配置 ──────────────────────────────────
+	// 页面路径 `/places/`，地点数据放在 src/content/places/*.md
+	// 高德密钥建议放环境变量（PUBLIC_AMAP_KEY / PUBLIC_AMAP_SECURITY_CODE），
+	// 环境变量缺失时才用下面这两项兜底，避免把密钥提交进仓库。
+	placesMap: {
+		// 高德开放平台「Web端(JS API)」Key，留空则地图区显示配置提示（列表仍正常显示）
+		// 申请：https://console.amap.com/dev/key/app
+		amapKey: "",
+		// 安全密钥（JS API 2.0 必填）。这是前端可见的值，务必在高德控制台配好域名白名单
+		amapSecurityJsCode: "",
+		// 博主常驻位置：地图上显示一个红色光点，不填则不显示
+		// ownerLocation: {
+		// 	lng: 116.4074,
+		// 	lat: 39.9042,
+		// 	label: "我的位置",
+		// },
 	},
 
 	// ── 订阅 (RSS / Atom) 配置 ──────────────────────────────────

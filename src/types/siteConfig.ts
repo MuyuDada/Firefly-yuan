@@ -100,6 +100,7 @@ export type SiteConfig = {
 		projects: boolean; // 项目展示页开关
 		calendar: boolean; // 站点日历页面开关
 		devices: boolean; // 设备展示页开关
+		places: boolean; // 足迹地图页面开关
 	};
 
 	// 分类导航栏开关
@@ -256,6 +257,27 @@ export type SiteConfig = {
 		 * 仅影响匹配域名的图片标签，不影响其他链接的 referrer 行为
 		 */
 		noReferrerDomains?: string[];
+	};
+
+	// ── 足迹地图配置（/places/ 页面）──────────────────────────
+	placesMap?: {
+		/**
+		 * 高德开放平台「Web端(JS API)」Key
+		 * 申请地址：https://console.amap.com/dev/key/app
+		 * 留空则页面只显示地点列表，地图区域给出配置提示
+		 */
+		amapKey?: string;
+		/**
+		 * 高德安全密钥（JS API 2.0 起必填，Key 与安全密钥需成对使用）
+		 * 注意：安全密钥会暴露在前端，务必在高德控制台配置域名白名单
+		 */
+		amapSecurityJsCode?: string;
+		/** 博主常驻位置，地图上显示一个红点（可选） */
+		ownerLocation?: {
+			lng: number;
+			lat: number;
+			label?: string;
+		};
 	};
 
 	// 订阅 (RSS / Atom) 配置

@@ -28,6 +28,7 @@ const NAVBAR_DEFAULT_NAMES: Record<string, I18nKey> = {
 	音乐: I18nKey.music,
 	站点日历: I18nKey.calendar,
 	设备: I18nKey.devices,
+	足迹: I18nKey.places,
 	项目: I18nKey.projects,
 	相册: I18nKey.gallery,
 	书签导航: I18nKey.booknav,

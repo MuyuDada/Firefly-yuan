@@ -62,6 +62,22 @@ type ZiyuanData = {
 	}[];
 };
 
+type PlaceData = {
+	name: string;
+	date: Date;
+	endDate?: Date;
+	province: string;
+	city: string;
+	district: string;
+	experience: string;
+	visitCount: number;
+	category: string;
+	lat?: number;
+	lng?: number;
+	images: string[];
+	link: string;
+};
+
 type ContentCollection<T> = CollectionConfig<
 	ZodType<T>,
 	ReturnType<typeof glob>
@@ -122,10 +138,37 @@ const ziyuanCollection: ContentCollection<ZiyuanData> = defineCollection({
 				z.object({
 					text: z.string(),
 					author: z.string().optional().default(""),
-				})
+				}),
 			)
 			.optional()
 			.default([]),
+	}),
+});
+
+// 足迹地图：一个 md 记一个去过的地方（src/content/places/）
+const placesCollection: ContentCollection<PlaceData> = defineCollection({
+	loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/places" }),
+	schema: z.object({
+		/** 具体地点名，如「大唐不夜城」；不填则依次回落 区/市/省 */
+		name: z.string().optional().default(""),
+		date: z.coerce.date(),
+		endDate: z.coerce.date().optional(),
+		province: z.string(),
+		city: z.string().optional().default(""),
+		district: z.string().optional().default(""),
+		/** 经历文案，也参与分类推断 */
+		experience: z.string().optional().default(""),
+		/** 到访次数，影响点位数字与统计 */
+		visitCount: z.number().optional().default(1),
+		/** 分类（学校 / 工作 / 旅游 …），不填则按经历文案推断 */
+		category: z.string().optional().default(""),
+		/** 精确坐标（高德 GCJ-02），不填则用省市中心兜底 */
+		lat: z.number().optional(),
+		lng: z.number().optional(),
+		/** 足迹照片，点击点位时轮播展示 */
+		images: z.array(z.string()).optional().default([]),
+		/** 可选外链，如对应游记文章 */
+		link: z.string().optional().default(""),
 	}),
 });
 
@@ -145,7 +188,7 @@ const projectsCollection: ContentCollection<ProjectData> = defineCollection({
 					label: z.string(),
 					icon: z.string().optional().default(""),
 					value: z.string(),
-				})
+				}),
 			)
 			.optional()
 			.default([]),
@@ -160,10 +203,12 @@ export const collections: {
 	spec: typeof specCollection;
 	ziyuan: typeof ziyuanCollection;
 	projects: typeof projectsCollection;
+	places: typeof placesCollection;
 } = {
 	dynamic: dynamicCollection,
 	posts: postsCollection,
 	spec: specCollection,
 	ziyuan: ziyuanCollection,
 	projects: projectsCollection,
+	places: placesCollection,
 };
