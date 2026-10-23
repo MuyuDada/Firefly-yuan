@@ -165,8 +165,15 @@ const placesCollection: ContentCollection<PlaceData> = defineCollection({
 		/** 精确坐标（高德 GCJ-02），不填则用省市中心兜底 */
 		lat: z.number().optional(),
 		lng: z.number().optional(),
-		/** 足迹照片，点击点位时轮播展示 */
-		images: z.array(z.string()).optional().default([]),
+		/**
+		 * 足迹照片，点击点位时轮播展示。
+		 * 用 preprocess 兜住「写了 images: 但一条都没填（或被注释掉）」的情况 ——
+		 * 那样 YAML 会解析成 null，直接 z.array() 会整站构建失败。
+		 */
+		images: z.preprocess(
+			(value) => (value === null || value === undefined ? [] : value),
+			z.array(z.string()),
+		),
 		/** 可选外链，如对应游记文章 */
 		link: z.string().optional().default(""),
 	}),
