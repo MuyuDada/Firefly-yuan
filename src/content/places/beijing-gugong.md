@@ -11,6 +11,6 @@ lng: 116.3972
 lat: 39.9163
 images:
   # 占位图，换成你自己的照片即可（数组里可以放多张，弹窗里会变成轮播）
-  - https://muyuimg.cc.cd/file/blog/7RLvWKvx.webp
+  # - https://muyuimg.cc.cd/file/blog/7RLvWKvx.webp
 link: ""
 ---
