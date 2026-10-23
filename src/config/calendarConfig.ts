@@ -65,12 +65,18 @@ export const calendarConfig: SiteCalendarConfig = {
 
 	// 安排（一次性写 date: "YYYY-MM-DD"，重复写 recurring）
 	schedules: [
-		// {
-		// 	title: "博客周检",
-		// 	recurring: { freq: "weekly", weekday: 1 },
-		// 	icon: "material-symbols:event-note",
-		// 	note: "每周一检查更新与依赖",
-		// },
+		{
+			title: "仙逆更新",
+			recurring: { freq: "weekly", weekday: 1 },
+			icon: "material-symbols:event-note",
+			note: "每周一10点更新",
+		},
+		{
+			title: "沧元图更新",
+			recurring: { freq: "weekly", weekday: 5 },
+			icon: "material-symbols:event-note",
+			note: "每周五10点更新",
+		},
 	],
 
 	show: {
