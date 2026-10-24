@@ -52,7 +52,7 @@ export const friendsPageConfig: FriendsPageConfig = {
 		desc: "永远相信美好的事情即将发生",
 		url: "https://muyudada.dpdns.org",
 		avatar:
-			"https://i.imgs.ovh/2026/08/16/d9361d6e012c3125dc8bebbd1a913a92.gif",
+			"https://muyuimg.cc.cd/file/blog/1788157305659_maomao.gif",
 		email: "2756390658@qq.com",
 	},
 
@@ -113,7 +113,7 @@ export const friendsConfig: FriendLink[] = [
 		desc: "飞萤之火自无梦的长夜亮起，绽放在终竟的明天。",
 		siteurl: "https://blog.cuteleaf.cn",
 		tags: ["Blog"],
-		weight: 89, // 权重，数字越大排序越靠前
+		weight: 1, // 权重，数字越大排序越靠前
 		enabled: true, // 是否启用
 	},
 	{
