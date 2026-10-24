@@ -190,6 +190,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 88,
 		enabled: true,
 	},
+	{
+		title: "JerryLife",
+		imgurl: "https://img.jerry-nis.top/d8703c5c-4c4a-49cc-bd94-3363c9eda2d8.png",
+		desc: "Enjoy life",
+		siteurl: "https://www.jerrynis.com",
+		tags: ["Blog"],
+		weight: 87,
+		enabled: true,
+	},
 	// {
 	// 	title: "Firefly Docs",
 	// 	imgurl: "https://docs-firefly.cuteleaf.cn/logo.png",
