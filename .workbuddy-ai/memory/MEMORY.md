@@ -29,6 +29,8 @@ https://gateway-us.umami.is
 
 ## 构建注意事项
 
+- 部署平台是 **Vercel**（`vercel.json`：`buildCommand: pnpm build`，`outputDirectory: dist`）。
+- `vercel.json` 的 buildCommand 前置了 `git fetch --unshallow --quiet || true`：`/analytics` 的推送节奏热力图依赖构建期 `git log` 全量历史，Vercel 若是浅克隆会导致数据缺失。
 - `pnpm build` 的 `preinstall` 强制 pnpm；Node 版本要求 `>=22.23.0`。
 - `pnpm build` 后置脚本 `subset-fonts.ts` 在本机环境下会长时间挂起，日常验证用 `npx astro build` 即可。
 - `dist` 目录在构建期间会被占用，重命名/删除前要先停掉预览服务。
