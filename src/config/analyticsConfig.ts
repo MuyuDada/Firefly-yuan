@@ -11,6 +11,18 @@ export const analyticsConfig: AnalyticsConfig = {
 		websiteId: "dd8d335e-e4c0-46f0-830c-afb6c458c7d8",
 		// Umami JS地址，支持使用自建
 		scriptUrl: "https://cloud.umami.is/script.js",
+		// Umami 实例地址，用于 /analytics 页面读取公开分享数据
+		// 注意：Umami Cloud 的 cloud.umami.is 只托管前端页面，数据接口在 gateway 网关
+		shareApiBase: "https://gateway-us.umami.is",
+		// 公开分享链接的 Share ID（在 Umami 后台「网站设置 → 分享」中创建后获取）
+		// 对应 https://cloud.umami.is/share/GcPdaTVEckbxE6Zf
+		shareId: "GcPdaTVEckbxE6Zf",
+		// 迁移前仅用于站内展示的历史累计（不会回写 Umami）
+		historicalStats: {
+			visitors: 0,
+			pageviews: 0,
+			label: "",
+		},
 		// Umami 会话回放脚本地址，支持使用自建
 		replaysScriptUrl: "https://cloud.umami.is/recorder.js",
 		// 是否追踪出站链接

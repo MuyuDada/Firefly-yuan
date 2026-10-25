@@ -4,6 +4,23 @@ export type AnalyticsConfig = {
 	umamiAnalytics?: {
 		websiteId?: string; // Umami Website ID
 		scriptUrl?: string; // Umami JS地址，支持使用自建
+		/** Umami 接收事件的地址；使用路径反代时与 scriptUrl 不同 */
+		hostUrl?: string;
+		/** 公开分享链接对应的 Share ID，只读，可安全用于前端浏览量展示 */
+		shareId?: string;
+		/** Umami 实例地址，例如 https://cloud.umami.is */
+		shareApiBase?: string;
+		/** 迁移前仅用于站内展示的历史累计，不会回写或伪造 Umami 数据 */
+		historicalStats?: {
+			visitors?: number;
+			pageviews?: number;
+			/** 例如：含迁移前历史累计；浏览量为估算值 */
+			label?: string;
+		};
+		/** 是否在文章元信息中显示 Umami 浏览量，默认 true */
+		showPageViews?: boolean;
+		/** 是否在站点统计卡中显示 Umami 的累计访客与浏览量，默认 true */
+		showSiteStats?: boolean;
 		replaysScriptUrl?: string; // Umami 会话回放脚本地址
 		trackOutboundLinks?: boolean; // 是否追踪出站链接点击事件，默认 true
 		collectWebVitals?: boolean; // 是否自动收集访客浏览器核心网页指标，默认 false

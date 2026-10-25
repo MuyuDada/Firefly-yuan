@@ -33,6 +33,9 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 
 			// 站点日历（按日期浏览文章与事件）
 			LinkPresets.Calendar,
+
+			// 站点统计（基于 Umami 公开分享数据的访问分析）
+			LinkPresets.Analytics,
 		],
 	});
 
@@ -288,6 +291,11 @@ export const LinkPresets: Record<string, NavBarLink> = {
 		url: "/sponsor/",
 		icon: "material-symbols:favorite",
 		pageKey: "sponsor",
+	},
+	Analytics: {
+		name: "站点统计",
+		url: "/analytics/",
+		icon: "material-symbols:monitoring-rounded",
 	},
 	About: {
 		name: "关于我",
