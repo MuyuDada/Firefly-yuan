@@ -122,7 +122,7 @@ export const friendsConfig: FriendLink[] = [
 		desc: "山水有相逢，来日皆可期",
 		siteurl: "https://chortle.asia",
 		tags: ["Blog"],
-		weight: 96,
+		weight: 2,
 		enabled: true,
 	},
 	{
@@ -197,6 +197,15 @@ export const friendsConfig: FriendLink[] = [
 		siteurl: "https://www.jerrynis.com",
 		tags: ["Blog"],
 		weight: 87,
+		enabled: true,
+	},
+	{
+		title: "朝朝听雨",
+		imgurl: "https://rainzt.cn/zzty.png",
+		desc: "物物而不物于物，念念而不念于念",
+		siteurl: "https://rainzt.cn/",
+		tags: ["Blog"],
+		weight: 96,
 		enabled: true,
 	},
 	// {
