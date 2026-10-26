@@ -148,10 +148,16 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 				icon: "material-symbols:cloud",
 			},
 			{
-				name: "Firefly文档",
-				url: "https://docs-firefly.cuteleaf.cn",
+				name: "个人图床",
+				url: "https://muyuimg.cc.cd",
 				external: true,
-				icon: "material-symbols:docs",
+				icon: "material-symbols:photo-library",
+			},
+			{
+				name: "站点检测",
+				url: "https://site.muyudada.dpdns.org",
+				external: true,
+				icon: "material-symbols:timeline",
 			},
 		],
 	});
