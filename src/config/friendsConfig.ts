@@ -103,7 +103,7 @@ export const friendsConfig: FriendLink[] = [
 		desc: "一名普普通通の大学生~",
 		siteurl: "https://lonelybing.top",
 		tags: ["Blog"],
-		weight: 97, // 权重，数字越大排序越靠前
+		weight: 4, // 权重，数字越大排序越靠前
 		enabled: true, // 是否启用
 	},
 	{
@@ -159,7 +159,7 @@ export const friendsConfig: FriendLink[] = [
 		desc: "玫瑰捧起篝火，追忆它年少时爱的日落",
 		siteurl: "https://abcdtfk.icu/",
 		tags: ["Blog"],
-		weight: 92,
+		weight: 3,
 		enabled: true,
 	},
 	{
@@ -206,6 +206,15 @@ export const friendsConfig: FriendLink[] = [
 		siteurl: "https://rainzt.cn/",
 		tags: ["Blog"],
 		weight: 96,
+		enabled: true,
+	},
+	{
+		title: "AIOVTUE-雪",
+		imgurl: "https://r2tc.20030327.xyz/file/博客/主题/1780655293662_avatar_me.jpg.PNG",
+		desc: "雨滴会记录生命中的每一个瞬间",
+		siteurl: "https://daily.yybb.us",
+		tags: ["Blog"],
+		weight: 97,
 		enabled: true,
 	},
 	// {
