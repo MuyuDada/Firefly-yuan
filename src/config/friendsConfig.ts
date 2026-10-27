@@ -217,6 +217,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 97,
 		enabled: true,
 	},
+	{
+		title: "eardogのRef:rain",
+		imgurl: "https://www.paeardog.top/eardog.png",
+		desc: "做一个淡淡的人.",
+		siteurl: "https://www.paeardog.top",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 	// {
 	// 	title: "Firefly Docs",
 	// 	imgurl: "https://docs-firefly.cuteleaf.cn/logo.png",
