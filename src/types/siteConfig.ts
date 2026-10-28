@@ -33,6 +33,8 @@ export type SiteConfig = {
 	title: string;
 	subtitle: string;
 	site_url: string;
+	/** 备用域名：与主域名指向同一站点，仅用于站点信息展示 */
+	alt_urls?: string[];
 	description?: string; // 网站描述，用于生成 <meta name="description">
 	keywords?: string[]; // 站点关键词，用于生成 <meta name="keywords">
 

@@ -600,6 +600,7 @@ enum I18nKey {
 	siteInfoExpand = "siteInfoExpand",
 	siteInfoCollapse = "siteInfoCollapse",
 	siteInfoDomain = "siteInfoDomain",
+	siteInfoAltDomain = "siteInfoAltDomain",
 	siteInfoLicense = "siteInfoLicense",
 
 	// 日历组件

@@ -87,6 +87,11 @@ const siteDomain = siteConfig.site_url
 	? siteConfig.site_url.replace(/^https?:\/\//, "").replace(/\/$/, "")
 	: "unknown";
 
+// 备用域名（与主域名指向同一站点，仅作展示）
+const altDomain = (siteConfig.alt_urls?.[0] ?? "")
+	.replace(/^https?:\/\//, "")
+	.replace(/\/$/, "");
+
 // 文章许可
 const licenseName = licenseConfig.enable ? licenseConfig.name : "None";
 
@@ -125,6 +130,16 @@ const detailItems: {
 		value: siteDomain,
 		fullWidth: true,
 	},
+	...(altDomain
+		? [
+				{
+					icon: "material-symbols:language",
+					label: i18n(I18nKey.siteInfoAltDomain),
+					value: altDomain,
+					fullWidth: true,
+				},
+			]
+		: []),
 	{
 		icon: "mdi:clover",
 		label: "Firefly",

@@ -597,6 +597,7 @@ export const ko: Translation = {
 	[Key.siteInfoExpand]: "빌드 정보 표시",
 	[Key.siteInfoCollapse]: "빌드 정보 숨기기",
 	[Key.siteInfoDomain]: "도메인",
+	[Key.siteInfoAltDomain]: "대체 도메인",
 	[Key.siteInfoLicense]: "라이선스",
 
 	// Calendar Component

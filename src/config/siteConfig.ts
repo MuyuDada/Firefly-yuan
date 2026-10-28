@@ -58,6 +58,9 @@ export const siteConfig: SiteConfig = {
 	// 站点 URL
 	site_url: "https://muyudada.dpdns.org/",
 
+	// 备用域名（与主域名指向同一站点，仅用于展示）
+	alt_urls: ["https://blog.muyudada.dpdns.org/"],
+
 	// 站点描述
 	description: "永远相信美好的事情即将发生!",
 

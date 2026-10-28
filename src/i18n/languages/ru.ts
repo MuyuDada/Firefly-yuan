@@ -602,6 +602,7 @@ export const ru: Translation = {
 	[Key.siteInfoExpand]: "Показать информацию о сборке",
 	[Key.siteInfoCollapse]: "Скрыть информацию о сборке",
 	[Key.siteInfoDomain]: "Домен",
+	[Key.siteInfoAltDomain]: "Доп. домен",
 	[Key.siteInfoLicense]: "Лицензия",
 
 	// Компонент календаря

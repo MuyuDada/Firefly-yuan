@@ -604,6 +604,7 @@ export const en: Translation = {
 	[Key.siteInfoExpand]: "Show build info",
 	[Key.siteInfoCollapse]: "Hide build info",
 	[Key.siteInfoDomain]: "Domain",
+	[Key.siteInfoAltDomain]: "Alt domain",
 	[Key.siteInfoLicense]: "License",
 
 	// Calendar Component

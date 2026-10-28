@@ -597,6 +597,7 @@ export const ja: Translation = {
 	[Key.siteInfoExpand]: "ビルド情報を展開",
 	[Key.siteInfoCollapse]: "ビルド情報を折畳む",
 	[Key.siteInfoDomain]: "ドメイン",
+	[Key.siteInfoAltDomain]: "代替ドメイン",
 	[Key.siteInfoLicense]: "ライセンス",
 
 	// カレンダーコンポーネント

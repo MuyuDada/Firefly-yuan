@@ -32,6 +32,15 @@ const infoFields = siteInfo
 			{ label: "站点名称", value: siteInfo.name, href: "" },
 			{ label: "站点描述", value: siteInfo.desc, href: "" },
 			{ label: "站点链接", value: siteInfo.url, href: siteInfo.url },
+			...(siteInfo.altUrl
+				? [
+						{
+							label: "备用链接",
+							value: siteInfo.altUrl,
+							href: siteInfo.altUrl,
+						},
+					]
+				: []),
 			{ label: "头像链接", value: siteInfo.avatar, href: "" },
 			...(siteInfo.email
 				? [

@@ -585,6 +585,7 @@ export const zh_TW: Translation = {
 	[Key.siteInfoExpand]: "展開構建資訊",
 	[Key.siteInfoCollapse]: "收起構建資訊",
 	[Key.siteInfoDomain]: "站點域名",
+	[Key.siteInfoAltDomain]: "備用域名",
 	[Key.siteInfoLicense]: "文章許可",
 
 	// 日曆組件

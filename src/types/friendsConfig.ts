@@ -15,6 +15,7 @@ export type FriendSiteInfo = {
 	name: string; // 站点名称
 	desc: string; // 站点描述 / 标语
 	url: string; // 站点首页 URL
+	altUrl?: string; // 备用域名（可选，与 url 指向同一站点）
 	avatar: string; // 头像图片 URL
 	email?: string; // 联系邮箱（可选，仅作展示）
 };

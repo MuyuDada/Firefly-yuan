@@ -51,6 +51,8 @@ export const friendsPageConfig: FriendsPageConfig = {
 		name: "Muyu の 小窝",
 		desc: "永远相信美好的事情即将发生",
 		url: "https://muyudada.dpdns.org",
+		// 备用域名，与上面的 url 指向同一站点，供访客任选
+		altUrl: "https://blog.muyudada.dpdns.org",
 		avatar:
 			"https://muyuimg.cc.cd/file/blog/1788157305659_maomao.gif",
 		email: "2756390658@qq.com",
