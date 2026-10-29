@@ -39,9 +39,9 @@ export const commentConfig: CommentConfig = {
 		login: "enable",
 		// 是否启用文章访问量统计功能
 		visitorCount: true,
-		// 友链页的评论就是申请单：强制填昵称和邮箱，
-		// 否则审核结果没地方寄（Worker 会去回复那条评论触发 Waline 的邮件通知）
-		requiredMetaForFriends: ["nick", "mail"],
+		// 昵称和邮箱设为必填：友链申请要靠邮箱寄审核结果，
+		// 回复通知也只有留了邮箱才发得出去。可选 ["nick"] 放宽为只要昵称。
+		requiredMeta: ["nick", "mail"],
 	},
 
 	// artalk评论系统配置

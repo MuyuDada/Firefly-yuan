@@ -6,27 +6,12 @@ interface Props {
 	path: string;
 }
 
-const props = Astro.props;
-// 这两个是本项目自定义的配置项，不进 Waline 的 init
-const {
-	requiredMeta: globalRequiredMeta,
-	requiredMetaForFriends: friendsRequiredMeta,
-	...walineOptions
-} = commentConfig.waline ?? {};
-
-// 友链页的评论是申请单，单独要求填昵称和邮箱
-const isApplyPage = props.path.replace(/\/+$/, "") === "/friends";
-const requiredMeta = isApplyPage
-	? (friendsRequiredMeta ?? [])
-	: (globalRequiredMeta ?? []);
-
 const config = {
-	...walineOptions,
+	...commentConfig.waline,
 	el: "#waline",
-	path: props.path,
+	path: Astro.props.path,
 	dark: "html.dark",
 	wordLimit: ["2", "300"],
-	...(requiredMeta.length ? { requiredMeta } : {}),
 	...(commentConfig.waline?.visitorCount ? { pageview: true } : {}),
 };
 ---
