@@ -1235,6 +1235,15 @@ function adminPage(
 	const card = (app: FriendApplication): string => {
 		const { parsed } = app;
 		const flags: string[] = [];
+		// 手机上审核完想直接拿去粘配置，所以每张已通过的卡片都给一份
+		const snippetForCard =
+			app.status === "approved"
+				? toConfigEntry({
+						...app.parsed,
+						id: app.id,
+						approvedAt: app.reviewedAt ?? app.createdAt,
+					})
+				: "";
 
 		if (app.missing.length > 0) {
 			flags.push(
@@ -1339,6 +1348,11 @@ function adminPage(
 			: ""
 	}
   <div class="actions">
+    ${
+			app.status === "approved"
+				? `<button class="btn" data-copy-entry type="button" data-snippet="${escapeHtml(snippetForCard)}">复制配置</button>`
+				: ""
+		}
     ${
 			app.status === "pending"
 				? `<button class="btn primary" data-action="approve" type="button">通过</button>
