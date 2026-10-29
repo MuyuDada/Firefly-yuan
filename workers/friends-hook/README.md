@@ -532,3 +532,24 @@ curl -s https://friends-hook.muyudada.dpdns.org/health | jq
 ```
 
 这条日志说明 `MAIL_FROM` 用了没校验的域名，是最常见的失败原因。
+
+---
+
+## 附：Waline 邮件模板
+
+`mail-templates/waline-reply.html` 是「评论收到回复」这封通知的模板，改自一封实际在用的设计（四色细条 + 主视觉卡 + 引用区 + 回复卡 + 按钮）。整段是 table + 内联样式，没有外链图片和外部 CSS，换到自己博客也不会裂图。
+
+用法：
+
+1. 把文件内容整段贴进 Waline 项目的环境变量 `MAIL_TEMPLATE`
+2. 标题设 `MAIL_SUBJECT`：
+
+   ```
+   {{parent.nick}}，你在 {{site.name}} 的留言收到回复了
+   ```
+
+3. **重新部署** Waline（环境变量改了不重启不生效）
+
+可用变量：`{{site.name}}` `{{site.url}}` `{{site.postUrl}}` `{{parent.nick}}` `{{parent.comment}}` `{{self.nick}}` `{{self.comment}}`，后两个 `comment` 已经是渲染好的 HTML，要加 `| safe`。
+
+友链审核的回复通知就走这个模板 —— 申请人收到的就是「友链已收录」那张卡片。
