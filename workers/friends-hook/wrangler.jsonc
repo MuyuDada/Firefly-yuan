@@ -33,6 +33,27 @@
 		// 站内表单：出题 + 直接提交，不走 Waline 评论
 		"ENABLE_FORM": "1",
 		"CAPTCHA_PER_DAY": "30",
-		"APPLY_PER_DAY": "5"
-	}
+		"APPLY_PER_DAY": "5",
+
+		// ── 邮件通知 ─────────────────────────────────────
+		// 新申请通知收件人
+		"ADMIN_EMAIL": "2756390658@qq.com",
+		// 发件地址：必须是已校验过的域名，例 `Muyu 小窝 <noreply@muyudada.dpdns.org>`
+		// 留空 = 完全不发信（申请与审核流程照常工作）
+		"MAIL_FROM": "",
+		// 审核页地址，邮件里「去审核」按钮跳这里
+		"ADMIN_URL": "https://friends-hook.muyudada.dpdns.org/admin",
+		// 设为 "0" 可单独关掉某一类通知
+		"NOTIFY_ON_APPLY": "1",
+		"NOTIFY_ON_REVIEW": "1",
+
+		// 审核通过 / 拒绝后，是否替博主去评论区回复申请人那条留言。
+		// 回复会触发 Waline 自带的「被回复」邮件通知，等于借用评论系统的 SMTP。
+		// 只对评论留言方式的申请有效；站内表单申请没有父评论，会直接跳过
+		"ENABLE_WALINE_REPLY": "1",
+		"WALINE_REPLY_NICK": "友链助手"
+	},
+	// 用 Cloudflare 原生发信时打开这行（需先把域名接入 Email Service 并校验发件地址）；
+	// 用 Resend 的话不用改这里，执行 `wrangler secret put RESEND_API_KEY` 即可
+	// "send_email": [{ "name": "EMAIL" }],
 }

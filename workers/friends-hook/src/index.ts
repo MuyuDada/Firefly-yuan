@@ -21,6 +21,11 @@
 import { checkBacklink, hostOf, isSafePublicUrl } from "./backlink";
 import { issueCaptcha, verifyCaptcha } from "./captcha";
 import { type ApplyPayload, validateApply } from "./form";
+import {
+	mailReady,
+	notifyNewApplication,
+	notifyReviewResult,
+} from "./mail";
 import { findMissing, parseApplication } from "./parse";
 import { clientIp, consumeQuota } from "./rate";
 import type { PublicLink } from "./store";
@@ -34,6 +39,30 @@ import {
 	saveApplication,
 } from "./store";
 import type { Env, FriendApplication } from "./types";
+import { replyViaWaline } from "./waline";
+
+/**
+ * 审核结果通知：优先走 Waline 回复（复用评论系统已有的 SMTP），
+ * 走不通时（表单申请没有父评论、或 Waline 拒绝）再退回邮件通道。
+ */
+async function notifyReview(
+	env: Env,
+	app: FriendApplication,
+	approved: boolean,
+): Promise<void> {
+	const viaWaline = await replyViaWaline(env, app, approved);
+	if (viaWaline.ok) {
+		console.log(`[friends-hook] 已用 Waline 回复通知申请人 ${app.id}`);
+		return;
+	}
+	if (viaWaline.skipped) {
+		console.log(`[friends-hook] 跳过 Waline 回复 ${app.id}：${viaWaline.skipped}`);
+	} else {
+		console.error(`[friends-hook] Waline 回复失败 ${app.id}：${viaWaline.error}`);
+	}
+	// 兜底：配了邮件通道（MAIL_FROM + Key）就发邮件，没配则静默跳过
+	await notifyReviewResult(env, app, approved);
+}
 
 /** 统一 JSON 响应。Waline 会对 webhook 响应调用 .json()，所以这里必须返回合法 JSON。 */
 function json(data: unknown, status = 200): Response {
@@ -232,6 +261,9 @@ async function ingest(
 		console.log(
 			`[friends-hook] 已入库 ${id} complete=${application.complete} backlink=${backlink.ok}`,
 		);
+
+		// 新申请通知博主。ingest 本身跑在 waitUntil / cron 里，这里直接 await 即可
+		await notifyNewApplication(env, application);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		console.error(`[friends-hook] 处理 ${id} 失败：${message}`);
@@ -471,13 +503,18 @@ async function handleApply(
 				const current = await getApplication(env.FRIENDS_KV, id);
 				// 审核员可能在检测跑完前就处理掉了，那就别再覆盖状态
 				if (current?.status !== "pending") return;
-				await saveApplication(env.FRIENDS_KV, { ...current, backlink });
+				const updated = { ...current, backlink };
+				await saveApplication(env.FRIENDS_KV, updated);
 				console.log(
 					`[friends-hook] 表单申请 ${id} 反链检测完成 ok=${backlink.ok}`,
 				);
+				// 等反链有结论再发信，博主收到时就能直接看到检测结果
+				await notifyNewApplication(env, updated);
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
 				console.error(`[friends-hook] 表单申请 ${id} 反链检测失败：${message}`);
+				// 反链检测挂了也要让博主知道有人申请，否则这条就彻底没声了
+				await notifyNewApplication(env, application);
 			}
 		})(),
 	);
@@ -527,7 +564,11 @@ async function handleAdminPage(request: Request, env: Env): Promise<Response> {
 }
 
 /** POST /admin/review —— 审核动作 */
-async function handleReview(request: Request, env: Env): Promise<Response> {
+async function handleReview(
+	request: Request,
+	env: Env,
+	ctx: ExecutionContext,
+): Promise<Response> {
 	if (!isAdmin(request, env))
 		return json({ ok: false, error: "口令错误" }, 401);
 
@@ -558,6 +599,7 @@ async function handleReview(request: Request, env: Env): Promise<Response> {
 			app,
 			note || "审核通过",
 		);
+		ctx.waitUntil(notifyReview(env, updated, true));
 		return json({ ok: true, status: updated.status, id });
 	}
 	if (action === "reject") {
@@ -566,6 +608,7 @@ async function handleReview(request: Request, env: Env): Promise<Response> {
 			app,
 			note || "未通过审核",
 		);
+		ctx.waitUntil(notifyReview(env, updated, false));
 		return json({ ok: true, status: updated.status, id });
 	}
 	return json({ ok: false, error: `未知动作 ${action}` }, 400);
@@ -604,7 +647,7 @@ export default {
 			if (pathname === "/admin" && request.method === "GET")
 				return await handleAdminPage(request, env);
 			if (pathname === "/admin/review" && request.method === "POST")
-				return await handleReview(request, env);
+				return await handleReview(request, env, ctx);
 			// 手动触发一次轮询，便于部署后立刻验证，不用等 cron
 			if (pathname === "/admin/poll" && request.method === "POST") {
 				if (!isAdmin(request, env))
@@ -617,6 +660,17 @@ export default {
 					ok: true,
 					kv: Boolean(env.FRIENDS_KV),
 					applyPath: env.APPLY_PATH || "/friends/",
+					// 邮件通道：没配好时这里会是 false，据此排查通知不生效的原因
+					mail: mailReady(env),
+					channel: env.RESEND_API_KEY
+						? "resend"
+						: env.EMAIL
+							? "cloudflare"
+							: "none",
+					notifyApply: env.NOTIFY_ON_APPLY !== "0",
+					notifyReview: env.NOTIFY_ON_REVIEW !== "0",
+					// 审核后是否走 Waline 评论回复（评论申请专用）
+					walineReply: env.ENABLE_WALINE_REPLY !== "0",
 					time: new Date().toISOString(),
 				});
 			}

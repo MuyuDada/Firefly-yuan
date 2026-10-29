@@ -2,6 +2,17 @@
  * 友链自助申请接收端 —— 共享类型
  */
 
+/** Cloudflare 原生发信绑定（wrangler 的 send_email） */
+export interface EmailBinding {
+	send(message: {
+		from: string;
+		to: string;
+		subject: string;
+		html?: string;
+		text?: string;
+	}): Promise<{ messageId?: string }>;
+}
+
 /** Worker 运行时绑定与环境变量 */
 export interface Env {
 	/** 待审 / 已通过申请的存储 */
@@ -26,6 +37,31 @@ export interface Env {
 	CAPTCHA_PER_DAY?: string;
 	/** 一个 IP 每天最多提交几次申请，默认 5 */
 	APPLY_PER_DAY?: string;
+
+	// ── 邮件通知 ──────────────────────────────────────────
+	/** 博主邮箱，接收新申请通知。不填则不发通知 */
+	ADMIN_EMAIL?: string;
+	/**
+	 * 发件地址，必须是已校验的域名。例：
+	 * `Muyu 小窝 <noreply@muyudada.dpdns.org>`
+	 * 与 RESEND_API_KEY / EMAIL 绑定任一同时存在时才会发信
+	 */
+	MAIL_FROM?: string;
+	/** Resend API Key（用 `wrangler secret put RESEND_API_KEY` 设置） */
+	RESEND_API_KEY?: string;
+	/** Cloudflare 原生发信绑定（wrangler.jsonc 里的 send_email） */
+	EMAIL?: EmailBinding;
+	/** 审核页完整地址，邮件里「去审核」跳转用 */
+	ADMIN_URL?: string;
+	/** 设为 "0" 关闭新申请通知 */
+	NOTIFY_ON_APPLY?: string;
+	/** 设为 "0" 关闭审核结果通知（通过 / 拒绝都会发） */
+	NOTIFY_ON_REVIEW?: string;
+
+	/** 设为 "0" 关闭「审核后自动去评论区回复」 */
+	ENABLE_WALINE_REPLY?: string;
+	/** 自动回复用的昵称，默认「友链助手」 */
+	WALINE_REPLY_NICK?: string;
 }
 
 /** 从申请文本中解析出的字段 */

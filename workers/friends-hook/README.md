@@ -401,6 +401,8 @@ workers/friends-hook/
     ├── rate.ts          按 IP 的每日限额（验证码 30 次、申请 5 次）
     ├── store.ts         KV 读写（app: / dup: / pend: / link: 四种前缀）
     ├── backlink.ts      反链检测 + SSRF 防护
+    ├── mail.ts          邮件通知（新申请 / 审核结果），双通道
+    ├── waline.ts        审核后替博主回复评论，借 Waline 的发信能力
     ├── types.ts         共享类型
     └── runtime.d.ts     Workers 运行时类型的最小声明
 ```
@@ -412,3 +414,91 @@ workers/friends-hook/
 Turnstile 要嵌一段 Cloudflare 的脚本、再配 sitekey/secret 两处，而本 Worker 本来就跑在 Cloudflare 上、申请量是个人博客量级 —— 一道「6 + 7 = ?」已经能挡掉绝大多数无脑脚本，成本接近零。
 
 代价是挡不住**专门针对本站写的**脚本。真被盯上了再换成 Turnstile：`captcha.ts` 只有出题与校验两个函数，替换掉它们、把前端那个 `<img>` 换成 widget 即可，其余流程不用动。
+
+## 十、通知
+
+分两条完全独立的通道，**优先用评论系统，配不上再退回邮件**：
+
+### 通道一：借 Waline 的评论回复（默认开启，零额外成本）
+
+Waline 只有两个发信触发点 —— 新评论通知博主、回复通知被回复者，没有「给任意地址发信」的接口。所以想复用它已经配好的 SMTP，办法只有：**审核时替博主去申请人那条留言下面回一句**，由 Waline 自己发「你被回复了」的邮件。
+
+| 场景 | 谁发 | 结果 |
+|---|---|---|
+| 访客在友链页留言申请 | Waline 自己 | 你会收到新评论通知（这套本来就有，不用配） |
+| 审核页点「通过 / 拒绝」 | Worker 调 `POST /api/comment` | 申请人收到回复通知 |
+
+相关变量：
+
+| 变量 | 说明 |
+|---|---|
+| `ENABLE_WALINE_REPLY` | `"0"` 关闭自动回复 |
+| `WALINE_REPLY_NICK` | 回复用的昵称，默认「友链助手」 |
+| `ADMIN_EMAIL` | 同时作为回复者的邮箱（Waline 据此判定是博主本人，避免再给自己发通知） |
+
+**三个已知限制**：
+
+1. **只对评论留言方式的申请有效**。站内表单提交的申请 id 形如 `form-xxxxxxxx`，没有可回复的父评论，会直接跳过。
+2. **回复是公开的**，会出现在友链页评论区。好处是访客能直接看到「已收录」。
+3. **Akismet 可能拦截**。带链接的自动回复容易被判 spam，建议把 Waline 的 `AKISMET_KEY` 设为 `false`；友链页本来就没什么垃圾评论压力。
+
+如果 Waline 服务端设了 `LOGIN=force`（强制登录才能评论），匿名 POST 会失败，此时会自动退化到下面的邮件通道。
+
+### 通道二：Worker 自己发邮件（可选，覆盖表单申请）
+
+| 邮件 | 收件人 | 触发点 |
+|---|---|---|
+| 新申请通知 | `ADMIN_EMAIL` | 申请入库后（表单申请会等反链检测出结果再发，邮件里直接带检测结论） |
+| 审核结果通知 | 申请里填的邮箱 | 审核页点「通过」或「拒绝」后，**且评论回复没走通时** |
+
+申请人**没填邮箱就无法收到结果通知**，这是他自己的选择，Worker 侧不做补救。
+
+#### 发信通道
+
+两条路二选一，都配了优先用 Resend：
+
+| 通道 | 需要的配置 | 说明 |
+|---|---|---|
+| **Resend**（推荐） | `wrangler secret put RESEND_API_KEY` | 免费额度每天 100 封，个人博客够用 |
+| **Cloudflare 原生** | 打开 `wrangler.jsonc` 里的 `send_email` 绑定 | 不引入第三方，需先把域名接入 Email Service |
+
+两条路都要求 **`MAIL_FROM` 填的是已校验的域名**，否则会被拒信：
+
+```jsonc
+"MAIL_FROM": "Muyu 小窝 <noreply@muyudada.dpdns.org>"
+```
+
+用 Resend 时去后台 Domains 添加 `muyudada.dpdns.org`，按提示加 TXT / CNAME 记录（SPF、DKIM），状态变绿才算校验通过。**从 QQ 邮箱直接当发件人是不可行的** —— 发件域必须归你控制，否则 SPF 校验过不去，邮件会直接进垃圾箱或被退。
+
+### 变量一览
+
+| 变量 | 作用 |
+|---|---|
+| `ADMIN_EMAIL` | 新申请通知收件人 |
+| `MAIL_FROM` | 发件地址，留空则完全不发信 |
+| `ADMIN_URL` | 邮件里「去审核」按钮的跳转地址 |
+| `NOTIFY_ON_APPLY` | `"0"` 关闭新申请通知 |
+| `NOTIFY_ON_REVIEW` | `"0"` 关闭审核结果通知 |
+| `RESEND_API_KEY` | Resend 密钥，用 `wrangler secret put` 设置，别写进 `vars` |
+
+`vars` 里的值改了要重新 `wrangler deploy`；`secret` 是即时生效的。
+
+### 验证
+
+```bash
+curl -s https://friends-hook.muyudada.dpdns.org/health | jq
+```
+
+关注三个字段：`mail`（邮件通道是否就绪）、`channel`（`resend` / `cloudflare` / `none`）、`walineReply`（是否开启评论回复）。
+
+要端到端测一次，最简单是用站内表单提交一条**自己邮箱**的申请，看博主邮箱是否收到；再在审核页点「通过」，看申请人邮箱是否收到。
+
+### 失败时不会卡住流程
+
+`mail.ts` 里所有发送函数都吞掉异常、只打日志。发信挂了，申请照样入库、审核照样生效，`wrangler tail` 里能看到原因：
+
+```
+[friends-hook] Resend 发信失败 403：{"message":"The gmail.com domain is not verified..."}
+```
+
+这条日志说明 `MAIL_FROM` 用了没校验的域名，是最常见的失败原因。
