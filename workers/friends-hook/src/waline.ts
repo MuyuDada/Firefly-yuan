@@ -20,8 +20,10 @@ import type { Env, FriendApplication } from "./types";
 /** 表单申请的 id 前缀，用来区分来源 */
 const FORM_ID_PREFIX = "form-";
 
-/** 这条申请是不是评论路径来的（有可回复的父评论） */
+/** 这条申请有没有可回复的评论（决定能不能借 Waline 发邮件） */
 export function hasSourceComment(app: FriendApplication): boolean {
+	// 表单申请提交时会在评论区留一条影子记录，id 记在 sourceCommentId
+	if (app.sourceCommentId) return true;
 	return Boolean(app.id) && !app.id.startsWith(FORM_ID_PREFIX);
 }
 
@@ -94,6 +96,7 @@ export function buildReplyRequest(
 	if (!mail) return null;
 
 	const url = env.APPLY_PATH || "/friends/";
+	const replyToId = app.sourceCommentId || app.id;
 	return {
 		url: `${server}/api/comment`,
 		body: {
@@ -103,9 +106,9 @@ export function buildReplyRequest(
 			link: env.SITE_URL ?? "",
 			url,
 			// pid 指向被回复的评论；rid 是根评论。
-			// 友链申请都是 /friends/ 下的顶层评论，所以根评论就是它自己。
-			pid: app.id,
-			rid: app.id,
+			// 表单申请指向它的影子评论，评论申请指向它自己。
+			pid: replyToId,
+			rid: replyToId,
 			at: app.nick,
 			ua: "friends-hook (+https://github.com/MuyuDada/Firefly-yuan)",
 		},

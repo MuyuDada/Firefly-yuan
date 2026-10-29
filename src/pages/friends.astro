@@ -164,6 +164,7 @@ const hasApplyModal = Boolean(
       latencyTimeout: friendsPageConfig.latencyTimeout ?? 5000,
       latencyGoodMs: friendsPageConfig.latencyGoodMs ?? 2000,
       showLatency: friendsPageConfig.showLatency !== false,
+      walineServer: commentConfig.waline?.serverURL ?? "",
     }}
   >
     (() => {
@@ -171,6 +172,7 @@ const hasApplyModal = Boolean(
       const LATENCY_TIMEOUT = latencyTimeout;
       const LATENCY_GOOD_MS = latencyGoodMs;
       const SHOW_LATENCY = showLatency;
+      const WALINE_SERVER = (walineServer || "").replace(/\/+$/, "");
 
       // 每个卡片只探测一次延时，避免翻页/筛选回来重复请求
       const probed = new WeakSet();
@@ -580,6 +582,52 @@ const hasApplyModal = Boolean(
         let captchaId = "";
         let submitting = false;
 
+        /**
+         * 表单申请没有父评论，审核通过时就没地方「回复」，邮件通知也就发不出去。
+         * 所以提交成功后在评论区补一条影子记录（邮箱填申请人的），再把它的
+         * objectId 回填给 Worker —— 审核时回复这条就能触发 Waline 的邮件。
+         *
+         * ua 前缀 firefly-form: 是标记，Worker 轮询时会跳过这类评论，
+         * 不会把它当成一条新申请重复入库。
+         */
+        const postShadowComment = async (payload, formId) => {
+          if (!WALINE_SERVER || !formId) return;
+          const text = [
+            "申请友链",
+            "名称 " + payload.siteName,
+            "URL " + payload.siteUrl,
+            payload.avatarUrl ? "头像 " + payload.avatarUrl : "",
+            payload.description ? "简介 " + payload.description : "",
+            "邮箱 " + payload.contactEmail,
+          ]
+            .filter(Boolean)
+            .join("\n");
+          try {
+            const res = await fetch(WALINE_SERVER + "/api/comment", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                comment: text,
+                nick: payload.siteName || "匿名",
+                mail: payload.contactEmail,
+                link: payload.siteUrl,
+                url: "/friends/",
+                ua: "firefly-form:" + formId,
+              }),
+            });
+            const json = await res.json().catch(() => null);
+            const commentId = json?.data?.objectId;
+            if (!commentId) return;
+            await fetch(apiBase + "/apply/comment", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ id: formId, commentId: String(commentId) }),
+            });
+          } catch {
+            // 影子记录只是通知用的，失败不影响申请本身
+          }
+        };
+
         const setStatus = (text, kind) => {
           if (!statusEl) return;
           if (!text) {
@@ -702,6 +750,8 @@ const hasApplyModal = Boolean(
               return;
             }
             finish(data.message || modal.dataset.successLabel || "");
+            // 不 await：先把收尾页给出来，影子评论在后台补
+            void postShadowComment(payload, data.id);
           } catch {
             setStatus(modal.dataset.failedLabel || "failed", "error");
             captchaId = "";

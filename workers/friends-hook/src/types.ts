@@ -112,6 +112,12 @@ export interface FriendApplication {
 	backlink: BacklinkResult;
 	/** 审核状态 */
 	status: "pending" | "approved" | "rejected";
+	/**
+	 * 表单申请在评论区留下的「影子记录」的 objectId。
+	 * 表单本身没有父评论，审核结果要发邮件就必须先有一条可回复的评论，
+	 * 所以提交成功后前端会在评论区发一条（邮箱填申请人的），把 id 记在这里。
+	 */
+	sourceCommentId?: string;
 	/** 与已有友链重复时，指向已存在的站点地址 */
 	duplicateOf?: string;
 	/** 审核意见 */

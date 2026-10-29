@@ -244,6 +244,7 @@ https://friends-hook.muyudada.dpdns.org/admin?token=<你的 ADMIN_TOKEN>
 |---|---|---|
 | GET | `/captcha` | 出一道具算术题，给站内表单用。返回 `{"ok":true,"id":"...","question":"6 + 7 = ?"}` |
 | POST | `/apply` | 站内表单直接提交。返回 `{"ok":true,"id":"form-...","message":"..."}` |
+| POST | `/apply/comment` | 表单提交后登记影子评论，body `{"id":"form-...","commentId":"123"}` |
 | POST | `/hook` | Waline WEBHOOK 接收端。立即返回 `{"ok":true,"id":"...","queued":true}` |
 | GET | `/api/links` | 已通过的友链 JSON：`{"ok":true,"count":N,"data":[...]}` |
 | GET | `/api/links?format=ts` | 同上，但输出可直接粘贴的 TS 配置片段 |
@@ -441,7 +442,11 @@ Waline 只有两个发信触发点 —— 新评论通知博主、回复通知�
 | 场景 | 谁发 | 结果 |
 |---|---|---|
 | 访客在友链页留言申请 | Waline 自己 | 你会收到新评论通知（这套本来就有，不用配） |
+| 站内表单提交申请 | **浏览器**顺手在评论区留一条影子记录 | 博主收到新评论通知；这条记录就是后续回复的挂载点 |
 | 审核页点「通过 / 拒绝」 | **审核页的浏览器**直接 POST 到 Waline | 申请人收到回复通知 |
+
+> **表单申请为什么要留一条影子评论**：Waline 的回复通知必须挂在某条评论上，而表单申请本身没有父评论 —— 没有挂载点就发不出邮件。所以表单提交成功后，浏览器会用申请人的邮箱在 `/friends/` 下补一条内容等价的评论，把它的 `objectId` 存进 KV 的 `src:<id>` 键；审核时回复这条，邮件就发得出去。
+> 这类评论的 `ua` 带 `firefly-form:` 前缀，Worker 轮询时据此跳过，不会重复入库成一条新申请。
 
 > **为什么回复由浏览器发、而不是 Worker 发**：`comment.muyudada.dpdns.org` 在本 zone 下是橙云代理、源站在 Vercel，
 > Worker 出站访问这类「同 zone + 外部源站」的地址会被 Cloudflare 挡回 `400 / error code: 1053`

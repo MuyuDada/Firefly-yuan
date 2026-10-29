@@ -124,6 +124,8 @@ interface WalineWebhookPayload {
 			rid?: number | null;
 			/** "administrator" / "author" 表示站长自己发的 */
 			type?: string;
+			/** 评论者的 UA —— 表单申请的影子记录用它做标记（firefly-form: 前缀） */
+			ua?: string;
 		};
 		reply?: unknown;
 	};
@@ -258,6 +260,11 @@ type WalineComment = NonNullable<
  *  - `type` 是 `administrator`/`author` —— 站长自己发的评论。
  */
 function rejectReason(comment: WalineComment): string | null {
+	// 表单申请提交时会在评论区留一条影子记录（ua 带 firefly-form: 前缀），
+	// 它对应的申请已经以 form-xxx 入库了，别再当成一条新申请收一遍
+	const ua = String(comment.ua ?? "").toLowerCase();
+	if (ua.startsWith("firefly-form:")) return "表单申请的影子记录，已单独入库";
+
 	const replyTo = comment.pid ?? comment.rid;
 	if (replyTo) return `这是对 #${replyTo} 的回复，不是新申请`;
 	if (comment.type === "administrator" || comment.type === "author") {
@@ -567,31 +574,39 @@ async function handleReview(request: Request, env: Env): Promise<Response> {
 				400,
 			);
 		}
-		const updated = await approveApplication(
+		const approvedApp = await approveApplication(
 			env.FRIENDS_KV,
 			app,
 			note || "审核通过",
 		);
 		// 回复由浏览器发（Worker 出站到同 zone + 外部源站会被 CF 挡住），
 		// 这里只把请求体算好交给审核页
+		const replyApp = {
+			...approvedApp,
+			sourceCommentId: await getSourceCommentId(env, id),
+		};
 		return json({
 			ok: true,
-			status: updated.status,
+			status: approvedApp.status,
 			id,
-			reply: buildReplyRequest(env, updated, true),
+			reply: buildReplyRequest(env, replyApp, true),
 		});
 	}
 	if (action === "reject") {
-		const updated = await rejectApplication(
+		const rejectedApp = await rejectApplication(
 			env.FRIENDS_KV,
 			app,
 			note || "未通过审核",
 		);
+		const replyApp = {
+			...rejectedApp,
+			sourceCommentId: await getSourceCommentId(env, id),
+		};
 		return json({
 			ok: true,
-			status: updated.status,
+			status: rejectedApp.status,
 			id,
-			reply: buildReplyRequest(env, updated, false),
+			reply: buildReplyRequest(env, replyApp, false),
 		});
 	}
 	return json({ ok: false, error: `未知动作 ${action}` }, 400);
@@ -621,6 +636,43 @@ async function handleBacklink(request: Request, env: Env): Promise<Response> {
 	return json({ ok: true, backlink });
 }
 
+/** POST /apply/comment —— 登记表单申请在评论区的影子记录 */
+async function handleApplyComment(
+	request: Request,
+	env: Env,
+): Promise<Response> {
+	let body: { id?: string; commentId?: string };
+	try {
+		body = (await request.json()) as typeof body;
+	} catch {
+		return json({ ok: false, error: "请求体不是合法 JSON" }, 400);
+	}
+
+	const id = (body.id ?? "").trim();
+	const commentId = (body.commentId ?? "").trim();
+	if (!id || !/^\d+$/.test(commentId))
+		return json({ ok: false, error: "参数不合法" }, 400);
+
+	const app = await getApplication(env.FRIENDS_KV, id);
+	if (!app) return json({ ok: false, error: "找不到该申请" }, 404);
+
+	// 单独存一个键，而不是写回申请记录：
+	// 申请记录在审核 / 反链检测里都是「读-改-写」，KV 又是最终一致，
+	// 并发时旧快照回写会把这里的字段覆盖掉。独立键没有这个风险。
+	await env.FRIENDS_KV.put(`src:${id}`, commentId);
+	console.log(`[friends-hook] 表单申请 ${id} 关联评论 ${commentId}`);
+	return json({ ok: true });
+}
+
+/** 读取表单申请关联的影子评论 id */
+async function getSourceCommentId(
+	env: Env,
+	id: string,
+): Promise<string | undefined> {
+	const value = await env.FRIENDS_KV.get(`src:${id}`);
+	return value ?? undefined;
+}
+
 /** POST /admin/delete —— 彻底删掉一条申请及其关联键 */
 async function handleDelete(request: Request, env: Env): Promise<Response> {
 	if (!isAdmin(request, env))
@@ -641,6 +693,7 @@ async function handleDelete(request: Request, env: Env): Promise<Response> {
 
 	const host = normalizeSiteUrl(app.parsed.siteurl);
 	await env.FRIENDS_KV.delete(`app:${id}`);
+	await env.FRIENDS_KV.delete(`src:${id}`);
 	if (host) {
 		await env.FRIENDS_KV.delete(`link:${host}`);
 		await env.FRIENDS_KV.delete(`dup:${host}`);
@@ -678,6 +731,8 @@ export default {
 				return await handleCaptcha(request, env);
 			if (pathname === "/apply" && request.method === "POST")
 				return await handleApply(request, env, ctx);
+			if (pathname === "/apply/comment" && request.method === "POST")
+				return await handleApplyComment(request, env);
 			if (pathname === "/api/links" && request.method === "GET")
 				return await handlePublicLinks(request, env);
 			if (pathname === "/admin" && request.method === "GET")
