@@ -42,6 +42,11 @@ export const commentConfig: CommentConfig = {
 		// 昵称和邮箱设为必填：友链申请要靠邮箱寄审核结果，
 		// 回复通知也只有留了邮箱才发得出去。可选 ["nick"] 放宽为只要昵称。
 		requiredMeta: ["nick", "mail"],
+		// 直接把这层「必填」写进输入框的占位文字，省得再单独加一行提示
+		locale: {
+			nick: "昵称（必填）",
+			mail: "邮箱（必填）",
+		},
 	},
 
 	// artalk评论系统配置

@@ -31,6 +31,11 @@ export type CommentConfig = {
 		 * 可选值：[] / ["nick"] / ["nick", "mail"]，默认 []
 		 */
 		requiredMeta?: ("nick" | "mail" | "link")[];
+		/**
+		 * 覆盖 Waline 的界面文案，只写想改的键即可（其余沿用语言包）。
+		 * 常用：nick / mail（输入框占位文字）、placeholder（评论框占位文字）。
+		 */
+		locale?: Record<string, string>;
 	};
 	artalk?: {
 		// 后端程序 API 地址
