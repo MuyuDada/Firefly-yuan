@@ -151,6 +151,9 @@ const hasApplyModal = Boolean(
   {
     isCommentEnabled && (
       <div class="mt-4" id="friends-comment">
+        <p class="friends-comment-tip">
+          用评论区申请时请填写<strong>昵称和邮箱</strong>，审核结果会通过邮件通知你。
+        </p>
         <Comment post={friendsPost} customPath="/friends/" />
       </div>
     )
@@ -771,3 +774,20 @@ const hasApplyModal = Boolean(
     })();
   </script>
 </MainGridLayout>
+
+<style>
+  .friends-comment-tip {
+    margin: 0 0 0.75rem;
+    padding: 0.6rem 0.9rem;
+    border-radius: 0.75rem;
+    background: var(--btn-regular-bg);
+    color: var(--content-meta);
+    font-size: 0.8125rem;
+    line-height: 1.7;
+  }
+
+  .friends-comment-tip strong {
+    color: var(--primary);
+    font-weight: 600;
+  }
+</style>

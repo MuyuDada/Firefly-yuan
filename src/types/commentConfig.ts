@@ -26,6 +26,14 @@ export type CommentConfig = {
 		emoji: string[];
 		login?: "enable" | "force" | "disable";
 		visitorCount?: boolean; // 是否统计访问量，true 启用访问量，false 关闭
+		/** 全站评论必填项。留空则沿用 Waline 默认（昵称必填、邮箱选填） */
+		requiredMeta?: ("nick" | "mail" | "link")[];
+		/**
+		 * 友链页（/friends/）专用的必填项。
+		 * 那里的评论本身就是申请单，没留邮箱就没法把审核结果寄回去，
+		 * 所以默认要求填昵称和邮箱。留空则与全站一致。
+		 */
+		requiredMetaForFriends?: ("nick" | "mail" | "link")[];
 	};
 	artalk?: {
 		// 后端程序 API 地址
