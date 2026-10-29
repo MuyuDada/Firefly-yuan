@@ -100,14 +100,24 @@ export async function checkBacklink(
 				redirect: "follow",
 				signal: AbortSignal.timeout(timeoutMs),
 				headers: {
-					// 有些站点对空 UA 直接 403
+					// 别用带 "Bot" 的 UA：不少站点的 WAF 见到就回 403，
+					// 于是「对方没放链接」和「对方不让我抓」就分不清了。
 					"user-agent":
-						"Mozilla/5.0 (compatible; FireflyFriendLinkBot/1.0; +https://github.com/MuyuDada/Firefly-yuan)",
-					accept: "text/html,application/xhtml+xml",
+						"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+					accept:
+						"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+					"accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
 				},
 			});
 			if (!resp.ok)
-				return { ok: false, url, note: `对方站点返回 ${resp.status}` };
+				return {
+					ok: false,
+					url,
+					note:
+						resp.status === 403
+							? `对方站点拒绝抓取（403），多半是开了反爬，需人工确认`
+							: `对方站点返回 ${resp.status}`,
+				};
 			const body = await resp.text();
 			if (body.toLowerCase().includes(targetHost)) {
 				return { ok: true, url, note: `已在 ${url} 找到本站链接` };

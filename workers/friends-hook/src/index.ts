@@ -22,7 +22,7 @@ import { checkBacklink, hostOf, isSafePublicUrl } from "./backlink";
 import { issueCaptcha, verifyCaptcha } from "./captcha";
 import { type ApplyPayload, validateApply } from "./form";
 import { mailReady, notifyNewApplication } from "./mail";
-import { findMissing, parseApplication } from "./parse";
+import { findMissing, normalizeSiteUrl, parseApplication } from "./parse";
 import { clientIp, consumeQuota } from "./rate";
 import type { PublicLink } from "./store";
 import {
@@ -527,8 +527,12 @@ async function handleAdminPage(request: Request, env: Env): Promise<Response> {
 			headers: { "content-type": "text/html; charset=utf-8" },
 		});
 	}
-	const apps = await listApplications(env.FRIENDS_KV);
-	return new Response(adminPage(apps, env), {
+	// 两件事并发：读 KV 和抓线上友链页（判断哪些已真正上线）
+	const [apps, liveHtml] = await Promise.all([
+		listApplications(env.FRIENDS_KV),
+		fetchLivePage(env),
+	]);
+	return new Response(adminPage(apps, env, liveHtml), {
 		headers: {
 			"content-type": "text/html; charset=utf-8",
 			"cache-control": "no-store",
@@ -593,6 +597,59 @@ async function handleReview(request: Request, env: Env): Promise<Response> {
 	return json({ ok: false, error: `未知动作 ${action}` }, 400);
 }
 
+/** POST /admin/backlink —— 重新检测反链（对方后来才补上链接时用） */
+async function handleBacklink(request: Request, env: Env): Promise<Response> {
+	if (!isAdmin(request, env))
+		return json({ ok: false, error: "口令错误" }, 401);
+
+	let body: { id?: string };
+	try {
+		body = (await request.json()) as typeof body;
+	} catch {
+		return json({ ok: false, error: "请求体不是合法 JSON" }, 400);
+	}
+
+	const app = await getApplication(env.FRIENDS_KV, body.id ?? "");
+	if (!app) return json({ ok: false, error: "找不到该申请" }, 404);
+
+	const timeoutMs = Number(env.BACKLINK_TIMEOUT_MS ?? "8000") || 8000;
+	const backlink = isSafePublicUrl(app.parsed.siteurl)
+		? await checkBacklink(app.parsed.siteurl, hostOf(env.SITE_URL), timeoutMs)
+		: { ok: false, checkedUrl: "", note: "没有可检测的站点地址" };
+
+	await saveApplication(env.FRIENDS_KV, { ...app, backlink });
+	return json({ ok: true, backlink });
+}
+
+/** POST /admin/delete —— 彻底删掉一条申请及其关联键 */
+async function handleDelete(request: Request, env: Env): Promise<Response> {
+	if (!isAdmin(request, env))
+		return json({ ok: false, error: "口令错误" }, 401);
+
+	let body: { id?: string };
+	try {
+		body = (await request.json()) as typeof body;
+	} catch {
+		return json({ ok: false, error: "请求体不是合法 JSON" }, 400);
+	}
+
+	const id = body.id ?? "";
+	if (!id) return json({ ok: false, error: "缺少 id" }, 400);
+
+	const app = await getApplication(env.FRIENDS_KV, id);
+	if (!app) return json({ ok: false, error: `找不到申请 ${id}` }, 404);
+
+	const host = normalizeSiteUrl(app.parsed.siteurl);
+	await env.FRIENDS_KV.delete(`app:${id}`);
+	if (host) {
+		await env.FRIENDS_KV.delete(`link:${host}`);
+		await env.FRIENDS_KV.delete(`dup:${host}`);
+		await env.FRIENDS_KV.delete(`pend:${host}`);
+	}
+	console.log(`[friends-hook] 已删除申请 ${id}（${app.status}）`);
+	return json({ ok: true, id });
+}
+
 export default {
 	async fetch(
 		request: Request,
@@ -627,6 +684,10 @@ export default {
 				return await handleAdminPage(request, env);
 			if (pathname === "/admin/review" && request.method === "POST")
 				return await handleReview(request, env);
+			if (pathname === "/admin/backlink" && request.method === "POST")
+				return await handleBacklink(request, env);
+			if (pathname === "/admin/delete" && request.method === "POST")
+				return await handleDelete(request, env);
 			// 诊断：单独跑一次「回复通知」，把失败原因原样返回，便于排查
 			// 生产日志不方便看时（比如 wrangler tail 连不上），用这个接口定位
 			if (pathname === "/admin/notify-test" && request.method === "POST") {
@@ -760,13 +821,6 @@ function timeAgo(iso: string): string {
 	if (days < 30) return `${days} 天前`;
 	return iso.slice(0, 10);
 }
-
-/** 审核页里三个状态的展示文案 */
-const STATUS_LABEL: Record<FriendApplication["status"], string> = {
-	pending: "待审",
-	approved: "已通过",
-	rejected: "已拒绝",
-};
 
 /**
  * 审核页的共用样式。
@@ -932,11 +986,17 @@ details pre{
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn.danger{color:var(--bad);border-color:var(--bad-bd);background:var(--bad-bg)}
+.btn.del{color:var(--text);opacity:.62;border-color:var(--border);background:transparent;margin-left:auto}
+.btn.del:hover:not(:disabled){opacity:1;color:var(--bad);border-color:var(--bad-bd);background:var(--bad-bg)}
 .note-input{
   flex:1;min-width:170px;padding:7px 12px;border-radius:10px;
   border:1px solid var(--border);background:var(--card);color:var(--text);font:inherit;font-size:.85rem;
 }
 .review-note{margin:12px 0 0;font-size:.82rem;color:var(--muted)}
+.hint-warn{
+  margin:14px 0 0;padding:10px 14px;border-radius:10px;font-size:.82rem;line-height:1.7;
+  color:var(--warn);background:var(--warn-bg);border:1px solid var(--warn-bd);
+}
 
 /* ── 配置片段 ── */
 .section-title{
@@ -947,6 +1007,12 @@ details pre{
   font-size:.72rem;font-weight:500;color:var(--accent);background:var(--accent-soft);
   border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
   padding:1px 9px;border-radius:999px;
+}
+.section-title .badge.ok{
+  color:var(--good);background:var(--good-bg);border-color:var(--good-bd);
+}
+.section-title small{
+  font-size:.78rem;font-weight:400;color:var(--muted);
 }
 .pending{
   background:var(--card);border:1px solid var(--border);border-radius:16px;
@@ -1056,13 +1122,56 @@ ${ADMIN_STYLE}
  * 不需要分页，但「待审 / 已通过 / 已拒绝」这个切换是每天都用的，所以做成了
  * 即时过滤而不是三个页面。
  */
-function adminPage(apps: FriendApplication[], env: Env): string {
+/**
+ * 抓一次线上友链页，用来判断「已通过」的条目到底上线没有。
+ *
+ * 友链列表是构建时从 friendsConfig 读的静态数组，所以「在 KV 里 approved」和
+ * 「真的出现在友链页上」是两件事 —— 中间还差一步「粘进配置文件 + 重新部署」。
+ * 这里直接看线上页面里有没有这个域名。
+ *
+ * 抓不到（站点异常 / 超时）时返回 null，页面据此显示「未知」而不是谎报「待上线」。
+ */
+async function fetchLivePage(env: Env): Promise<string | null> {
+	const base = (env.SITE_URL ?? "").trim().replace(/\/+$/, "");
+	if (!base) return null;
+	try {
+		const resp = await fetch(`${base}${env.APPLY_PATH || "/friends/"}`, {
+			signal: AbortSignal.timeout(8000),
+			headers: { accept: "text/html" },
+		});
+		if (!resp.ok) return null;
+		const html = await resp.text();
+		return html ? html.toLowerCase() : null;
+	} catch {
+		return null;
+	}
+}
+
+function adminPage(
+	apps: FriendApplication[],
+	env: Env,
+	liveHtml: string | null,
+): string {
 	const pending = apps.filter((app) => app.status === "pending");
 	const approved = apps.filter((app) => app.status === "approved");
 	const rejected = apps.filter((app) => app.status === "rejected");
 
-	/** 已通过的记录转成 PublicLink，供配置片段生成用 */
-	const approvedLinks: PublicLink[] = approved.map((app) => ({
+	/**
+	 * 已通过 ≠ 已上线：友链列表是构建时从 friendsConfig 读的，
+	 * 中间还差「粘进配置文件 + 重新部署」这一步。抓不到线上页面时返回 null，
+	 * 页面显示「未知」，不谎报成待上线。
+	 */
+	const liveState = (app: FriendApplication): boolean | null => {
+		if (liveHtml === null) return null;
+		const host = hostOf(app.parsed.siteurl);
+		if (!host) return false;
+		return liveHtml.includes(host);
+	};
+	const approvedLive = approved.filter((app) => liveState(app) === true);
+	const approvedWaiting = approved.filter((app) => liveState(app) !== true);
+
+	/** 已通过的记录转成 PublicLink，供配置片段生成用（只给还没上线的） */
+	const approvedLinks: PublicLink[] = approvedWaiting.map((app) => ({
 		...app.parsed,
 		id: app.id,
 		approvedAt: app.reviewedAt ?? app.createdAt,
@@ -1101,6 +1210,28 @@ function adminPage(apps: FriendApplication[], env: Env): string {
   </div>`;
 	};
 
+	/** 「已上线」区的一行：已经在友链页上了，不需要复制片段 */
+	const liveItem = (app: FriendApplication): string => {
+		const { parsed } = app;
+		return `<div class="pending-item">
+    <div class="avatar">${
+			parsed.avatar
+				? `<img src="${escapeHtml(parsed.avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
+				: ""
+		}<span>${escapeHtml((parsed.name || "友").slice(0, 1))}</span></div>
+    <div class="pending-info">
+      <strong>${escapeHtml(parsed.name || "(未识别站点名)")}</strong>
+      <span class="host">${
+				parsed.siteurl
+					? `<a href="${escapeHtml(parsed.siteurl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(hostLabel(parsed.siteurl))}</a>`
+					: "(无站点链接)"
+			}</span>
+      <span class="meta">${escapeHtml(timeAgo(app.reviewedAt ?? app.createdAt))} 上线</span>
+    </div>
+    <span class="flag good">在线</span>
+  </div>`;
+	};
+
 	const card = (app: FriendApplication): string => {
 		const { parsed } = app;
 		const flags: string[] = [];
@@ -1115,15 +1246,25 @@ function adminPage(apps: FriendApplication[], env: Env): string {
 				`<span class="flag bad">疑似重复 ${escapeHtml(app.duplicateOf)}</span>`,
 			);
 		}
-		if (app.backlink.ok) {
-			flags.push(`<span class="flag good">反链已找到</span>`);
-		} else {
-			flags.push(`<span class="flag warn">反链未确认</span>`);
+		// 反链只是「待审时的判断依据」，审核完就没意义了，
+		// 已通过/已拒绝的卡片再挂一个「未确认」纯属噪音
+		if (app.status === "pending") {
+			if (app.backlink.ok) {
+				flags.push(`<span class="flag good">反链已找到</span>`);
+			} else if (/检测中/.test(app.backlink.note || "")) {
+				flags.push(`<span class="flag plain">反链检测中</span>`);
+			} else {
+				flags.push(`<span class="flag warn">反链未确认</span>`);
+			}
 		}
-		if (app.status !== "pending") {
-			flags.push(
-				`<span class="flag plain">${escapeHtml(STATUS_LABEL[app.status])}</span>`,
-			);
+		if (app.status === "approved") {
+			const live = liveState(app);
+			if (live === true) flags.push(`<span class="flag good">已上线</span>`);
+			else if (live === false)
+				flags.push(`<span class="flag warn">待上线</span>`);
+			else flags.push(`<span class="flag plain">上线状态未知</span>`);
+		} else if (app.status === "rejected") {
+			flags.push(`<span class="flag plain">已拒绝</span>`);
 		}
 
 		const siteurl = parsed.siteurl || "";
@@ -1197,16 +1338,25 @@ function adminPage(apps: FriendApplication[], env: Env): string {
 			? `<details><summary>未识别的行（${app.unparsed.length}）</summary><pre>${escapeHtml(app.unparsed.join("\n"))}</pre></details>`
 			: ""
 	}
-  ${
-		app.status === "pending"
-			? `<div class="actions">
-    <button class="btn primary" data-action="approve" type="button">通过</button>
-    <button class="btn danger" data-action="reject" type="button">拒绝</button>
-    <input class="note-input" data-note placeholder="审核备注（可选，会记进 KV）" maxlength="200">
-  </div>`
-			: app.reviewNote
-				? `<p class="review-note">审核备注：${escapeHtml(app.reviewNote)}</p>`
+  <div class="actions">
+    ${
+			app.status === "pending"
+				? `<button class="btn primary" data-action="approve" type="button">通过</button>
+    <button class="btn danger" data-action="reject" type="button">拒绝</button>`
 				: ""
+		}
+    <button class="btn" data-action="backlink" type="button">重新检测反链</button>
+    <button class="btn del" data-action="delete" type="button">删除</button>
+    ${
+			app.status === "pending"
+				? `<input class="note-input" data-note placeholder="审核备注（可选，会记进 KV）" maxlength="200">`
+				: ""
+		}
+  </div>
+  ${
+		app.status !== "pending" && app.reviewNote
+			? `<p class="review-note">审核备注：${escapeHtml(app.reviewNote)}</p>`
+			: ""
 	}
   <details><summary>原始内容</summary><pre>${escapeHtml(app.raw)}</pre></details>
 </article>`;
@@ -1261,19 +1411,36 @@ ${ADMIN_STYLE}
   </div>
   <div class="empty" id="empty"${apps.length ? " hidden" : ""}>没有符合条件的申请。</div>
 
-  ${
-		approved.length
-			? `<div class="section-title">待上线<span class="badge">${approved.length}</span></div>
+	${
+		approvedWaiting.length
+			? `<div class="section-title">待上线<span class="badge">${approvedWaiting.length}</span><small>已通过，但还没写进 friendsConfig</small></div>
   <div class="pending">
     <div class="pending-head">
       <p>把条目粘进 <code>src/config/friendsConfig.ts</code> 的 <code>friendsConfig</code> 数组，再重新部署即可生效 —— 友链列表是构建时读取的静态数组。</p>
       <button class="btn" id="copy-all" type="button">复制全部</button>
     </div>
     <div class="pending-list">
-      ${approved.map(approvedItem).join("\n")}
+      ${approvedWaiting.map(approvedItem).join("\n")}
     </div>
     <pre id="snippet" hidden>${escapeHtml(snippetText)}</pre>
   </div>`
+			: ""
+	}
+
+  ${
+		approvedLive.length
+			? `<div class="section-title">已上线<span class="badge ok">${approvedLive.length}</span><small>线上友链页已经能看到</small></div>
+  <div class="pending">
+    <div class="pending-list">
+      ${approvedLive.map(liveItem).join("\n")}
+    </div>
+  </div>`
+			: ""
+	}
+
+  ${
+		liveHtml === null && approved.length > 0
+			? `<p class="hint-warn">没能抓到线上友链页，所以下面这些条目的上线状态判断不了 —— 稍后刷新重试，或检查站点是否可访问。</p>`
 			: ""
 	}
 </main>
@@ -1380,10 +1547,48 @@ document.addEventListener("click", async (event) => {
   if (action === "reject" && !confirm("确定拒绝这条申请吗？")) return;
 
   const buttons = Array.from(card.querySelectorAll("button[data-action]"));
+  const label0 = btn.textContent;
   for (const other of buttons) other.disabled = true;
-  btn.textContent = action === "approve" ? "通过中…" : "拒绝中…";
+  if (action === "approve") btn.textContent = "通过中…";
+  else if (action === "reject") btn.textContent = "拒绝中…";
+  else if (action === "backlink") btn.textContent = "检测中…";
+  else if (action === "delete") btn.textContent = "删除中…";
 
   try {
+    if (action === "delete") {
+      const sure = confirm(
+        "删除后不可恢复：KV 里的这条申请、以及它对应的已上线/查重记录都会清掉。\\n（对方在评论区的留言不会被删除）\\n\\n确定删除？"
+      );
+      if (!sure) throw new Error("__cancel__");
+      const resp = await fetch("/admin/delete", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-admin-token": TOKEN },
+        body: JSON.stringify({ id }),
+      });
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || "删除失败");
+      card.classList.add("is-leaving");
+      setTimeout(() => card.remove(), 180);
+      toast("已删除");
+      return;
+    }
+
+    if (action === "backlink") {
+      const resp = await fetch("/admin/backlink", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-admin-token": TOKEN },
+        body: JSON.stringify({ id }),
+      });
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || "检测失败");
+      toast(data.backlink.ok ? "反链已找到" : "仍未找到：" + (data.backlink.note || ""));
+      const line = card.querySelector(".backlink");
+      if (line) line.textContent = "反链检测：" + (data.backlink.note || "未检测");
+      for (const other of buttons) other.disabled = false;
+      btn.textContent = "重新检测反链";
+      return;
+    }
+
     const resp = await fetch("/admin/review", {
       method: "POST",
       headers: { "content-type": "application/json", "x-admin-token": TOKEN },
@@ -1394,7 +1599,7 @@ document.addEventListener("click", async (event) => {
     // 回复由浏览器发出去：Worker 出站到同 zone 且源站在外部的地址会被
     // Cloudflare 拦（400 / error code 1053），浏览器走 CF 代理则没问题。
     if (data.reply && data.reply.url) {
-      btn.textContent = action === "approve" ? "通知申请人…" : "通知申请人…";
+      btn.textContent = "通知申请人…";
       try {
         const r = await fetch(data.reply.url, {
           method: "POST",
@@ -1410,9 +1615,10 @@ document.addEventListener("click", async (event) => {
     try { sessionStorage.setItem(SCROLL_KEY, String(window.scrollY)); } catch {}
     setTimeout(() => location.reload(), 220);
   } catch (error) {
-    toast("操作失败：" + (error.message || "未知错误"));
     for (const other of buttons) other.disabled = false;
-    btn.textContent = action === "approve" ? "通过" : "拒绝";
+    btn.textContent = label0;
+    if (error && error.message === "__cancel__") return;
+    toast("操作失败：" + ((error && error.message) || "未知错误"));
   }
 });
 </script>
