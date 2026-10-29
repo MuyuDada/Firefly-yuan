@@ -228,6 +228,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "拾光小筑",
+		imgurl: "https://www.925810.xyz/uploads/hetun.jpg",
+		desc: "这里是我整理和存放日常片段的地方：一些值得记下的瞬间，一些慢慢攒起来的想法，还有那些容易被忽略的小事。",
+		siteurl: "https://www.925810.xyz/",
+		tags: ["Blog"],
+		weight: 6,
+		enabled: true,
+	},
 	// {
 	// 	title: "Firefly Docs",
 	// 	imgurl: "https://docs-firefly.cuteleaf.cn/logo.png",
