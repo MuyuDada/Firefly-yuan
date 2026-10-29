@@ -54,6 +54,64 @@ export interface WalineReplyResult {
 	skipped?: string;
 }
 
+export interface WalineReplyRequest {
+	url: string;
+	body: {
+		comment: string;
+		nick: string;
+		mail: string;
+		link: string;
+		url: string;
+		pid: string;
+		rid: string;
+		at: string;
+		ua: string;
+	};
+}
+
+/**
+ * 组装「回复申请人」的请求。
+ *
+ * 为什么不在这里直接发：Cloudflare 不允许 Worker 出站访问同 zone + 外部源站
+ * 的地址（comment.muyudada.dpdns.org 是 Vercel，返回 400 / error code 1053），
+ * 所以真正的 POST 交给审核页的浏览器发起 —— 浏览器走 CF 代理是通的。
+ *
+ * 返回 null 表示这条申请不该回评（表单申请、开关关闭、缺配置等）。
+ */
+export function buildReplyRequest(
+	env: Env,
+	app: FriendApplication,
+	approved: boolean,
+): WalineReplyRequest | null {
+	if (env.ENABLE_WALINE_REPLY === "0") return null;
+	if (!hasSourceComment(app)) return null;
+
+	const server = (env.WALINE_SERVER ?? "").trim().replace(/\/+$/, "");
+	if (!server) return null;
+
+	const nick = (env.WALINE_REPLY_NICK ?? "").trim() || "友链助手";
+	const mail = (env.ADMIN_EMAIL ?? "").trim();
+	if (!mail) return null;
+
+	const url = env.APPLY_PATH || "/friends/";
+	return {
+		url: `${server}/api/comment`,
+		body: {
+			comment: buildReplyText(app, approved),
+			nick,
+			mail,
+			link: env.SITE_URL ?? "",
+			url,
+			// pid 指向被回复的评论；rid 是根评论。
+			// 友链申请都是 /friends/ 下的顶层评论，所以根评论就是它自己。
+			pid: app.id,
+			rid: app.id,
+			at: app.nick,
+			ua: "friends-hook (+https://github.com/MuyuDada/Firefly-yuan)",
+		},
+	};
+}
+
 /**
  * 替博主回复申请人那条评论。
  *
@@ -76,35 +134,19 @@ export async function replyViaWaline(
 
 	// 昵称与邮箱：邮箱用博主自己的，Waline 会据此认定这条评论是博主发的，
 	// 避免再给自己发一封「新评论通知」
-	const nick = (env.WALINE_REPLY_NICK ?? "").trim() || "友链助手";
-	const mail = (env.ADMIN_EMAIL ?? "").trim();
-	if (!mail) return { ok: false, skipped: "未配置 ADMIN_EMAIL" };
-
-	const url = env.APPLY_PATH || "/friends/";
-	const payload = {
-		comment: buildReplyText(app, approved),
-		nick,
-		mail,
-		link: env.SITE_URL ?? "",
-		url,
-		// pid 指向被回复的评论；rid 是根评论。
-		// 友链申请都是 /friends/ 下的顶层评论，所以根评论就是它自己。
-		pid: app.id,
-		rid: app.id,
-		at: app.nick,
-		ua: "friends-hook (+https://github.com/MuyuDada/Firefly-yuan)",
-	};
+	const request = buildReplyRequest(env, app, approved);
+	if (!request) return { ok: false, skipped: "未配置 ADMIN_EMAIL" };
 
 	try {
-		const response = await fetch(`${server}/api/comment`, {
+		const response = await fetch(request.url, {
 			method: "POST",
 			headers: {
 				"content-type": "application/json",
 				// Waline 默认走 CORS 校验，带上来源更稳妥
 				origin: env.SITE_URL ?? "",
-				referer: `${(env.SITE_URL ?? "").replace(/\/+$/, "")}${url}`,
+				referer: `${(env.SITE_URL ?? "").replace(/\/+$/, "")}${request.body.url}`,
 			},
-			body: JSON.stringify(payload),
+			body: JSON.stringify(request.body),
 		});
 
 		const text = await response.text().catch(() => "");

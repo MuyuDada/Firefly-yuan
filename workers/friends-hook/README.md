@@ -174,6 +174,11 @@ curl -X POST https://friends-hook.muyudada.dpdns.org/admin/poll \
 
 > 轮询用 `pageSize=100`，只取 Waline 接口返回的第一页。友链页评论超过 100 条时，更早的申请不会再被自动补入（但已入库的记录不受影响）。真到那个量级再改成分页拉取即可。
 
+> ⚠️ **当前环境下轮询实际取不到数据**：它和「自动回复」是同一个出站问题 —— Worker 访问
+> `comment.muyudada.dpdns.org`（同 zone 橙云 + Vercel 源站）会被 Cloudflare 返回
+> `400 / error code 1053`。所以现在**靠 WEBHOOK（方式 C）入库**，轮询形同虚设。
+> 想恢复轮询，把该子域的橙云改成 DNS only 即可；或者让 Worker 改用域名没有经过 CF 代理的地址。
+
 ### 方式 C：Waline WEBHOOK（即时推送）
 
 在 Waline 服务的环境变量里加一条：
@@ -426,7 +431,13 @@ Waline 只有两个发信触发点 —— 新评论通知博主、回复通知�
 | 场景 | 谁发 | 结果 |
 |---|---|---|
 | 访客在友链页留言申请 | Waline 自己 | 你会收到新评论通知（这套本来就有，不用配） |
-| 审核页点「通过 / 拒绝」 | Worker 调 `POST /api/comment` | 申请人收到回复通知 |
+| 审核页点「通过 / 拒绝」 | **审核页的浏览器**直接 POST 到 Waline | 申请人收到回复通知 |
+
+> **为什么回复由浏览器发、而不是 Worker 发**：`comment.muyudada.dpdns.org` 在本 zone 下是橙云代理、源站在 Vercel，
+> Worker 出站访问这类「同 zone + 外部源站」的地址会被 Cloudflare 挡回 `400 / error code: 1053`
+> （同 zone 但源站在 Cloudflare 自家就没事，比如博客本体）。而浏览器走 CF 代理完全正常。
+> 所以 `/admin/review` 只负责算好请求体（`reply` 字段），由审核页 JS 发出去。
+> 副作用：这一步依赖审核页处于打开状态——点按钮时它本来就是开着的，不影响使用。
 
 相关变量：
 

@@ -21,11 +21,7 @@
 import { checkBacklink, hostOf, isSafePublicUrl } from "./backlink";
 import { issueCaptcha, verifyCaptcha } from "./captcha";
 import { type ApplyPayload, validateApply } from "./form";
-import {
-	mailReady,
-	notifyNewApplication,
-	notifyReviewResult,
-} from "./mail";
+import { mailReady, notifyNewApplication } from "./mail";
 import { findMissing, parseApplication } from "./parse";
 import { clientIp, consumeQuota } from "./rate";
 import type { PublicLink } from "./store";
@@ -39,30 +35,7 @@ import {
 	saveApplication,
 } from "./store";
 import type { Env, FriendApplication } from "./types";
-import { replyViaWaline } from "./waline";
-
-/**
- * 审核结果通知：优先走 Waline 回复（复用评论系统已有的 SMTP），
- * 走不通时（表单申请没有父评论、或 Waline 拒绝）再退回邮件通道。
- */
-async function notifyReview(
-	env: Env,
-	app: FriendApplication,
-	approved: boolean,
-): Promise<void> {
-	const viaWaline = await replyViaWaline(env, app, approved);
-	if (viaWaline.ok) {
-		console.log(`[friends-hook] 已用 Waline 回复通知申请人 ${app.id}`);
-		return;
-	}
-	if (viaWaline.skipped) {
-		console.log(`[friends-hook] 跳过 Waline 回复 ${app.id}：${viaWaline.skipped}`);
-	} else {
-		console.error(`[friends-hook] Waline 回复失败 ${app.id}：${viaWaline.error}`);
-	}
-	// 兜底：配了邮件通道（MAIL_FROM + Key）就发邮件，没配则静默跳过
-	await notifyReviewResult(env, app, approved);
-}
+import { buildReplyRequest, replyViaWaline } from "./waline";
 
 /** 统一 JSON 响应。Waline 会对 webhook 响应调用 .json()，所以这里必须返回合法 JSON。 */
 function json(data: unknown, status = 200): Response {
@@ -564,11 +537,7 @@ async function handleAdminPage(request: Request, env: Env): Promise<Response> {
 }
 
 /** POST /admin/review —— 审核动作 */
-async function handleReview(
-	request: Request,
-	env: Env,
-	ctx: ExecutionContext,
-): Promise<Response> {
+async function handleReview(request: Request, env: Env): Promise<Response> {
 	if (!isAdmin(request, env))
 		return json({ ok: false, error: "口令错误" }, 401);
 
@@ -599,8 +568,14 @@ async function handleReview(
 			app,
 			note || "审核通过",
 		);
-		ctx.waitUntil(notifyReview(env, updated, true));
-		return json({ ok: true, status: updated.status, id });
+		// 回复由浏览器发（Worker 出站到同 zone + 外部源站会被 CF 挡住），
+		// 这里只把请求体算好交给审核页
+		return json({
+			ok: true,
+			status: updated.status,
+			id,
+			reply: buildReplyRequest(env, updated, true),
+		});
 	}
 	if (action === "reject") {
 		const updated = await rejectApplication(
@@ -608,8 +583,12 @@ async function handleReview(
 			app,
 			note || "未通过审核",
 		);
-		ctx.waitUntil(notifyReview(env, updated, false));
-		return json({ ok: true, status: updated.status, id });
+		return json({
+			ok: true,
+			status: updated.status,
+			id,
+			reply: buildReplyRequest(env, updated, false),
+		});
 	}
 	return json({ ok: false, error: `未知动作 ${action}` }, 400);
 }
@@ -647,7 +626,67 @@ export default {
 			if (pathname === "/admin" && request.method === "GET")
 				return await handleAdminPage(request, env);
 			if (pathname === "/admin/review" && request.method === "POST")
-				return await handleReview(request, env, ctx);
+				return await handleReview(request, env);
+			// 诊断：单独跑一次「回复通知」，把失败原因原样返回，便于排查
+			// 生产日志不方便看时（比如 wrangler tail 连不上），用这个接口定位
+			if (pathname === "/admin/notify-test" && request.method === "POST") {
+				if (!isAdmin(request, env))
+					return json({ ok: false, error: "口令错误" }, 401);
+				let body: {
+					id?: string;
+					approved?: boolean;
+					probe?: boolean | string;
+				};
+				try {
+					body = (await request.json()) as typeof body;
+				} catch {
+					return json({ ok: false, error: "请求体不是合法 JSON" }, 400);
+				}
+				// probe：探测 Worker 到某个地址的连通性，不写任何数据
+				// probe 传 true 时测 Waline，传字符串时测该地址（仅管理员可用，本地排查用）
+				if (body.probe) {
+					const base = (env.WALINE_SERVER ?? "").replace(/\/+$/, "");
+					const defaultUrl = `${base}/comment?path=${encodeURIComponent(env.APPLY_PATH || "/friends/")}&pageSize=5`;
+					const url =
+						typeof body.probe === "string" ? body.probe : defaultUrl;
+					try {
+						const resp = await fetch(url, {
+							headers: { accept: "application/json" },
+						});
+						const text = await resp.text();
+						return json({
+							probe: "GET",
+							url,
+							status: resp.status,
+							contentType: resp.headers.get("content-type"),
+							head: text.slice(0, 160),
+						});
+					} catch (error) {
+						return json({
+							probe: "GET",
+							url,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
+				}
+				const app = await getApplication(env.FRIENDS_KV, body.id ?? "");
+				if (!app) return json({ ok: false, error: "找不到该申请" }, 404);
+				const result = await replyViaWaline(
+					env,
+					app,
+					body.approved !== false,
+				);
+				return json({
+					ok: result.ok,
+					result,
+					env: {
+						hasAdminEmail: Boolean(env.ADMIN_EMAIL),
+						walineServer: env.WALINE_SERVER ?? null,
+						applyPath: env.APPLY_PATH ?? null,
+						enabled: env.ENABLE_WALINE_REPLY !== "0",
+					},
+				});
+			}
 			// 手动触发一次轮询，便于部署后立刻验证，不用等 cron
 			if (pathname === "/admin/poll" && request.method === "POST") {
 				if (!isAdmin(request, env))
@@ -1352,6 +1391,21 @@ document.addEventListener("click", async (event) => {
     });
     const data = await resp.json();
     if (!data.ok) throw new Error(data.error || "操作失败");
+    // 回复由浏览器发出去：Worker 出站到同 zone 且源站在外部的地址会被
+    // Cloudflare 拦（400 / error code 1053），浏览器走 CF 代理则没问题。
+    if (data.reply && data.reply.url) {
+      btn.textContent = action === "approve" ? "通知申请人…" : "通知申请人…";
+      try {
+        const r = await fetch(data.reply.url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(data.reply.body),
+        });
+        if (!r.ok) toast("审核已生效，但评论回复失败（HTTP " + r.status + "）");
+      } catch (e) {
+        toast("审核已生效，但评论回复失败：" + (e.message || "网络错误"));
+      }
+    }
     card.classList.add("is-leaving");
     try { sessionStorage.setItem(SCROLL_KEY, String(window.scrollY)); } catch {}
     setTimeout(() => location.reload(), 220);
