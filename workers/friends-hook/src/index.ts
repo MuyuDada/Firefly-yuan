@@ -1191,7 +1191,7 @@ function adminPage(
 			id: app.id,
 			approvedAt: app.reviewedAt ?? app.createdAt,
 		});
-		return `<div class="pending-item">
+		return `<div class="pending-item" data-id="${escapeHtml(app.id)}">
     <div class="avatar">${
 			parsed.avatar
 				? `<img src="${escapeHtml(parsed.avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
@@ -1207,13 +1207,14 @@ function adminPage(
 			}</span>
     </div>
     <button class="btn" data-copy-entry type="button" data-snippet="${escapeHtml(snippet)}">复制</button>
+    <button class="btn del" data-action="delete" type="button">删除</button>
   </div>`;
 	};
 
 	/** 「已上线」区的一行：已经在友链页上了，不需要复制片段 */
 	const liveItem = (app: FriendApplication): string => {
 		const { parsed } = app;
-		return `<div class="pending-item">
+		return `<div class="pending-item" data-id="${escapeHtml(app.id)}">
     <div class="avatar">${
 			parsed.avatar
 				? `<img src="${escapeHtml(parsed.avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
@@ -1229,6 +1230,7 @@ function adminPage(
       <span class="meta">${escapeHtml(timeAgo(app.reviewedAt ?? app.createdAt))} 上线</span>
     </div>
     <span class="flag good">在线</span>
+    <button class="btn del" data-action="delete" type="button">删除</button>
   </div>`;
 	};
 
@@ -1554,7 +1556,9 @@ document.addEventListener("click", async (event) => {
 
   const btn = event.target.closest("button[data-action]");
   if (!btn) return;
-  const card = btn.closest(".card");
+  // 卡片和「待上线 / 已上线」里的行都带 data-id，删除按钮两种地方都有
+  const card = btn.closest("[data-id]");
+  if (!card) return;
   const id = card.dataset.id;
   const note = card.querySelector("[data-note]")?.value || "";
   const action = btn.dataset.action;
@@ -1584,6 +1588,9 @@ document.addEventListener("click", async (event) => {
       card.classList.add("is-leaving");
       setTimeout(() => card.remove(), 180);
       toast("已删除");
+      // 顶栏统计和「待上线 / 已上线」两个区块都要重算，直接刷新最省事
+      try { sessionStorage.setItem(SCROLL_KEY, String(window.scrollY)); } catch {}
+      setTimeout(() => location.reload(), 420);
       return;
     }
 
