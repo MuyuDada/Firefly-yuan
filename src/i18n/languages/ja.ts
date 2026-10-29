@@ -160,6 +160,38 @@ export const ja: Translation = {
 	[Key.friendsCopy]: "コピー",
 	[Key.friendsCopied]: "コピーしました",
 	[Key.friendsPreviewAlt]: "サイトプレビュー",
+
+	// モーメンツ
+	[Key.moments]: "モーメンツ",
+	[Key.momentsSubtitle]: "フレンドブログの最近の記事を、軽やかなタイムラインに。",
+	[Key.momentsUpdates]: "件の更新",
+	[Key.momentsNote]:
+		"{sources}/{checked} 件のフレンドソースを表示（最新 {fresh} 件、スナップショット {stale} 件）。",
+	[Key.momentsSourceFresh]: "最新",
+	[Key.momentsSourceStale]: "スナップショット",
+	[Key.momentsUnsubscribed]:
+		"フィード未登録のサイト：{sites}。必要であればサイト管理者に RSS/Atom の追加をご依頼ください。",
+	[Key.momentsOwnBadge]: "当サイト",
+	[Key.momentsRecommendedBadge]: "おすすめ",
+	[Key.momentsRandomTitle]: "ランダム記事",
+	[Key.momentsRandomHint]: "モーメンツから記事をひとつランダムに選びます。",
+	[Key.momentsRandomLoading]: "記事を選んでいます…",
+	[Key.momentsRandomRefresh]: "入れ替え",
+	[Key.momentsRandomAuto]: "自動シャッフル",
+	[Key.momentsRandomPause]: "自動シャッフルを停止",
+	[Key.momentsRandomEmpty]: "おすすめできる記事がありません",
+	[Key.momentsRecentUpdate]: "最近の更新",
+	[Key.momentsPrevPage]: "前へ",
+	[Key.momentsNextPage]: "次へ",
+	[Key.momentsPageJump]: "移動",
+	[Key.momentsPageJumpLabel]: "ページ番号",
+	[Key.momentsPageJumpGo]: "移動",
+	[Key.momentsPageIndicator]: "{current} / {total} ページ",
+	[Key.momentsEmptyTitle]: "まだ更新を取得できていません",
+	[Key.momentsEmptyDesc]:
+		"フレンドサイトが RSS / Atom を提供していない可能性があります。次回ビルド時に再検出します。",
+	[Key.momentsFeedLabel]: "フレンドブログの更新",
+
 	[Key.booknav]: "ブックマーク集",
 	[Key.booknavDescription]: "便利なサイトをカテゴリ別に集めました",
 	[Key.searchBooknav]: "ブックマークを検索...",

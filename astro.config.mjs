@@ -287,6 +287,9 @@ export default defineConfig({
 				if (pathname === "/places/" && !siteConfig.pages.places) {
 					return false;
 				}
+				if (pathname === "/moments/" && !siteConfig.pages.moments) {
+					return false;
+				}
 				return true;
 			},
 		}),

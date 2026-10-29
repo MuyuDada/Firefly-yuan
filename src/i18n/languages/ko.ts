@@ -160,6 +160,38 @@ export const ko: Translation = {
 	[Key.friendsCopy]: "복사",
 	[Key.friendsCopied]: "복사됨",
 	[Key.friendsPreviewAlt]: "사이트 미리보기",
+
+	// 모먼트
+	[Key.moments]: "모먼트",
+	[Key.momentsSubtitle]: "친구 블로그의 최근 글을 가벼운 타임라인으로 모았습니다.",
+	[Key.momentsUpdates]: "건 업데이트",
+	[Key.momentsNote]:
+		"{sources}/{checked}개 친구 소스 표시 중 (최신 {fresh}개, 스냅샷 {stale}개).",
+	[Key.momentsSourceFresh]: "최신",
+	[Key.momentsSourceStale]: "스냅샷",
+	[Key.momentsUnsubscribed]:
+		"피드가 없는 사이트: {sites}. 필요하다면 해당 사이트 운영자에게 RSS/Atom 추가를 요청해 주세요.",
+	[Key.momentsOwnBadge]: "이 사이트",
+	[Key.momentsRecommendedBadge]: "추천",
+	[Key.momentsRandomTitle]: "랜덤 글",
+	[Key.momentsRandomHint]: "모먼트에서 글 하나를 무작위로 골라 보여줍니다.",
+	[Key.momentsRandomLoading]: "글을 고르는 중…",
+	[Key.momentsRandomRefresh]: "다른 글",
+	[Key.momentsRandomAuto]: "자동 셔플",
+	[Key.momentsRandomPause]: "자동 셔플 끄기",
+	[Key.momentsRandomEmpty]: "추천할 글이 아직 없습니다",
+	[Key.momentsRecentUpdate]: "최근 업데이트",
+	[Key.momentsPrevPage]: "이전",
+	[Key.momentsNextPage]: "다음",
+	[Key.momentsPageJump]: "이동",
+	[Key.momentsPageJumpLabel]: "페이지 번호",
+	[Key.momentsPageJumpGo]: "이동",
+	[Key.momentsPageIndicator]: "{current} / {total} 페이지",
+	[Key.momentsEmptyTitle]: "아직 읽어온 업데이트가 없습니다",
+	[Key.momentsEmptyDesc]:
+		"친구 사이트가 RSS / Atom 을 제공하지 않을 수 있습니다. 다음 빌드에서 다시 시도합니다.",
+	[Key.momentsFeedLabel]: "친구 블로그 업데이트",
+
 	[Key.booknav]: "북마크 모음",
 	[Key.booknavDescription]: "유용한 사이트를 카테고리별로 모았습니다.",
 	[Key.searchBooknav]: "북마크 검색...",

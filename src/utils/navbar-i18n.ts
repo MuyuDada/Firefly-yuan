@@ -23,6 +23,7 @@ const NAVBAR_DEFAULT_NAMES: Record<string, I18nKey> = {
 	标签: I18nKey.tags,
 	系列: I18nKey.series,
 	友链: I18nKey.friends,
+	朋友圈: I18nKey.moments,
 	留言: I18nKey.guestbook,
 	动态: I18nKey.dynamic,
 	音乐: I18nKey.music,

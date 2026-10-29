@@ -4,8 +4,10 @@ export type FriendLink = {
 	imgurl: string; // 头像图片URL
 	desc: string; // 友链描述
 	siteurl: string; // 友链地址
+	rss?: string | string[]; // RSS/Atom 地址，留空则由朋友圈页面自动探测常见路径
 	previewurl?: string; // 站点预览图 URL，优先级高于 autoPreview
 	tags?: string[]; // 标签数组
+	recommended?: boolean; // 是否为推荐友链（朋友圈页会用不同样式高亮）
 	weight: number; // 权重，数字越大排序越靠前
 	enabled: boolean; // 是否启用
 };

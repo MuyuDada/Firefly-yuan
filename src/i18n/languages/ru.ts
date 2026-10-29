@@ -161,6 +161,40 @@ export const ru: Translation = {
 	[Key.friendsCopy]: "Копировать",
 	[Key.friendsCopied]: "Скопировано",
 	[Key.friendsPreviewAlt]: "Превью сайта",
+
+	// Моменты
+	[Key.moments]: "Моменты",
+	[Key.momentsSubtitle]:
+		"Лёгкая лента со свежими статьями блогов из списка друзей.",
+	[Key.momentsUpdates]: "обновлений",
+	[Key.momentsNote]:
+		"Показано источников: {sources}/{checked} (свежих — {fresh}, из снимка — {stale}).",
+	[Key.momentsSourceFresh]: "свежие",
+	[Key.momentsSourceStale]: "снимок",
+	[Key.momentsUnsubscribed]:
+		"Сайты без ленты: {sites}. При необходимости попросите владельца добавить RSS/Atom.",
+	[Key.momentsOwnBadge]: "Этот сайт",
+	[Key.momentsRecommendedBadge]: "Рекомендуем",
+	[Key.momentsRandomTitle]: "Случайная статья",
+	[Key.momentsRandomHint]:
+		"Выбирает случайную статью из ленты, чтобы почитать под другим углом.",
+	[Key.momentsRandomLoading]: "Выбираем статью…",
+	[Key.momentsRandomRefresh]: "Другая",
+	[Key.momentsRandomAuto]: "Авто-перемешивание",
+	[Key.momentsRandomPause]: "Остановить авто-перемешивание",
+	[Key.momentsRandomEmpty]: "Пока нечего порекомендовать",
+	[Key.momentsRecentUpdate]: "Недавнее обновление",
+	[Key.momentsPrevPage]: "Назад",
+	[Key.momentsNextPage]: "Далее",
+	[Key.momentsPageJump]: "Перейти к",
+	[Key.momentsPageJumpLabel]: "Номер страницы",
+	[Key.momentsPageJumpGo]: "Перейти",
+	[Key.momentsPageIndicator]: "Страница {current} / {total}",
+	[Key.momentsEmptyTitle]: "Обновлений пока нет",
+	[Key.momentsEmptyDesc]:
+		"Возможно, сайты друзей ещё не отдают RSS / Atom; следующая сборка попробует снова.",
+	[Key.momentsFeedLabel]: "Обновления блогов друзей",
+
 	[Key.booknav]: "Каталог закладок",
 	[Key.booknavDescription]:
 		"Подборка полезных сайтов, сгруппированных по категориям.",

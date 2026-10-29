@@ -14,6 +14,8 @@ const pages = resolvePageToggles({
 	friends: true,
 	// 留言板页面开关，需要配置评论系统
 	guestbook: true,
+	// 朋友圈页面开关（聚合友链站点的最新文章）
+	moments: true,
 
 	// ── 我的 (My) ──────────────────────────────────
 

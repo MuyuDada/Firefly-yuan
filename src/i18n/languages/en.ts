@@ -163,6 +163,40 @@ export const en: Translation = {
 	[Key.friendsCopy]: "Copy",
 	[Key.friendsCopied]: "Copied",
 	[Key.friendsPreviewAlt]: "Site preview",
+
+	// Moments
+	[Key.moments]: "Moments",
+	[Key.momentsSubtitle]:
+		"A light timeline of what the blogs on my friends list have been writing.",
+	[Key.momentsUpdates]: "updates",
+	[Key.momentsNote]:
+		"Showing {sources}/{checked} friend sources ({fresh} fresh, {stale} from snapshot).",
+	[Key.momentsSourceFresh]: "fresh",
+	[Key.momentsSourceStale]: "snapshot",
+	[Key.momentsUnsubscribed]:
+		"Sites without a feed: {sites}. Ask the site owner to add RSS/Atom if needed.",
+	[Key.momentsOwnBadge]: "This site",
+	[Key.momentsRecommendedBadge]: "Recommended",
+	[Key.momentsRandomTitle]: "Random read",
+	[Key.momentsRandomHint]:
+		"Picks one random post from the feed so you can read from another angle.",
+	[Key.momentsRandomLoading]: "Picking an article…",
+	[Key.momentsRandomRefresh]: "Shuffle",
+	[Key.momentsRandomAuto]: "Auto shuffle",
+	[Key.momentsRandomPause]: "Stop auto shuffle",
+	[Key.momentsRandomEmpty]: "Nothing to recommend yet",
+	[Key.momentsRecentUpdate]: "Recently updated",
+	[Key.momentsPrevPage]: "Previous",
+	[Key.momentsNextPage]: "Next",
+	[Key.momentsPageJump]: "Go to",
+	[Key.momentsPageJumpLabel]: "Page number",
+	[Key.momentsPageJumpGo]: "Go",
+	[Key.momentsPageIndicator]: "Page {current} / {total}",
+	[Key.momentsEmptyTitle]: "No updates yet",
+	[Key.momentsEmptyDesc]:
+		"Friend sites may not provide RSS / Atom yet; the next build will try again.",
+	[Key.momentsFeedLabel]: "Friend blog updates",
+
 	[Key.booknav]: "Bookmark Nav",
 	[Key.booknavDescription]:
 		"A curated collection of useful sites, organized by category.",

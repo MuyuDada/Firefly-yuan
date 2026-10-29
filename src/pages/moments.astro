@@ -1,0 +1,495 @@
+---
+import { Icon } from "astro-icon/components";
+import {
+	friendsFeedConfig,
+	getMomentsFriends,
+	getOwnSiteUrl,
+	siteConfig,
+} from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import "@/styles/pages/moments.css";
+import { formatDateToYYYYMMDD } from "@/utils/date-utils";
+import { loadFriendsFeed } from "@/utils/friends-feed";
+
+// 检查页面是否启用
+if (!siteConfig.pages.moments) {
+	return Astro.redirect("/404/");
+}
+
+const title = i18n(I18nKey.moments);
+const description = i18n(I18nKey.momentsSubtitle);
+
+const friends = getMomentsFriends();
+const feed = await loadFriendsFeed(friends, {
+	timeoutMs: friendsFeedConfig.timeoutMs,
+	retries: friendsFeedConfig.retries,
+	concurrency: friendsFeedConfig.concurrency,
+	maxItemsPerFriend: friendsFeedConfig.maxItemsPerFriend,
+});
+
+/** 站点地址归一化：去协议 / www / 尾部斜杠，用于跨源比对 */
+const normalizeUrl = (value: string | undefined | null) =>
+	(value ?? "")
+		.trim()
+		.replace(/^https?:\/\//i, "")
+		.replace(/^www\./i, "")
+		.replace(/\/+$/, "")
+		.toLowerCase();
+
+const ownSiteUrl = getOwnSiteUrl();
+const friendsByUrl = new Map(
+	friends.map((friend) => [normalizeUrl(friend.siteurl), friend] as const),
+);
+const subscribedUrls = new Set(
+	feed.sources.map((s) => normalizeUrl(s.friendUrl)),
+);
+const unsubscribedFriends = friends.filter(
+	(friend) => !subscribedUrls.has(normalizeUrl(friend.siteurl)),
+);
+
+// 每条卡片补上角色：本站 / 推荐友链 / 普通
+const moments = feed.items.map((item) => {
+	const isOwn = normalizeUrl(item.friendUrl) === ownSiteUrl;
+	const isRecommended =
+		!isOwn &&
+		friendsByUrl.get(normalizeUrl(item.friendUrl))?.recommended === true;
+	return {
+		...item,
+		role: isOwn
+			? ("own" as const)
+			: isRecommended
+				? ("recommended" as const)
+				: null,
+	};
+});
+
+// 随机卡片的数据，交给客户端脚本挑选
+const randomItems = JSON.stringify(
+	moments.map((item) => ({
+		friendTitle: item.friendTitle,
+		avatar: item.avatar,
+		title: item.title,
+		link: item.link,
+		description: item.description,
+		publishedAt: item.publishedAt?.toISOString() ?? null,
+		role: item.role,
+	})),
+).replace(/</g, "\\u003c");
+
+const pageSize = Math.max(1, friendsFeedConfig.pageSize);
+const totalPages = Math.max(1, Math.ceil(moments.length / pageSize));
+const noteText = i18n(I18nKey.momentsNote)
+	.replace("{sources}", String(feed.sources.length))
+	.replace("{checked}", String(feed.checkedCount))
+	.replace("{fresh}", String(feed.freshSources))
+	.replace("{stale}", String(feed.staleSources));
+---
+
+<MainGridLayout title={title} description={description}>
+	<section
+		class="moments-shell card-base onload-animation"
+		aria-labelledby="moments-title"
+		data-moments-page-size={pageSize}
+	>
+		<header class="moments-header">
+			<div class="moments-heading">
+				<div class="moments-heading-icon" aria-hidden="true">
+					<Icon name="material-symbols:rss-feed-rounded" />
+				</div>
+				<div>
+					<h1 id="moments-title">{title}</h1>
+					<p>{description}</p>
+				</div>
+			</div>
+			<div class="moments-stats" aria-label={title}>
+				<strong>{moments.length}</strong>
+				<span>{i18n(I18nKey.momentsUpdates)}</span>
+			</div>
+
+			{/* 抓取统计 */}
+			{friendsFeedConfig.showFeedStats && (
+				<p class="moments-note">
+					<Icon name="material-symbols:auto-awesome-rounded" aria-hidden="true" />
+					<span>{noteText}</span>
+				</p>
+			)}
+
+			{/* 没提供 RSS 的友链 */}
+			{friendsFeedConfig.showUnsubscribedHint && unsubscribedFriends.length > 0 && (
+				<p class="moments-unsubscribed" role="status">
+					<Icon name="material-symbols:info-outline-rounded" aria-hidden="true" />
+					<span>
+						{i18n(I18nKey.momentsUnsubscribed).replace(
+							"{sites}",
+							unsubscribedFriends.map((friend) => friend.title).join("、"),
+						)}
+					</span>
+				</p>
+			)}
+
+			{/* 随机一篇文章 */}
+			{moments.length > 0 && (
+				<article
+					class="moments-random-article"
+					data-random-article
+					data-items={randomItems}
+					data-state="loading"
+					data-empty-text={i18n(I18nKey.momentsRandomEmpty)}
+					data-own-badge={i18n(I18nKey.momentsOwnBadge)}
+					data-recommended-badge={i18n(I18nKey.momentsRecommendedBadge)}
+					aria-label={i18n(I18nKey.momentsRandomTitle)}
+				>
+					<div class="moments-random-article__icon">
+						<img data-random-article-avatar alt="" width="40" height="40" loading="lazy" decoding="async" hidden />
+						<span data-random-article-avatar-fallback aria-hidden="true">
+							<Icon name="material-symbols:shuffle-rounded" />
+						</span>
+					</div>
+					<div class="moments-random-article__body">
+						<div class="moments-random-article__eyebrow">
+							<span>{i18n(I18nKey.momentsRandomTitle)}</span>
+							<span class="moment-identity-badge" data-random-article-badge hidden></span>
+						</div>
+						<a class="moments-random-article__link" data-random-article-link href="/posts/" aria-label={i18n(I18nKey.momentsRandomTitle)}>
+							<strong data-random-article-title>{i18n(I18nKey.momentsRandomLoading)}</strong>
+							<span data-random-article-description>{i18n(I18nKey.momentsRandomHint)}</span>
+							<span data-random-article-meta aria-hidden="true"></span>
+						</a>
+					</div>
+					<span class="moments-random-article__countdown" data-random-article-countdown aria-hidden="true">6</span>
+					<button
+						type="button"
+						class="moments-random-article__refresh"
+						data-random-article-refresh
+						aria-label={i18n(I18nKey.momentsRandomRefresh)}
+					>
+						<Icon name="material-symbols:refresh-rounded" aria-hidden="true" />
+						<span>{i18n(I18nKey.momentsRandomRefresh)}</span>
+					</button>
+				</article>
+			)}
+		</header>
+
+		{/* 卡片列表 */}
+		{moments.length > 0 ? (
+			<>
+				<div class="moments-grid" aria-label={i18n(I18nKey.momentsFeedLabel)} data-moments-grid>
+					{moments.map((item) => (
+						<a
+							href={item.link}
+							target="_blank"
+							rel="noopener noreferrer"
+							class:list={[
+								"moment-card",
+								item.role === "own" && "moment-card--own",
+								item.role === "recommended" && "moment-card--recommended",
+							]}
+							data-moment-card
+							aria-label={`${item.title}，${item.friendTitle}`}
+						>
+							<div class="moment-avatar">
+								{item.avatar ? (
+									<img src={item.avatar} alt="" width="48" height="48" loading="lazy" decoding="async" />
+								) : (
+									<span class="moment-avatar--fallback">
+										<Icon name="material-symbols:rss-feed-rounded" aria-hidden="true" />
+									</span>
+								)}
+							</div>
+							<div class="moment-content">
+								<div class="moment-title-row">
+									<h2>{item.title}</h2>
+									<Icon name="material-symbols:arrow-outward-rounded" aria-hidden="true" />
+								</div>
+								<p class="moment-meta">
+									<span>{item.friendTitle}</span>
+									{item.role === "own" && (
+										<span class="moment-identity-badge moment-identity-badge--own">
+											<Icon name="material-symbols:home-rounded" aria-hidden="true" />
+											{i18n(I18nKey.momentsOwnBadge)}
+										</span>
+									)}
+									{item.role === "recommended" && (
+										<span class="moment-identity-badge moment-identity-badge--recommended">
+											<Icon name="material-symbols:star-rounded" aria-hidden="true" />
+											{i18n(I18nKey.momentsRecommendedBadge)}
+										</span>
+									)}
+									<span aria-hidden="true">·</span>
+									<time datetime={item.publishedAt?.toISOString()}>
+										{item.publishedAt
+											? formatDateToYYYYMMDD(item.publishedAt)
+											: i18n(I18nKey.momentsRecentUpdate)}
+									</time>
+								</p>
+								{item.description && <p class="moment-description">{item.description}</p>}
+							</div>
+						</a>
+					))}
+				</div>
+
+				{/* 分页：由页面脚本控制显隐 */}
+				<nav class="moments-pagination" data-moments-pagination aria-label={title}>
+					<button type="button" data-moments-page="prev" aria-label={i18n(I18nKey.momentsPrevPage)}>
+						<Icon name="material-symbols:chevron-left-rounded" aria-hidden="true" />
+						<span>{i18n(I18nKey.momentsPrevPage)}</span>
+					</button>
+					<span
+						data-moments-page-indicator
+						data-template={i18n(I18nKey.momentsPageIndicator)}
+						aria-live="polite"
+					>
+						{i18n(I18nKey.momentsPageIndicator)
+							.replace("{current}", "1")
+							.replace("{total}", String(totalPages))}
+					</span>
+					<form class="moments-page-jump" data-moments-page-jump-form>
+						<label for="moments-page-jump-input">{i18n(I18nKey.momentsPageJump)}</label>
+						<input
+							id="moments-page-jump-input"
+							data-moments-page-jump-input
+							type="number"
+							min="1"
+							max={totalPages}
+							inputmode="numeric"
+							aria-label={i18n(I18nKey.momentsPageJumpLabel)}
+							placeholder={i18n(I18nKey.momentsPageJumpLabel)}
+						/>
+						<button type="submit">{i18n(I18nKey.momentsPageJumpGo)}</button>
+					</form>
+					<button type="button" data-moments-page="next" aria-label={i18n(I18nKey.momentsNextPage)}>
+						<span>{i18n(I18nKey.momentsNextPage)}</span>
+						<Icon name="material-symbols:chevron-right-rounded" aria-hidden="true" />
+					</button>
+				</nav>
+			</>
+		) : (
+			<div class="moments-empty">
+				<Icon name="material-symbols:rss-feed-rounded" aria-hidden="true" />
+				<h2>{i18n(I18nKey.momentsEmptyTitle)}</h2>
+				<p>{i18n(I18nKey.momentsEmptyDesc)}</p>
+			</div>
+		)}
+	</section>
+
+	<script slot="head" is:inline>
+		// 朋友圈页交互：随机文章 + 客户端分页
+		// 用 window 标记避免 Swup 切页后重复初始化，逻辑挂在 astro:page-load 上
+		if (!window.__fireflyMoments) {
+			window.__fireflyMoments = { shell: null, cleanup: null, bound: false };
+
+			const initMoments = () => {
+				const runtime = window.__fireflyMoments;
+				const shell = document.querySelector(".moments-shell");
+				if (!shell) {
+					if (runtime.cleanup) runtime.cleanup();
+					runtime.cleanup = null;
+					runtime.shell = null;
+					return;
+				}
+				if (runtime.shell === shell) return;
+				if (runtime.cleanup) runtime.cleanup();
+				runtime.shell = shell;
+
+				const cleanups = [];
+				const on = (el, type, handler, options) => {
+					if (!el) return;
+					el.addEventListener(type, handler, options);
+					cleanups.push(() => el.removeEventListener(type, handler, options));
+				};
+				runtime.cleanup = () => {
+					for (const fn of cleanups.splice(0)) fn();
+					runtime.shell = null;
+				};
+
+				/* ---------- 随机一篇文章 ---------- */
+				const randomCard = shell.querySelector("[data-random-article]");
+				if (randomCard instanceof HTMLElement) {
+					let candidates = [];
+					try {
+						candidates = JSON.parse(randomCard.dataset.items || "[]");
+					} catch {
+						candidates = [];
+					}
+					const link = randomCard.querySelector("[data-random-article-link]");
+					const title = randomCard.querySelector("[data-random-article-title]");
+					const desc = randomCard.querySelector("[data-random-article-description]");
+					const meta = randomCard.querySelector("[data-random-article-meta]");
+					const badge = randomCard.querySelector("[data-random-article-badge]");
+					const avatar = randomCard.querySelector("[data-random-article-avatar]");
+					const avatarFallback = randomCard.querySelector("[data-random-article-avatar-fallback]");
+					const countdown = randomCard.querySelector("[data-random-article-countdown]");
+					const refreshBtn = randomCard.querySelector("[data-random-article-refresh]");
+					// 文案从 data-* 读取（脚本是 is:inline，拿不到 i18n 函数）
+					const emptyText = randomCard.dataset.emptyText || "暂时没有可推荐的文章";
+					const ownBadgeText = randomCard.dataset.ownBadge || "本站主理人";
+					const recommendedBadgeText = randomCard.dataset.recommendedBadge || "推荐友链";
+					let lastLink = "";
+					let timer = 0;
+					let remaining = 6;
+
+					const showAvatarFallback = () => {
+						if (avatar instanceof HTMLImageElement) {
+							avatar.hidden = true;
+							avatar.removeAttribute("src");
+						}
+						if (avatarFallback instanceof HTMLElement) avatarFallback.hidden = false;
+					};
+
+					const render = () => {
+						if (!(link instanceof HTMLAnchorElement) || !(title instanceof HTMLElement)) return;
+						if (candidates.length === 0) {
+							randomCard.dataset.state = "empty";
+							link.removeAttribute("href");
+							title.textContent = emptyText;
+							showAvatarFallback();
+							if (badge instanceof HTMLElement) badge.hidden = true;
+							return;
+						}
+						const pool = candidates.filter((item) => item.link !== lastLink);
+						const picked = (pool.length > 0 ? pool : candidates)[
+							Math.floor(Math.random() * (pool.length > 0 ? pool.length : candidates.length))
+						];
+						lastLink = picked.link;
+						link.href = picked.link;
+						title.textContent = picked.title || "随机文章";
+						if (desc instanceof HTMLElement) desc.textContent = picked.description || "";
+						if (meta instanceof HTMLElement) {
+							const when = picked.publishedAt
+								? new Date(picked.publishedAt).toLocaleDateString("zh-CN", {
+										year: "numeric",
+										month: "2-digit",
+										day: "2-digit",
+									})
+								: "";
+							meta.textContent = when ? `${picked.friendTitle} · ${when}` : picked.friendTitle || "";
+						}
+						if (avatar instanceof HTMLImageElement && picked.avatar) {
+							avatar.src = picked.avatar;
+							avatar.hidden = false;
+							if (avatarFallback instanceof HTMLElement) avatarFallback.hidden = true;
+						} else {
+							showAvatarFallback();
+						}
+						if (badge instanceof HTMLElement) {
+							badge.classList.remove(
+								"moment-identity-badge--own",
+								"moment-identity-badge--recommended",
+							);
+							if (picked.role === "own" || picked.role === "recommended") {
+								badge.classList.add(`moment-identity-badge--${picked.role}`);
+								badge.textContent =
+									picked.role === "own" ? ownBadgeText : recommendedBadgeText;
+								badge.hidden = false;
+							} else {
+								badge.textContent = "";
+								badge.hidden = true;
+							}
+						}
+						randomCard.dataset.state = "ready";
+					};
+
+					const tick = () => {
+						remaining -= 1;
+						if (countdown instanceof HTMLElement) countdown.textContent = String(Math.max(0, remaining));
+						if (remaining <= 0) {
+							remaining = 6;
+							render();
+						}
+					};
+
+					const prefersReduced =
+						window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+					render();
+					if (!prefersReduced && candidates.length > 1) {
+						timer = window.setInterval(tick, 1000);
+					}
+
+					on(refreshBtn, "click", () => {
+						remaining = 6;
+						render();
+					});
+					on(avatar, "error", showAvatarFallback);
+					on(document, "visibilitychange", () => {
+						if (timer) {
+							window.clearInterval(timer);
+							timer = 0;
+						}
+						if (!document.hidden && !prefersReduced && candidates.length > 1) {
+							remaining = 6;
+							timer = window.setInterval(tick, 1000);
+						}
+					});
+					cleanups.push(() => {
+						if (timer) window.clearInterval(timer);
+						timer = 0;
+					});
+				}
+
+				/* ---------- 客户端分页 ---------- */
+				const grid = shell.querySelector("[data-moments-grid]");
+				const pagination = shell.querySelector("[data-moments-pagination]");
+				if (grid && pagination) {
+					const cards = Array.from(grid.querySelectorAll("[data-moment-card]"));
+					const perPage = Math.max(1, Number(shell.dataset.momentsPageSize) || 12);
+					const total = Math.max(1, Math.ceil(cards.length / perPage));
+					const indicator = pagination.querySelector("[data-moments-page-indicator]");
+					const prevBtn = pagination.querySelector('[data-moments-page="prev"]');
+					const nextBtn = pagination.querySelector('[data-moments-page="next"]');
+					const jumpForm = pagination.querySelector("[data-moments-page-jump-form]");
+					const jumpInput = pagination.querySelector("[data-moments-page-jump-input]");
+					let page = 1;
+
+					const paint = () => {
+						cards.forEach((card, index) => {
+							const visible = index >= (page - 1) * perPage && index < page * perPage;
+							card.hidden = !visible;
+						});
+						if (indicator instanceof HTMLElement) {
+							// data-template 是服务端给的 i18n 模板，形如「第 {current} / {total} 页」
+							const tpl = indicator.dataset.template || "";
+							indicator.textContent = tpl
+								.replace(/\{current\}/g, String(page))
+								.replace(/\{total\}/g, String(total));
+						}
+						if (prevBtn instanceof HTMLButtonElement) prevBtn.disabled = page <= 1;
+						if (nextBtn instanceof HTMLButtonElement) nextBtn.disabled = page >= total;
+					};
+
+					// 只有一页时把分页整块收起来
+					if (total > 1) pagination.classList.add("is-visible");
+
+					const goto = (target) => {
+						page = Math.min(total, Math.max(1, target));
+						paint();
+						shell.scrollIntoView({ behavior: "smooth", block: "start" });
+					};
+
+					on(prevBtn, "click", () => goto(page - 1));
+					on(nextBtn, "click", () => goto(page + 1));
+					on(jumpForm, "submit", (event) => {
+						event.preventDefault();
+						const value = Number(jumpInput instanceof HTMLInputElement ? jumpInput.value : 0);
+						if (Number.isFinite(value) && value >= 1) goto(value);
+					});
+
+					paint();
+				}
+			};
+
+			const boot = () => {
+				initMoments();
+			};
+
+			document.addEventListener("astro:page-load", boot);
+			if (document.readyState === "loading") {
+				document.addEventListener("DOMContentLoaded", boot, { once: true });
+			} else {
+				boot();
+			}
+		}
+	</script>
+</MainGridLayout>

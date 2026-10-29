@@ -1,0 +1,751 @@
+/* 朋友圈页面样式
+ * 视觉参考 Aemeath（https://github.com/Jarvis0227/Aemeath）的 /moments 页面，
+ * 全部样式收在这里（而不是写在 .astro 的 <style> 里），
+ * 原因：Astro 会给组件样式加 scope 属性，页面内脚本动态创建/修改的节点拿不到这些 scoped 规则。
+ */
+
+/* ============================================
+ * 外壳与页头
+ * ============================================ */
+.moments-shell {
+	/* 正文墨色：--deep-text 只有亮色一份定义（暗色下仍是深色），
+	   这里单独给一份随主题切换的变量，避免暗色模式下标题看不见 */
+	--moments-ink: rgb(0 0 0 / 90%);
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+	padding: 1.5rem 2rem;
+}
+
+:root.dark .moments-shell {
+	--moments-ink: rgb(255 255 255 / 92%);
+}
+
+.moments-header {
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 1.25rem 2rem;
+	overflow: hidden;
+}
+
+.moments-heading {
+	display: flex;
+	align-items: center;
+	gap: 0.85rem;
+	min-width: 0;
+}
+
+.moments-heading-icon {
+	display: grid;
+	place-items: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	flex: 0 0 auto;
+	border-radius: 0.85rem;
+	color: white;
+	background: var(--primary);
+	box-shadow: 0 0.7rem 1.6rem color-mix(in srgb, var(--primary) 22%, transparent);
+	font-size: 1.45rem;
+}
+
+:root.dark .moments-heading-icon {
+	color: rgb(0 0 0 / 70%);
+}
+
+.moments-heading h1 {
+	margin: 0;
+	color: var(--moments-ink);
+	font-size: clamp(1.35rem, 3vw, 1.85rem);
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	line-height: 1.25;
+}
+
+.moments-heading p {
+	margin: 0.3rem 0 0;
+	color: var(--content-meta);
+	font-size: 0.9rem;
+	line-height: 1.6;
+}
+
+.moments-stats {
+	display: flex;
+	align-items: baseline;
+	gap: 0.4rem;
+	align-self: center;
+	white-space: nowrap;
+	color: var(--content-meta);
+}
+
+.moments-stats strong {
+	color: var(--primary);
+	font-size: 1.55rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.moments-stats span {
+	font-size: 0.8rem;
+}
+
+.moments-note,
+.moments-unsubscribed {
+	display: flex;
+	grid-column: 1 / -1;
+	align-items: center;
+	gap: 0.45rem;
+	font-size: 0.76rem;
+	line-height: 1.55;
+}
+
+.moments-note {
+	padding-top: 0.8rem;
+	border-top: 1px solid var(--line-divider);
+	color: var(--content-meta);
+}
+
+.moments-note svg,
+.moments-unsubscribed svg {
+	flex: 0 0 auto;
+	color: var(--primary);
+}
+
+.moments-unsubscribed {
+	align-items: flex-start;
+	margin: -0.55rem 0 0;
+	padding: 0.55rem 0.7rem;
+	border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--line-divider));
+	border-radius: 0.65rem;
+	background: color-mix(in srgb, var(--primary) 5%, var(--card-bg));
+	color: var(--content-meta);
+	font-size: 0.74rem;
+}
+
+/* ============================================
+ * 随机一篇卡片
+ * ============================================ */
+.moments-random-article {
+	display: grid;
+	position: relative;
+	grid-column: 1 / -1;
+	grid-template-columns: auto minmax(0, 1fr) auto auto;
+	align-items: center;
+	gap: 0.75rem;
+	margin: 0.1rem 0;
+	padding: 0.9rem;
+	border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--line-divider));
+	border-radius: 0.8rem;
+	background: linear-gradient(
+		118deg,
+		color-mix(in srgb, var(--card-bg) 82%, transparent),
+		color-mix(in srgb, var(--primary) 8%, var(--card-bg)) 52%,
+		color-mix(in srgb, var(--card-bg) 72%, transparent)
+	);
+	box-shadow:
+		0 0.75rem 1.8rem color-mix(in srgb, var(--primary) 11%, transparent),
+		inset 0 1px 0 color-mix(in srgb, #ffffff 62%, transparent);
+	transition: border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.moments-random-article:hover {
+	border-color: color-mix(in srgb, var(--primary) 34%, var(--line-divider));
+	box-shadow:
+		0 1rem 2.1rem color-mix(in srgb, var(--primary) 16%, transparent),
+		inset 0 1px 0 color-mix(in srgb, #ffffff 78%, transparent);
+}
+
+.moments-random-article__icon {
+	display: grid;
+	place-items: center;
+	width: 2.5rem;
+	height: 2.5rem;
+	flex: 0 0 auto;
+	border-radius: 999px;
+	overflow: hidden;
+	background: color-mix(in srgb, var(--primary) 12%, var(--card-bg));
+	color: var(--primary);
+	font-size: 1.2rem;
+}
+
+.moments-random-article__icon img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.moments-random-article__body {
+	min-width: 0;
+}
+
+.moments-random-article__eyebrow {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--content-meta);
+	font-size: 0.68rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.moments-random-article__link {
+	display: block;
+	min-width: 0;
+	text-decoration: none;
+}
+
+.moments-random-article__link strong {
+	display: block;
+	overflow: hidden;
+	color: var(--moments-ink);
+	font-size: 0.98rem;
+	font-weight: 750;
+	letter-spacing: -0.01em;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	transition: color 180ms ease;
+}
+
+.moments-random-article__link:hover strong {
+	color: var(--primary);
+}
+
+.moments-random-article__link span {
+	display: block;
+	margin-top: 0.2rem;
+	overflow: hidden;
+	color: var(--content-meta);
+	font-size: 0.74rem;
+	line-height: 1.5;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.moments-random-article__link [data-random-article-meta] {
+	margin-top: 0.15rem;
+	font-size: 0.68rem;
+	opacity: 0.8;
+}
+
+.moments-random-article__countdown {
+	display: grid;
+	place-items: center;
+	width: 1.6rem;
+	height: 1.6rem;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--primary) 12%, transparent);
+	color: var(--primary);
+	font-size: 0.68rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.moments-random-article__countdown[data-auto="false"] {
+	display: none;
+}
+
+.moments-random-article__auto,
+.moments-random-article__refresh {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	padding: 0.4rem 0.6rem;
+	border: 1px solid var(--line-divider);
+	border-radius: 0.6rem;
+	background: color-mix(in srgb, var(--card-bg) 80%, transparent);
+	color: var(--content-meta);
+	font-size: 0.72rem;
+	cursor: pointer;
+	transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease;
+}
+
+.moments-random-article__auto:hover,
+.moments-random-article__refresh:hover {
+	border-color: var(--primary);
+	color: var(--primary);
+}
+
+.moments-random-article__auto.is-active {
+	border-color: color-mix(in srgb, var(--primary) 42%, var(--line-divider));
+	color: var(--primary);
+}
+
+.moments-random-article__refresh:disabled {
+	opacity: 0.5;
+	cursor: progress;
+}
+
+.moments-random-article[data-state="empty"] .moments-random-article__link {
+	pointer-events: none;
+}
+
+/* 身份徽标（本站主理人 / 推荐友链） */
+.moment-identity-badge {
+	--moment-role-accent: var(--primary);
+	--moment-role-soft: color-mix(in srgb, var(--primary) 18%, var(--card-bg));
+	--moment-role-ink: var(--primary);
+	display: inline-flex;
+	align-items: center;
+	gap: 0.18rem;
+	min-height: 1.05rem;
+	padding: 0.08rem 0.42rem;
+	border: 1px solid color-mix(in srgb, var(--moment-role-accent) 54%, transparent);
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--moment-role-soft) 82%, var(--card-bg));
+	color: var(--moment-role-ink);
+	font-size: 0.62rem;
+	font-weight: 800;
+	letter-spacing: 0.025em;
+	white-space: nowrap;
+}
+
+.moment-identity-badge svg {
+	width: 0.72rem;
+	height: 0.72rem;
+	flex: 0 0 auto;
+}
+
+.moment-identity-badge--recommended {
+	--moment-role-accent: #f4bb2e;
+	--moment-role-soft: #fff0a2;
+	--moment-role-ink: #b98107;
+}
+
+.moment-identity-badge--own {
+	--moment-role-accent: #1dbde8;
+	--moment-role-soft: #c6f3ff;
+	--moment-role-ink: #0d84b0;
+}
+
+:root.dark .moment-identity-badge--recommended {
+	--moment-role-ink: #f7d36f;
+	--moment-role-soft: #5a4518;
+	--moment-role-accent: #e5b83c;
+}
+
+:root.dark .moment-identity-badge--own {
+	--moment-role-ink: #79dcfa;
+	--moment-role-soft: #174765;
+	--moment-role-accent: #55c9f2;
+}
+
+/* ============================================
+ * 卡片网格
+ * ============================================ */
+.moments-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+	margin: 1rem 0;
+}
+
+.moment-card {
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	gap: 0.75rem;
+	min-width: 0;
+	padding: 0.85rem;
+	border: 1px solid var(--line-divider);
+	border-radius: 0.9rem;
+	background: var(--card-bg);
+	color: inherit;
+	text-decoration: none;
+	transition: border-color 220ms ease, box-shadow 220ms ease, background-color 220ms ease;
+}
+
+.moment-card:hover,
+.moment-card:focus-visible {
+	border-color: color-mix(in srgb, var(--primary) 58%, var(--line-divider));
+	background: color-mix(in srgb, var(--card-bg) 96%, var(--primary));
+	box-shadow: 0 0.8rem 1.8rem color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.moment-card:focus-visible {
+	outline: 2px solid color-mix(in srgb, var(--primary) 72%, white);
+	outline-offset: 3px;
+}
+
+/* 本站主理人的文章 */
+.moment-card--own {
+	border-color: color-mix(in srgb, #1dbde8 34%, var(--line-divider));
+	background: color-mix(in srgb, #dff5ff 54%, var(--card-bg));
+}
+
+.moment-card--own:hover,
+.moment-card--own:focus-visible {
+	border-color: color-mix(in srgb, #1dbde8 58%, var(--line-divider));
+	background: color-mix(in srgb, #d2f1ff 68%, var(--card-bg));
+	box-shadow: 0 0.45rem 1.15rem color-mix(in srgb, #1dbde8 18%, transparent);
+}
+
+.moment-card--own .moment-title-row h2 {
+	color: #149ed8;
+}
+
+/* 推荐友链的文章 */
+.moment-card--recommended {
+	border-color: color-mix(in srgb, #e9bd51 42%, var(--line-divider));
+	background: color-mix(in srgb, #fff9df 78%, var(--card-bg));
+}
+
+.moment-card--recommended:hover,
+.moment-card--recommended:focus-visible {
+	border-color: color-mix(in srgb, #dfa92e 62%, var(--line-divider));
+	background: color-mix(in srgb, #fff5c6 82%, var(--card-bg));
+	box-shadow: 0 0.45rem 1.15rem color-mix(in srgb, #e7b83e 20%, transparent);
+}
+
+.moment-card--recommended .moment-title-row h2 {
+	color: #b98107;
+}
+
+:root.dark .moment-card--own {
+	border-color: color-mix(in srgb, #55c9f2 26%, var(--line-divider));
+	background: color-mix(in srgb, #0f3448 60%, var(--card-bg));
+}
+
+:root.dark .moment-card--recommended {
+	border-color: color-mix(in srgb, #e5b83c 26%, var(--line-divider));
+	background: color-mix(in srgb, #3d3112 60%, var(--card-bg));
+}
+
+:root.dark .moment-card--own .moment-title-row h2 {
+	color: #79dcfa;
+}
+
+:root.dark .moment-card--recommended .moment-title-row h2 {
+	color: #f7d36f;
+}
+
+.moment-avatar {
+	width: 2.6rem;
+	height: 2.6rem;
+	flex: 0 0 auto;
+	overflow: hidden;
+	border: 1px solid var(--line-divider);
+	border-radius: 0.75rem;
+	background: color-mix(in srgb, var(--primary) 8%, var(--card-bg));
+}
+
+.moment-avatar img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.moment-avatar--fallback {
+	display: grid;
+	place-items: center;
+	color: var(--primary);
+	font-size: 1.15rem;
+}
+
+.moment-card--own .moment-avatar,
+.moment-card--recommended .moment-avatar {
+	border-radius: 999px;
+}
+
+.moment-content {
+	min-width: 0;
+	flex: 1;
+}
+
+.moment-title-row {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-width: 0;
+}
+
+.moment-title-row h2 {
+	min-width: 0;
+	margin: 0;
+	overflow: hidden;
+	color: var(--moments-ink);
+	font-size: 0.98rem;
+	font-weight: 750;
+	letter-spacing: -0.01em;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.moment-title-row svg {
+	flex: 0 0 auto;
+	color: var(--primary);
+	opacity: 0;
+	transform: translate(-0.2rem, 0.15rem);
+	transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.moment-card:hover .moment-title-row svg,
+.moment-card:focus-visible .moment-title-row svg {
+	opacity: 1;
+	transform: translate(0, 0.15rem);
+}
+
+.moment-meta {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+	margin: 0.22rem 0 0;
+	overflow: hidden;
+	color: var(--content-meta);
+	font-size: 0.72rem;
+	line-height: 1.4;
+}
+
+.moment-meta > span:first-child {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.moment-description {
+	display: -webkit-box;
+	margin: 0.45rem 0 0;
+	overflow: hidden;
+	color: var(--content-meta);
+	font-size: 0.78rem;
+	line-height: 1.55;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
+
+/* ============================================
+ * 分页
+ * ============================================ */
+.moments-pagination {
+	display: none;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem;
+	margin-top: 0.25rem;
+}
+
+.moments-pagination.is-visible {
+	display: flex;
+}
+
+.moments-pagination button,
+.moments-pagination > span {
+	display: inline-flex;
+	min-height: 2.25rem;
+	align-items: center;
+	justify-content: center;
+	gap: 0.25rem;
+	border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--line-divider));
+	border-radius: 0.75rem;
+	background: color-mix(in srgb, var(--card-bg) 90%, transparent);
+	color: var(--content-meta);
+	font-size: 0.8rem;
+	line-height: 1;
+}
+
+.moments-pagination button {
+	padding: 0.55rem 0.75rem;
+	cursor: pointer;
+	transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, opacity 180ms ease;
+}
+
+.moments-pagination button:hover:not(:disabled),
+.moments-pagination button:focus-visible {
+	border-color: var(--primary);
+	background: color-mix(in srgb, var(--primary) 10%, var(--card-bg));
+	color: var(--primary);
+	outline: none;
+}
+
+.moments-pagination button:disabled {
+	cursor: not-allowed;
+	opacity: 0.42;
+}
+
+.moments-pagination > span {
+	padding: 0 0.85rem;
+	color: var(--primary);
+	font-weight: 650;
+	white-space: nowrap;
+}
+
+.moments-page-jump {
+	display: inline-flex;
+	min-height: 2.25rem;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.22rem 0.35rem 0.22rem 0.65rem;
+	border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--line-divider));
+	border-radius: 0.75rem;
+	background: color-mix(in srgb, var(--card-bg) 90%, transparent);
+	color: var(--content-meta);
+	font-size: 0.78rem;
+	line-height: 1;
+}
+
+.moments-page-jump label {
+	white-space: nowrap;
+}
+
+.moments-page-jump input {
+	width: 3.15rem;
+	min-height: 1.8rem;
+	padding: 0.25rem 0.3rem;
+	border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--line-divider));
+	border-radius: 0.5rem;
+	background: var(--card-bg);
+	color: var(--primary);
+	font: inherit;
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+	outline: none;
+}
+
+.moments-page-jump input:focus-visible {
+	border-color: var(--primary);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.moments-page-jump input::-webkit-outer-spin-button,
+.moments-page-jump input::-webkit-inner-spin-button {
+	margin: 0;
+	-webkit-appearance: none;
+}
+
+.moments-page-jump button {
+	min-height: 1.8rem;
+	padding: 0.35rem 0.55rem;
+	border: 0;
+	border-radius: 0.5rem;
+	background: color-mix(in srgb, var(--primary) 12%, var(--card-bg));
+	color: var(--primary);
+	font: inherit;
+	cursor: pointer;
+}
+
+.moments-page-jump button:hover,
+.moments-page-jump button:focus-visible {
+	background: var(--primary);
+	color: #fff;
+	outline: none;
+}
+
+/* ============================================
+ * 空态
+ * ============================================ */
+.moments-empty {
+	display: grid;
+	place-items: center;
+	gap: 0.5rem;
+	padding: 3.5rem 1.5rem;
+	text-align: center;
+}
+
+.moments-empty svg {
+	color: var(--primary);
+	font-size: 2rem;
+}
+
+.moments-empty h2,
+.moments-empty p {
+	margin: 0;
+}
+
+.moments-empty h2 {
+	color: var(--moments-ink);
+	font-size: 1rem;
+	font-weight: 700;
+}
+
+.moments-empty p {
+	color: var(--content-meta);
+	font-size: 0.85rem;
+}
+
+/* 被分页隐藏的卡片 */
+.moment-card[hidden] {
+	display: none;
+}
+
+/* ============================================
+ * 响应式
+ * ============================================ */
+@media (max-width: 760px) {
+	.moments-shell {
+		padding: 1.25rem;
+	}
+
+	.moments-header {
+		gap: 1rem;
+	}
+
+	.moments-heading {
+		align-items: flex-start;
+	}
+
+	.moments-heading p {
+		font-size: 0.82rem;
+	}
+
+	.moments-note {
+		align-items: flex-start;
+	}
+
+	.moments-random-article {
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		row-gap: 0.5rem;
+	}
+
+	.moments-random-article__countdown {
+		display: none;
+	}
+
+	.moments-random-article__auto span,
+	.moments-random-article__refresh span {
+		display: none;
+	}
+
+	.moments-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.moments-pagination {
+		gap: 0.5rem;
+	}
+
+	.moments-pagination button span {
+		display: none;
+	}
+
+	.moments-pagination button {
+		width: 2.25rem;
+		padding: 0.5rem;
+	}
+
+	.moments-pagination > span {
+		padding-inline: 0.65rem;
+		font-size: 0.75rem;
+	}
+
+	.moments-page-jump {
+		order: 3;
+		flex: 1 1 100%;
+		justify-content: center;
+		padding-inline: 0.45rem;
+	}
+
+	.moments-page-jump label {
+		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.moment-card,
+	.moment-title-row svg,
+	.moment-identity-badge {
+		transition: none;
+		animation: none;
+	}
+}

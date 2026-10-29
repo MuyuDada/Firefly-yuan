@@ -96,6 +96,11 @@ export { galleryConfig } from "./galleryConfig"; // 相册配置
 export { licenseConfig } from "./licenseConfig"; // 许可证配置
 // 组件配置
 export { mermaidConfig } from "./mermaidConfig"; // Mermaid 图表配置
+export {
+	friendsFeedConfig,
+	getMomentsFriends,
+	getOwnSiteUrl,
+} from "./momentsConfig"; // 朋友圈页面配置
 export { musicPlayerConfig } from "./musicConfig"; // 音乐播放器配置
 export { navBarConfig, navBarSearchConfig } from "./navBarConfig"; // 导航栏配置与搜索配置
 export { pageLoaderConfig } from "./pageLoaderConfig"; // 全屏页面加载动画配置
