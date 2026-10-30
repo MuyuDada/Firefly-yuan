@@ -74,12 +74,12 @@ const widgetId =
     </div>
 </div>
 
-<!-- Progress Bar (Slim) -->
+<!-- Progress Bar -->
 <div class="px-1">
-    <div class="progress-container relative w-full h-1 bg-neutral-300/60 dark:bg-neutral-500/40 rounded-full cursor-pointer touch-none mb-2 group mt-2" role="slider" aria-label={i18n(I18nKey.musicProgress)} aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-        <div class="progress-bar absolute left-0 top-0 h-full bg-(--primary) rounded-full w-0 transition-[width] duration-100"></div>
-        <!-- Hover Thumb -->
-        <div class="progress-thumb absolute top-1/2 -mt-1.5 -ml-1.5 w-3 h-3 bg-(--primary) ring-2 ring-white dark:ring-neutral-800 rounded-full shadow-sm scale-0 group-hover:scale-100 transition-transform duration-200"></div>
+    <div class="progress-container music-progress" role="slider" aria-label={i18n(I18nKey.musicProgress)} aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span class="music-progress__track" aria-hidden="true"></span>
+        <span class="progress-bar music-progress__fill" aria-hidden="true"></span>
+        <span class="progress-thumb music-progress__thumb" aria-hidden="true"></span>
     </div>
 </div>
 
@@ -151,5 +151,99 @@ const widgetId =
     }
     .animate-spin-slow {
         animation: spin-slow 10s linear infinite;
+    }
+
+    /* ── 音乐进度条 ──────────────────────────────────────────────
+       要点：外层负责「好点」，内层负责「好看」。
+       之前的容器只有 4px 高，鼠标得瞄准一条线才能拖；现在容器 14px，
+       视觉上仍是一条 4px 的细条（由 __track 画），互不干扰。 */
+    .music-progress {
+        --bar-h: 4px;
+        --bar-h-hover: 6px;
+        /* Nyan Cat 游标：GIF 原始 34×21，按同比例放大到接近原始尺寸 */
+        --cat-w: 28px;
+        --cat-h: 17.3px;
+        --cat-bg: url("/assets/images/nyan-cat.gif") center / contain no-repeat;
+        --progress-rainbow: linear-gradient(
+            90deg,
+            #ff8a9b 0%,
+            #ffc46b 20%,
+            #ffe97a 38%,
+            #7be3a0 58%,
+            #6fc6ff 78%,
+            #b28bff 100%
+        );
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+        height: 14px;
+        margin: 6px 0 8px;
+        cursor: pointer;
+        touch-action: none;
+    }
+
+    .music-progress__track,
+    .music-progress__fill {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        height: var(--bar-h);
+        border-radius: 999px;
+        transform: translateY(-50%);
+        transition: height 0.18s ease;
+    }
+
+    /* 用 currentColor + 透明度：浅色主题下是深灰，暗色主题下自动变浅，不用分两套 */
+    .music-progress__track {
+        right: 0;
+        background: currentColor;
+        opacity: 0.16;
+    }
+
+    .music-progress__fill {
+        width: 0;
+        background: var(--progress-rainbow);
+    }
+
+    /* 游标换成 Nyan Cat：GIF 自带尾巴摆动，靠负 margin 让猫身居中骑在进度点上 */
+    .music-progress__thumb {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        width: var(--cat-w);
+        height: var(--cat-h);
+        margin-left: calc(var(--cat-w) / -2);
+        background: var(--cat-bg);
+        pointer-events: none;
+        transform: translateY(-50%);
+        transition: transform 0.18s ease;
+        filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.22));
+    }
+
+    .music-progress:hover .music-progress__track,
+    .music-progress:hover .music-progress__fill,
+    .music-progress:active .music-progress__track,
+    .music-progress:active .music-progress__fill {
+        height: var(--bar-h-hover);
+    }
+
+    .music-progress:hover .music-progress__thumb,
+    .music-progress:active .music-progress__thumb {
+        transform: translateY(-50%) scale(1.18);
+    }
+
+    .music-progress:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 4px;
+        border-radius: 999px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .music-progress__track,
+        .music-progress__fill,
+        .music-progress__thumb {
+            transition: none;
+        }
     }
 </style>
