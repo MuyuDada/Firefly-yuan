@@ -259,9 +259,29 @@ const clientPayload = {
 			var payload = readPayload();
 			if (!payload) return;
 
+			/**
+			 * 静态站是构建时渲染的：payload.todayKey 记的是「构建那一天」。
+			 * 页面没重建、或者 CDN 还在吐旧 HTML，日历就会一直停在构建日
+			 * （现象就是「线上显示昨天、本地显示今天」）。
+			 * 所以这里按浏览器本地时间重算，今日高亮、翻月起点、右栏详情都跟着它走。
+			 */
+			function syncToday() {
+				payload.todayKey = toKey(new Date());
+			}
+			syncToday();
+
+			var todayParts = payload.todayKey.split("-");
+			var todayYear = Number(todayParts[0]);
+			var todayMonth = Number(todayParts[1]);
+			// 超出预计算的范围就退回构建时的月份，避免翻月越界
+			if (todayYear < payload.minYear || todayYear > payload.maxYear) {
+				todayYear = payload.initialYear;
+				todayMonth = payload.initialMonth;
+			}
+
 			var state = {
-				year: payload.initialYear,
-				month: payload.initialMonth,
+				year: todayYear,
+				month: todayMonth,
 				selected: payload.todayKey,
 			};
 
@@ -744,6 +764,8 @@ const clientPayload = {
 				if (!next) return;
 				// 保留用户当前浏览的月份，只刷新数据源
 				payload = next;
+				// 软导航拿到的是同一份构建产物，「今天」要重新按本地时间算
+				syncToday();
 				bind();
 				bindHero();
 				bindOverview();
