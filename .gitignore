@@ -55,3 +55,7 @@ package/
 .codex*
 .claude
 .mimocode
+
+# 本地助手的工作记录（记忆/临时截图），不入库
+.workbuddy/
+.workbuddy-ai/
