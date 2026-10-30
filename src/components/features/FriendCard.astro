@@ -19,6 +19,11 @@ const { friend } = Astro.props;
 const showLatency = friendsPageConfig.showLatency !== false;
 const showPreview = friendsPageConfig.showPreview !== false;
 
+// 推荐卡片配色主题：gold 金（默认）/ silver 银 / purple 紫
+const recommendedTheme = friend.recommended
+	? friend.recommendedTheme || "gold"
+	: undefined;
+
 // 预览图：手填的 previewurl 优先；autoPreview 时用第三方截图服务兜底
 const previewSrc =
 	friend.previewurl ||
@@ -51,7 +56,11 @@ const tagLabel = TAG_LABELS[firstTag] || firstTag;
 ---
 
 <div
-  class="friend-card"
+  class:list={[
+    "friend-card",
+    { "friend-card--recommended": friend.recommended },
+  ]}
+  data-recommended-theme={recommendedTheme}
   data-tags={friend.tags?.join(",") || ""}
   data-siteurl={friend.siteurl}
 >
@@ -67,6 +76,26 @@ const tagLabel = TAG_LABELS[firstTag] || firstTag;
   >
     {/* 极光晕（悬停增强） */}
     <span class="friend-card-aurora" aria-hidden="true"></span>
+    {/* 推荐角标：嵌在卡片内左上角，tag 标签会自动下移让位 */}
+    {
+      friend.recommended && (
+        <span class="friend-recommended-badge" aria-hidden="true">
+          <Icon is:inline name="material-symbols:star-rounded" aria-hidden="true" />
+          <span>{friend.recommendedLabel || "推荐"}</span>
+        </span>
+      )
+    }
+    {/* 推荐卡片专属：金色星尘 + 扫光 */}
+    {
+      friend.recommended && (
+        <>
+          <friend-star-flow class="friend-star-flow" aria-hidden="true">
+            <canvas class="friend-star-canvas"></canvas>
+          </friend-star-flow>
+          <span class="friend-recommended-sweep" aria-hidden="true" />
+        </>
+      )
+    }
     {/* 左侧色轨 */}
     <span class="friend-card-rail" aria-hidden="true"></span>
 
@@ -151,3 +180,8 @@ const tagLabel = TAG_LABELS[firstTag] || firstTag;
     </span>
   </a>
 </div>
+
+{/* 推荐卡片的星尘组件（自定义元素，仅在存在 canvas 时激活） */}
+<script>
+  import "./friend-star-flow.js";
+</script>

@@ -2,6 +2,7 @@
    视觉方向参考毛の博客的友链卡片（星海蓝境玻璃票卡） */
 
 .friend-card {
+	position: relative; /* 推荐角标的定位基准 */
 	display: flex;
 	min-width: 0;
 }
@@ -85,6 +86,366 @@
 	opacity: 1;
 	animation: friendCardShine 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+/* ── 推荐卡片：星尘 + 扫光 ─────────────────── */
+/* 移植自 rainzt.cn：canvas 粒子沿对角线穿过卡片，叠一道 3.9s 的扫光。
+   只有配置了 recommended: true 的卡片才渲染这两层。
+   配色走 --rec-* 主题变量：gold 为默认主题，卡片上加
+   data-recommended-theme="silver" / "purple" 切换银色 / 紫色。 */
+
+.friend-star-flow {
+	position: absolute;
+	inset: 0;
+	/* 必须高于预览图（z-index: 2），否则星星会被盖住 */
+	z-index: 3;
+	display: block;
+	overflow: hidden;
+	pointer-events: none;
+	isolation: isolate;
+	contain: paint;
+}
+
+.friend-star-canvas {
+	position: absolute;
+	inset: 0;
+	display: block;
+	width: 100%;
+	height: 100%;
+	background: transparent;
+	opacity: 0.98;
+}
+
+.friend-recommended-sweep {
+	position: absolute;
+	inset: 0;
+	/* 扫光压在星星之上，视觉更像掠过 */
+	z-index: 4;
+	overflow: hidden;
+	border-radius: inherit;
+	pointer-events: none;
+	contain: paint;
+}
+
+.friend-recommended-sweep::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 45%;
+	background: linear-gradient(
+		90deg,
+		transparent 0 20%,
+		var(--rec-sweep-soft) 35%,
+		var(--rec-sweep-mid) 50%,
+		var(--rec-sweep-soft) 65%,
+		transparent 80% 100%
+	);
+	transform: translate(-150%) skew(-25deg);
+	animation: friendRecommendedSweep 3.9s linear infinite;
+}
+
+@keyframes friendRecommendedSweep {
+	0% {
+		transform: translate(-80%) skew(-25deg);
+	}
+	100% {
+		transform: translate(205%) skew(-25deg);
+	}
+}
+
+/* ── 推荐主题调色板 ───────────────────────── */
+/* 推荐卡片的所有颜色都从 --rec-* 变量取，三个主题只换变量值。
+   星尘 canvas 的配色在 friend-star-flow.js 的 STAR_THEMES，两处需同步。 */
+
+/* 金色（默认主题） */
+.friend-card--recommended {
+	/* 覆盖作用域内的 --primary：描述框背景、色轨、hover 描边等会整体跟着变 */
+	--primary: var(--rec-primary);
+	--rec-primary: #c9962a;
+	--rec-star: #efbd46;
+	--rec-star-pale: #fff1b8;
+	--rec-star-deep: #d39a19;
+	--rec-edge: color-mix(in srgb, var(--rec-star) 48%, var(--rec-star-pale));
+	--rec-deep: rgb(211 154 25 / 0.13);
+	--rec-glow: rgb(244 190 54 / 0.34);
+	--rec-ink: #a9720f;
+	--rec-ink-hover: #c98a00;
+	--rec-ink-soft: #8a6a2e;
+	--rec-ink-url: #b08a3e;
+	--rec-chip-ink: #9b650b;
+	--rec-go-ink: #4a3200;
+	--rec-go-1: #f0c04d;
+	--rec-go-2: #d39a19;
+	--rec-latency: #b8891f;
+	--rec-badge-ink: #9b650b;
+	--rec-badge-border: #e0a322;
+	--rec-badge-wash: rgb(255 246 219 / 0.42);
+	--rec-badge-bg: #fff0b3;
+	--rec-badge-shadow: rgb(17 17 25 / 0.12);
+	--rec-badge-inset: rgb(255 255 255 / 0.3);
+	--rec-sweep-mid: rgb(255 224 104 / 0.48);
+	--rec-sweep-soft: rgb(239 173 19 / 0.1);
+}
+
+:root.dark .friend-card--recommended {
+	--rec-primary: #f0c04d;
+	--rec-star-deep: #e8ac22;
+	--rec-edge: rgb(238 191 72 / 0.58);
+	--rec-deep: rgb(99 70 11 / 0.24);
+	--rec-glow: rgb(232 172 34 / 0.4);
+	--rec-ink: #ffd97a;
+	--rec-ink-hover: #ffe9a8;
+	--rec-ink-soft: #e8cf96;
+	--rec-ink-url: #d9bd85;
+	--rec-chip-ink: #ffe39a;
+	--rec-latency: #c9962a;
+	--rec-badge-ink: #ffe39a;
+	--rec-badge-border: #e9bd51;
+	--rec-badge-wash: rgb(255 246 219 / 0.26);
+	--rec-badge-bg: #8b641b;
+	--rec-badge-shadow: rgb(0 0 0 / 0.16);
+	--rec-badge-inset: rgb(255 236 155 / 0.2);
+}
+
+/* 银色主题：冷调铂银，星尘与描边带一点雾蓝 */
+.friend-card--recommended[data-recommended-theme="silver"] {
+	--primary: var(--rec-primary);
+	--rec-primary: #8494ab;
+	--rec-star: #b9c4d4;
+	--rec-star-pale: #f0f3f8;
+	--rec-star-deep: #93a2b8;
+	--rec-edge: color-mix(in srgb, var(--rec-star) 48%, var(--rec-star-pale));
+	--rec-deep: rgb(122 138 160 / 0.16);
+	--rec-glow: rgb(148 163 184 / 0.38);
+	--rec-ink: #5a6779;
+	--rec-ink-hover: #76839a;
+	--rec-ink-soft: #6b7889;
+	--rec-ink-url: #8b98ab;
+	--rec-chip-ink: #5a6779;
+	--rec-go-ink: #2e3947;
+	--rec-go-1: #e8edf4;
+	--rec-go-2: #a9b6c8;
+	--rec-latency: #7a8aa0;
+	--rec-badge-ink: #5a6779;
+	--rec-badge-border: #94a3b8;
+	--rec-badge-wash: rgb(240 245 251 / 0.5);
+	--rec-badge-bg: #e9eef6;
+	--rec-badge-shadow: rgb(17 17 25 / 0.12);
+	--rec-badge-inset: rgb(255 255 255 / 0.45);
+	--rec-sweep-mid: rgb(255 255 255 / 0.62);
+	--rec-sweep-soft: rgb(178 192 210 / 0.14);
+}
+
+:root.dark .friend-card--recommended[data-recommended-theme="silver"] {
+	--rec-primary: #b8c4d6;
+	--rec-star-deep: #9db0c8;
+	--rec-edge: rgb(185 196 212 / 0.55);
+	--rec-deep: rgb(30 40 56 / 0.32);
+	--rec-glow: rgb(176 190 210 / 0.32);
+	--rec-ink: #dde5ef;
+	--rec-ink-hover: #f0f4fa;
+	--rec-ink-soft: #bfc9d8;
+	--rec-ink-url: #9dabbe;
+	--rec-chip-ink: #e3eaf3;
+	--rec-latency: #94a3b8;
+	--rec-badge-ink: #e3eaf3;
+	--rec-badge-border: #aebccb;
+	--rec-badge-wash: rgb(240 245 251 / 0.22);
+	--rec-badge-bg: #465468;
+	--rec-badge-shadow: rgb(0 0 0 / 0.16);
+	--rec-badge-inset: rgb(255 255 255 / 0.16);
+	--rec-sweep-mid: rgb(226 234 244 / 0.4);
+	--rec-sweep-soft: rgb(178 192 210 / 0.1);
+}
+
+/* 紫色主题：梦境紫罗兰 */
+.friend-card--recommended[data-recommended-theme="purple"] {
+	--primary: var(--rec-primary);
+	--rec-primary: #8b5cf6;
+	--rec-star: #a78bfa;
+	--rec-star-pale: #ede9fe;
+	--rec-star-deep: #7c3aed;
+	--rec-edge: color-mix(in srgb, var(--rec-star) 48%, var(--rec-star-pale));
+	--rec-deep: rgb(124 58 237 / 0.13);
+	--rec-glow: rgb(139 92 246 / 0.34);
+	--rec-ink: #6d3fc0;
+	--rec-ink-hover: #8b5cf6;
+	--rec-ink-soft: #6f5b9c;
+	--rec-ink-url: #9a86c9;
+	--rec-chip-ink: #6d3fc0;
+	--rec-go-ink: #2b1a52;
+	--rec-go-1: #c3aeff;
+	--rec-go-2: #9a78f8;
+	--rec-latency: #7c3aed;
+	--rec-badge-ink: #6d3fc0;
+	--rec-badge-border: #b79bff;
+	--rec-badge-wash: rgb(245 241 255 / 0.5);
+	--rec-badge-bg: #f1e9ff;
+	--rec-badge-shadow: rgb(17 17 25 / 0.12);
+	--rec-badge-inset: rgb(255 255 255 / 0.4);
+	--rec-sweep-mid: rgb(213 196 255 / 0.5);
+	--rec-sweep-soft: rgb(167 139 250 / 0.1);
+}
+
+:root.dark .friend-card--recommended[data-recommended-theme="purple"] {
+	--rec-primary: #b79bff;
+	--rec-star-deep: #9d7bfa;
+	--rec-edge: rgb(183 155 255 / 0.58);
+	--rec-deep: rgb(43 26 82 / 0.32);
+	--rec-glow: rgb(167 139 250 / 0.42);
+	--rec-ink: #d8c7ff;
+	--rec-ink-hover: #e9ddff;
+	--rec-ink-soft: #c3b2ec;
+	--rec-ink-url: #a793d4;
+	--rec-chip-ink: #d8c7ff;
+	--rec-latency: #a78bfa;
+	--rec-badge-ink: #d8c7ff;
+	--rec-badge-border: #c3a9ff;
+	--rec-badge-wash: rgb(245 241 255 / 0.26);
+	--rec-badge-bg: #4a2f8a;
+	--rec-badge-shadow: rgb(0 0 0 / 0.16);
+	--rec-badge-inset: rgb(238 230 255 / 0.2);
+}
+
+/* 描边 + 光晕，和普通卡片拉开层次 */
+.friend-card--recommended .friend-card-link {
+	border-color: var(--rec-edge);
+	box-shadow:
+		0 0.18rem 0.55rem var(--rec-deep),
+		0 0 0.82rem var(--rec-glow);
+}
+
+:root.dark .friend-card--recommended .friend-card-link {
+	box-shadow:
+		0 0.18rem 0.62rem var(--rec-deep),
+		0 0 0.92rem var(--rec-glow);
+}
+
+/* 检测中的徽章跟随主题；good/slow/bad 保留绿黄红语义色，不参与改色 */
+.friend-card--recommended .friend-latency.is-pending {
+	background: color-mix(in srgb, var(--rec-latency) 76%, transparent);
+}
+
+:root.dark .friend-card--recommended .friend-latency.is-pending {
+	background: color-mix(in srgb, var(--rec-latency) 62%, transparent);
+}
+
+/* 头像框、tag 标签、前往按钮跟随主题色 */
+.friend-card--recommended .friend-card-avatar {
+	border-color: color-mix(in srgb, var(--rec-star) 55%, var(--rec-star-pale));
+	background: color-mix(in srgb, var(--rec-star) 14%, var(--card-bg));
+	box-shadow:
+		0 0 0 4px color-mix(in srgb, var(--rec-star) 16%, transparent),
+		0 8px 18px color-mix(in srgb, var(--rec-star-deep) 26%, transparent);
+}
+
+.friend-card--recommended .friend-card-chip {
+	color: var(--rec-chip-ink);
+	border-color: color-mix(in srgb, var(--rec-star) 42%, transparent);
+	background: color-mix(in srgb, var(--rec-star) 16%, var(--card-bg));
+	box-shadow: 0 1px rgb(255 255 255 / 0.4);
+}
+
+.friend-card--recommended .friend-card-go {
+	color: var(--rec-go-ink);
+	background: linear-gradient(135deg, var(--rec-go-1), var(--rec-go-2));
+}
+
+:root.dark .friend-card--recommended .friend-card-avatar {
+	border-color: color-mix(in srgb, var(--rec-star) 62%, transparent);
+	box-shadow:
+		0 0 0 4px color-mix(in srgb, var(--rec-star) 14%, transparent),
+		0 8px 18px color-mix(in srgb, var(--rec-star-deep) 28%, transparent);
+}
+
+:root.dark .friend-card--recommended .friend-card-chip {
+	background: color-mix(in srgb, var(--rec-star) 22%, transparent);
+	box-shadow: none;
+}
+
+/* 推荐角标占了左上角，tag 标签下移让位 */
+.friend-card--recommended .friend-card-chip {
+	top: 2.35rem;
+}
+
+/* 文字跟随主题色，和描边/星尘统一 */
+.friend-card--recommended .friend-card-name {
+	color: var(--rec-ink);
+}
+
+.friend-card--recommended .friend-card-link:hover .friend-card-name {
+	color: var(--rec-ink-hover);
+}
+
+.friend-card--recommended .friend-card-intro__text {
+	color: var(--rec-ink-soft);
+}
+
+.friend-card--recommended .friend-card-url {
+	color: var(--rec-ink-url);
+}
+
+:root.dark .friend-card--recommended .friend-card-name {
+	color: var(--rec-ink);
+}
+
+:root.dark .friend-card--recommended .friend-card-link:hover .friend-card-name {
+	color: var(--rec-ink-hover);
+}
+
+:root.dark .friend-card--recommended .friend-card-intro__text {
+	color: var(--rec-ink-soft);
+}
+
+:root.dark .friend-card--recommended .friend-card-url {
+	color: var(--rec-ink-url);
+}
+
+/* 推荐角标：嵌在卡片内左上角，虚线手绘框 + 毛玻璃底，颜色跟随主题 */
+.friend-recommended-badge {
+	position: absolute;
+	/* 嵌在卡片内左上角，tag 标签会让位下移 */
+	top: 0.65rem;
+	left: 0.65rem;
+	z-index: 6;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.22rem;
+	min-height: 1.42rem;
+	padding: 0.22rem 0.62rem 0.24rem 0.5rem;
+	border-radius: 10px 7px 12px 8px;
+	color: var(--rec-badge-ink);
+	font-size: 0.64rem;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+.friend-recommended-badge::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	border: 1px dashed color-mix(in srgb, var(--rec-badge-border) 48%, var(--rec-badge-wash));
+	border-radius: inherit;
+	background: color-mix(in srgb, var(--rec-badge-bg) 24%, transparent);
+	box-shadow:
+		0 0.3rem 0.5rem var(--rec-badge-shadow),
+		inset 0 1px var(--rec-badge-inset);
+	-webkit-backdrop-filter: blur(6px);
+	backdrop-filter: blur(6px);
+}
+
+.friend-recommended-badge svg {
+	width: 0.82rem;
+	height: 0.82rem;
+	flex: 0 0 auto;
+}
+
+
+
 
 /* ── 极光晕 ───────────────────────────────── */
 
@@ -645,6 +1006,10 @@
 	.friend-card-chip,
 	.friend-card-name,
 	.friend-card-intro,
+	.friend-recommended-sweep::before {
+		animation: none !important;
+	}
+
 	.friend-card-go,
 	.friend-latency {
 		transition: none !important;

@@ -96,6 +96,9 @@ export const friendsConfig: FriendLink[] = [
 		desc: "躬身入局，心为主理，行有尺度，自持本心。",
 		siteurl: "https://blog.fqzlr.top/",
 		tags: ["Blog"],
+		// 标记为推荐：卡片会带常驻扫光 + 主题色描边，与普通友链拉开层次
+		// recommendedTheme 可选 "gold"（金色，默认）/ "silver"（银色）/ "purple"（紫色）
+		recommended: true,
 		weight: 98, // 权重，数字越大排序越靠前
 		enabled: true, // 是否启用
 	},
@@ -204,6 +207,8 @@ export const friendsConfig: FriendLink[] = [
 	{
 		title: "朝朝听雨",
 		imgurl: "https://rainzt.cn/zzty.png",
+		recommended: true,
+		recommendedTheme: "purple", // 紫色主题
 		desc: "物物而不物于物，念念而不念于念",
 		siteurl: "https://rainzt.cn/",
 		tags: ["Blog"],
@@ -215,6 +220,8 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://r2tc.20030327.xyz/file/博客/主题/1780655293662_avatar_me.jpg.PNG",
 		desc: "雨滴会记录生命中的每一个瞬间",
 		siteurl: "https://daily.yybb.us",
+		recommended: true,
+		recommendedTheme: "silver", // 银色主题
 		tags: ["Blog"],
 		weight: 97,
 		enabled: true,

@@ -1,0 +1,415 @@
+// 友链推荐卡片的星尘流动特效
+// 移植自 rainzt.cn 的 <recommended-star-flow> 组件：
+// 32 个粒子分三层，沿对角线穿过卡片，带拖尾、闪烁与边缘淡出。
+// 配色跟随卡片上的 data-recommended-theme（gold / silver / purple），
+// 与 friend-card.css 里的 --rec-* 调色板保持一致。
+// 用固定种子生成参数，保证每次刷新星轨一致；离屏 / 页面隐藏 / 减少动效时自动暂停。
+
+// 各主题的粒子配色：拖尾渐变、星体填充（按层级由浅到深）、光晕与描边
+const STAR_THEMES = {
+	gold: {
+		trailFrom: "rgba(248, 197, 76, 0)",
+		trailTo: "247, 183, 45",
+		trailShadow: "232, 155, 22",
+		fills: ["255, 220, 125", "250, 200, 76", "246, 185, 50"],
+		spriteShadow: "rgba(224, 145, 14, 0.64)",
+		stroke: "rgb(255, 247, 193)",
+	},
+	silver: {
+		trailFrom: "rgba(224, 232, 242, 0)",
+		trailTo: "176, 188, 205",
+		trailShadow: "139, 153, 174",
+		fills: ["240, 245, 250", "216, 225, 237", "188, 200, 216"],
+		spriteShadow: "rgba(125, 140, 160, 0.6)",
+		stroke: "rgb(255, 255, 255)",
+	},
+	purple: {
+		trailFrom: "rgba(212, 196, 255, 0)",
+		trailTo: "167, 139, 250",
+		trailShadow: "139, 92, 246",
+		fills: ["233, 224, 255", "208, 190, 253", "180, 155, 250"],
+		spriteShadow: "rgba(124, 58, 237, 0.64)",
+		stroke: "rgb(248, 243, 255)",
+	},
+};
+
+if (!customElements.get("friend-star-flow")) {
+		class FriendStarFlow extends HTMLElement {
+			static spriteCache = new Map();
+
+			constructor() {
+				super();
+				this.canvas = null;
+				this.context = null;
+				this.card = null;
+				this.themeName = "gold";
+				this.palette = STAR_THEMES.gold;
+				this.particles = [];
+				this.width = 0;
+				this.height = 0;
+				this.pixelRatio = 1;
+				this.elapsed = 0;
+				this.lastTimestamp = 0;
+				this.animationFrame = 0;
+				this.resizeFrame = 0;
+				this.hoverAmount = 0;
+				this.hoverTarget = 0;
+				this.initialized = false;
+				this.resizeObserver = null;
+				this.initializeFrame = 0;
+				this.intersectionObserver = null;
+				this.inViewport = false;
+				this.starSprites = [];
+				this.spritePixelRatio = 0;
+				this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+				this.handleFrame = this.handleFrame.bind(this);
+				this.initialize = this.initialize.bind(this);
+				this.handleResize = this.handleResize.bind(this);
+				this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
+				this.handlePointerEnter = this.handlePointerEnter.bind(this);
+				this.handlePointerLeave = this.handlePointerLeave.bind(this);
+				this.handleFocusIn = this.handleFocusIn.bind(this);
+				this.handleFocusOut = this.handleFocusOut.bind(this);
+			}
+
+			connectedCallback() {
+				this.scheduleInitialize();
+			}
+
+			scheduleInitialize() {
+				if (this.initialized || !this.isConnected || this.initializeFrame) return;
+				this.initializeFrame = requestAnimationFrame(() => {
+					this.initializeFrame = 0;
+					this.initialize();
+				});
+			}
+
+			initialize() {
+				if (this.initialized || !this.isConnected) return;
+				this.canvas = this.querySelector(".friend-star-canvas");
+				this.context = this.canvas?.getContext("2d", { alpha: true }) || null;
+				this.card = this.closest(".friend-card");
+
+				if (!this.canvas || !this.context) {
+					this.scheduleInitialize();
+					return;
+				}
+
+				this.initialized = true;
+				this.themeName = this.card?.dataset.recommendedTheme || "gold";
+				this.palette = STAR_THEMES[this.themeName] || STAR_THEMES.gold;
+				this.particles = this.createParticles();
+				this.inViewport = typeof IntersectionObserver === "undefined";
+				if (!this.inViewport) {
+					this.intersectionObserver = new IntersectionObserver((entries) => {
+						if (!this.isConnected || !this.initialized) return;
+						this.inViewport = entries.some((entry) => entry.isIntersecting);
+						this.updatePlayback();
+					});
+					this.intersectionObserver.observe(this);
+				}
+				this.card?.addEventListener("pointerenter", this.handlePointerEnter);
+				this.card?.addEventListener("pointerleave", this.handlePointerLeave);
+				this.card?.addEventListener("focusin", this.handleFocusIn);
+				this.card?.addEventListener("focusout", this.handleFocusOut);
+				document.addEventListener("visibilitychange", this.handleVisibilityChange);
+
+				if (typeof ResizeObserver !== "undefined") {
+					this.resizeObserver = new ResizeObserver(this.handleResize);
+					this.resizeObserver.observe(this);
+				} else {
+					window.addEventListener("resize", this.handleResize, { passive: true });
+				}
+
+				this.resizeFrame = requestAnimationFrame(this.handleResize);
+				this.updatePlayback();
+			}
+
+			disconnectedCallback() {
+				if (this.initializeFrame) {
+					cancelAnimationFrame(this.initializeFrame);
+					this.initializeFrame = 0;
+				}
+				this.stopAnimation();
+				cancelAnimationFrame(this.resizeFrame);
+				this.resizeObserver?.disconnect();
+				this.intersectionObserver?.disconnect();
+				this.intersectionObserver = null;
+				this.inViewport = false;
+				this.starSprites = [];
+				window.removeEventListener("resize", this.handleResize);
+				document.removeEventListener("visibilitychange", this.handleVisibilityChange);
+				this.card?.removeEventListener("pointerenter", this.handlePointerEnter);
+				this.card?.removeEventListener("pointerleave", this.handlePointerLeave);
+				this.card?.removeEventListener("focusin", this.handleFocusIn);
+				this.card?.removeEventListener("focusout", this.handleFocusOut);
+				this.initialized = false;
+			}
+
+			createParticles() {
+				let seed = 0x51a7c0de;
+				const random = () => {
+					seed = (seed * 1664525 + 1013904223) >>> 0;
+					return seed / 4294967296;
+				};
+				const layerPattern = [0, 1, 0, 2, 1, 0, 1, 2, 0, 1, 0, 2, 1, 0, 1, 2];
+				const entryPattern = [
+					{ edge: "top", position: 0.08 },
+					{ edge: "top", position: 0.32 },
+					{ edge: "top", position: 0.58 },
+					{ edge: "top", position: 0.84 },
+					{ edge: "right", position: 0.08 },
+					{ edge: "right", position: 0.28 },
+					{ edge: "right", position: 0.48 },
+					{ edge: "right", position: 0.68 },
+					{ edge: "right", position: 0.88 },
+					{ edge: "top", position: 0.2 },
+					{ edge: "top", position: 0.46 },
+					{ edge: "top", position: 0.72 },
+					{ edge: "right", position: 0.18 },
+					{ edge: "right", position: 0.38 },
+					{ edge: "right", position: 0.62 },
+					{ edge: "right", position: 0.82 },
+					{ edge: "top", position: 0.14 },
+					{ edge: "top", position: 0.4 },
+					{ edge: "top", position: 0.68 },
+					{ edge: "top", position: 0.96 },
+					{ edge: "right", position: 0.14 },
+					{ edge: "right", position: 0.34 },
+					{ edge: "right", position: 0.56 },
+					{ edge: "right", position: 0.76 },
+					{ edge: "top", position: 0.02 },
+					{ edge: "top", position: 0.26 },
+					{ edge: "top", position: 0.5 },
+					{ edge: "top", position: 0.74 },
+					{ edge: "right", position: 0.02 },
+					{ edge: "right", position: 0.4 },
+					{ edge: "right", position: 0.6 },
+					{ edge: "right", position: 0.98 },
+				];
+
+				return entryPattern.map((entry, index) => {
+					const layer = layerPattern[index % layerPattern.length];
+					const alphaMin = [0.62, 0.76, 0.9][layer];
+					const alphaRange = [0.14, 0.14, 0.1][layer];
+					return {
+						layer,
+						phase: index / entryPattern.length,
+						entryEdge: entry.edge,
+						entryPosition: entry.position,
+						radius: 3.4 + layer * 1.6 + random() * 1.8,
+						alpha: alphaMin + random() * alphaRange,
+						glow: [5, 8, 12][layer] + random() * [2, 3, 4][layer],
+						curve: 2.1 + layer * 1.2 + random() * 2.3,
+						drift: 0.9 + random() * 1.6,
+						driftSpeed: 0.62 + random() * 0.72,
+						twinklePhase: random() * Math.PI * 2,
+						twinkleSpeed: 0.88 + random() * 1.05,
+						rotation: random() * Math.PI * 2,
+						rotationSpeed: (0.2 + random() * 0.26) * (random() > 0.5 ? 1 : -1),
+						tailScale: 3.2 + random() * 1.7 + layer * 0.75,
+					};
+				});
+			}
+
+			handleResize() {
+				cancelAnimationFrame(this.resizeFrame);
+				this.resizeFrame = 0;
+				if (!this.isConnected || !this.canvas || !this.context) return;
+				const bounds = this.getBoundingClientRect();
+				const width = Math.max(1, Math.round(bounds.width));
+				const height = Math.max(1, Math.round(bounds.height));
+				const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+
+				if (width !== this.width || height !== this.height || pixelRatio !== this.pixelRatio) {
+					this.width = width;
+					this.height = height;
+					this.pixelRatio = pixelRatio;
+					this.canvas.width = Math.round(width * pixelRatio);
+					this.canvas.height = Math.round(height * pixelRatio);
+					this.context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+				}
+
+				this.renderFrame();
+			}
+
+			handleFrame(timestamp) {
+				if (!this.shouldAnimate()) {
+					this.animationFrame = 0;
+					return;
+				}
+
+				const delta = this.lastTimestamp ? Math.min(42, timestamp - this.lastTimestamp) : 0;
+				this.lastTimestamp = timestamp;
+				this.hoverAmount += (this.hoverTarget - this.hoverAmount) * Math.min(1, delta / 180);
+				this.elapsed += delta * (1 + this.hoverAmount * 0.12);
+				this.renderFrame();
+				this.animationFrame = requestAnimationFrame(this.handleFrame);
+			}
+
+			renderFrame() {
+				if (!this.initialized || !this.isConnected || !this.inViewport || document.hidden || !this.context || !this.width || !this.height) return;
+				const spritePixelRatio = Math.ceil(this.pixelRatio);
+				if (!this.starSprites.length || this.spritePixelRatio !== spritePixelRatio) {
+					this.starSprites = this.particles.map((particle) => this.createStarSprite(particle, spritePixelRatio));
+					this.spritePixelRatio = spritePixelRatio;
+				}
+				const context = this.context;
+				context.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
+				context.clearRect(0, 0, this.width, this.height);
+
+				const time = this.elapsed / 1000;
+				const cycleDuration = 3900;
+				for (const [index, particle] of this.particles.entries()) {
+					const progress = (particle.phase + this.elapsed / cycleDuration) % 1;
+					const radius = particle.radius;
+					const startX = particle.entryEdge === "right" ? this.width + radius * 2.4 : particle.entryPosition * this.width;
+					const startY = particle.entryEdge === "right" ? particle.entryPosition * this.height : -radius * 2.4;
+					const pathDeltaX = -(this.width + radius * 4.8);
+					const pathDeltaY = this.height + radius * 4.8;
+					const pathLength = Math.hypot(pathDeltaX, pathDeltaY);
+					const directionX = pathDeltaX / pathLength;
+					const directionY = pathDeltaY / pathLength;
+					const normalX = -directionY;
+					const normalY = directionX;
+					const drift = Math.sin(time * particle.driftSpeed + particle.twinklePhase) * particle.drift;
+					const wave = Math.sin(progress * Math.PI * 2 + particle.twinklePhase) * particle.curve + drift;
+					const x = startX + progress * pathDeltaX + normalX * wave;
+					const y = startY + progress * pathDeltaY + normalY * wave;
+					const edgeDistance = Math.min(x, y, this.width - x, this.height - y);
+					const fadeDistance = Math.max(18, radius * 3.5);
+					const edgeProgress = Math.min(1, Math.max(0, edgeDistance / fadeDistance));
+					const edgeFade = edgeProgress * edgeProgress * (3 - 2 * edgeProgress);
+					const twinkle = 0.84 + Math.sin(time * particle.twinkleSpeed + particle.twinklePhase) * 0.12;
+					const alpha = Math.min(0.92, particle.alpha * edgeFade * twinkle);
+					const rotation = particle.rotation + time * particle.rotationSpeed;
+
+					this.drawTrail(context, x, y, radius, particle.tailScale, directionX, directionY, alpha);
+					this.drawStar(context, this.starSprites[index], x, y, rotation, alpha);
+				}
+			}
+
+			drawTrail(context, x, y, radius, tailScale, directionX, directionY, alpha) {
+				const { palette } = this;
+				const tailLength = radius * tailScale;
+				const startX = x - directionX * tailLength;
+				const startY = y - directionY * tailLength;
+				const gradient = context.createLinearGradient(startX, startY, x, y);
+				gradient.addColorStop(0, palette.trailFrom);
+				gradient.addColorStop(1, `rgba(${palette.trailTo}, ${Math.min(0.82, alpha * 0.95)})`);
+
+				context.save();
+				context.strokeStyle = gradient;
+				context.lineWidth = Math.max(1.1, radius * 0.54);
+				context.lineCap = "round";
+				context.shadowColor = `rgba(${palette.trailShadow}, ${Math.min(0.72, alpha)})`;
+				context.shadowBlur = 6;
+				context.beginPath();
+				context.moveTo(startX, startY);
+				context.quadraticCurveTo(
+					x - directionX * tailLength * 0.42,
+					y - directionY * tailLength * 0.42,
+					x - directionX * radius * 0.72,
+					y - directionY * radius * 0.72,
+				);
+				context.stroke();
+				context.restore();
+			}
+
+			createStarSprite(particle, pixelRatio) {
+				const { palette } = this;
+				// 缓存按主题区分，避免银色/紫色卡片复用金色的星体贴图
+				const key = `${this.themeName}:${pixelRatio}:${particle.radius}:${particle.layer}:${particle.glow}`;
+				const cached = FriendStarFlow.spriteCache.get(key);
+				if (cached) return cached;
+				const blur = particle.glow + 2;
+				const size = Math.ceil((particle.radius + blur * 2 + 2) * 2);
+				const canvas = document.createElement("canvas");
+				canvas.width = canvas.height = size * pixelRatio;
+				const context = canvas.getContext("2d");
+				if (!context) return null;
+				context.setTransform(pixelRatio, 0, 0, pixelRatio, canvas.width / 2, canvas.height / 2);
+				context.shadowColor = palette.spriteShadow;
+				context.shadowBlur = blur * pixelRatio;
+				this.traceStar(context, particle.radius, 0);
+				context.fillStyle = `rgb(${palette.fills[particle.layer] || palette.fills[0]})`;
+				context.fill();
+				context.strokeStyle = palette.stroke;
+				context.lineWidth = 0.72;
+				context.stroke();
+				const sprite = { canvas, size };
+				FriendStarFlow.spriteCache.set(key, sprite);
+				return sprite;
+			}
+
+			drawStar(context, sprite, x, y, rotation, alpha) {
+				if (!sprite || alpha <= 0) return;
+				const { canvas, size } = sprite;
+				context.save();
+				context.translate(x, y);
+				context.rotate(rotation);
+				context.globalAlpha = alpha;
+				context.drawImage(canvas, -size / 2, -size / 2, size, size);
+				context.restore();
+			}
+
+			traceStar(context, outerRadius, rotation) {
+				const innerRadius = outerRadius * 0.48;
+				const points = Array.from({ length: 10 }, (_, index) => {
+					const radius = index % 2 === 0 ? outerRadius : innerRadius;
+					const angle = rotation - Math.PI / 2 + (index * Math.PI) / 5;
+					return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+				});
+
+				context.beginPath();
+				context.moveTo(points[0].x, points[0].y);
+				points.slice(1).forEach((point) => context.lineTo(point.x, point.y));
+				context.closePath();
+			}
+
+			shouldAnimate() {
+				return this.initialized && this.isConnected && this.inViewport && !document.hidden && !this.reducedMotion;
+			}
+
+			updatePlayback() {
+				if (this.shouldAnimate()) {
+					if (!this.animationFrame) {
+						this.lastTimestamp = 0;
+						this.animationFrame = requestAnimationFrame(this.handleFrame);
+					}
+				} else {
+					this.stopAnimation();
+					this.renderFrame();
+				}
+			}
+
+			stopAnimation() {
+				cancelAnimationFrame(this.animationFrame);
+				this.animationFrame = 0;
+				this.lastTimestamp = 0;
+			}
+
+			handleVisibilityChange() {
+				this.updatePlayback();
+			}
+
+			handlePointerEnter() {
+				this.hoverTarget = 1;
+			}
+
+			handlePointerLeave() {
+				this.hoverTarget = 0;
+			}
+
+			handleFocusIn() {
+				this.handlePointerEnter();
+			}
+
+			handleFocusOut(event) {
+				if (!this.card?.contains(event.relatedTarget)) this.handlePointerLeave();
+			}
+		}
+
+		customElements.define("friend-star-flow", FriendStarFlow);
+	}

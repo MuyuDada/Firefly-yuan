@@ -7,7 +7,9 @@ export type FriendLink = {
 	rss?: string | string[]; // RSS/Atom 地址，留空则由朋友圈页面自动探测常见路径
 	previewurl?: string; // 站点预览图 URL，优先级高于 autoPreview
 	tags?: string[]; // 标签数组
-	recommended?: boolean; // 是否为推荐友链（朋友圈页会用不同样式高亮）
+	recommended?: boolean; // 是否为推荐友链：卡片会带星尘、扫光与主题色描边
+	recommendedTheme?: "gold" | "silver" | "purple"; // 推荐卡片配色：gold 金色（默认）/ silver 银色 / purple 紫色
+	recommendedLabel?: string; // 推荐角标文案，留空默认「推荐」
 	weight: number; // 权重，数字越大排序越靠前
 	enabled: boolean; // 是否启用
 };
