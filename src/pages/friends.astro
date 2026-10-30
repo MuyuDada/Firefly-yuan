@@ -778,10 +778,20 @@ const hasApplyModal = Boolean(
       function boot() {
         const grid = document.querySelector("[data-friends-grid]");
         // 同一个 DOM 只初始化一次（Swup 换页后会产生新的网格节点）
-        if (!grid || grid.dataset.friendsBound === "true") return;
+        if (!grid || grid.dataset.friendsBound === "true") return false;
+        // 本脚本位于 <head>，MutationObserver 可能在网格刚开标签、
+        // 卡片还没解析进来时就触发 boot：此时 init 只会拿到部分卡片，
+        // 而绑定标记会让 DOMContentLoaded 的重试全部失效，
+        // 卡片图片/测速从此永远不加载。因此在解析越过网格
+        // （紧随其后的分页节点已出现）或文档解析完成前，先不绑定。
+        const parsingDone = document.readyState !== "loading";
+        if (!parsingDone && !document.querySelector("[data-friend-pagination]")) {
+          return false;
+        }
         grid.dataset.friendsBound = "true";
         init();
         initModal();
+        return true;
       }
 
       // 本脚本位于 <head>，执行时 DOM 尚未解析完；且页面引入的第三方资源
@@ -791,13 +801,14 @@ const hasApplyModal = Boolean(
         window.__friendsPageInit = true;
 
         const startWatching = () => {
-          boot();
-          if (document.querySelector("[data-friends-grid]")) return;
+          // boot 成功说明网格已就绪；否则（网格未出现或仍在解析中）
+          // 继续监听后续 DOM 变化重试，直到能够安全初始化为止
+          if (boot()) return;
 
           const observer = new MutationObserver(() => {
             if (!document.querySelector("[data-friends-grid]")) return;
+            if (!boot()) return;
             observer.disconnect();
-            boot();
           });
           observer.observe(document.documentElement, {
             childList: true,
