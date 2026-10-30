@@ -135,6 +135,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://yujingblog.top/assets/home/avatar.webp",
 		desc: "记一些无用的日常，和有光的时刻",
 		siteurl: "https://yujingblog.top",
+		recommendedTheme: "silver", // 银色主题
 		tags: ["Blog"],
 		weight: 95,
 		enabled: true,
@@ -200,6 +201,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://img.jerry-nis.top/d8703c5c-4c4a-49cc-bd94-3363c9eda2d8.png",
 		desc: "Enjoy life",
 		siteurl: "https://www.jerrynis.com",
+		recommendedTheme: "purple", // 紫色主题		
 		tags: ["Blog"],
 		weight: 87,
 		enabled: true,
@@ -208,7 +210,6 @@ export const friendsConfig: FriendLink[] = [
 		title: "朝朝听雨",
 		imgurl: "https://rainzt.cn/zzty.png",
 		recommended: true,
-		recommendedTheme: "purple", // 紫色主题
 		desc: "物物而不物于物，念念而不念于念",
 		siteurl: "https://rainzt.cn/",
 		tags: ["Blog"],
@@ -221,7 +222,6 @@ export const friendsConfig: FriendLink[] = [
 		desc: "雨滴会记录生命中的每一个瞬间",
 		siteurl: "https://daily.yybb.us",
 		recommended: true,
-		recommendedTheme: "silver", // 银色主题
 		tags: ["Blog"],
 		weight: 97,
 		enabled: true,
