@@ -244,6 +244,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 6,
 		enabled: true,
 	},
+	{
+		title: "昭鸢笺",
+		imgurl: "https://blog.mibase.top/img/miro.jpg",
+		desc: "昭有明朗向远之意，鸢乘风而上，笺以载笔墨见闻",
+		siteurl: "https://blog.mibase.top",
+		tags: ["Blog"],
+		weight: 7,
+		enabled: true,
+	},
 	// {
 	// 	title: "Firefly Docs",
 	// 	imgurl: "https://docs-firefly.cuteleaf.cn/logo.png",
