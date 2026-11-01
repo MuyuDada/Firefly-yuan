@@ -268,7 +268,8 @@ body.wallpaper-transparent #waline .wl-panel {
 
 /* ── 9. 评论图片点击放大 ─────────────────────────────
    Waline v3 没有内置 lightbox，正文里的图只能看缩略。
-   这里补一层：点击图片全屏查看，滚轮缩放，← → 切换，ESC 关闭。 */
+   这里补一层：点击全屏查看，滚轮缩放（锚定鼠标位置）、
+   拖拽平移、双击切换倍率、← → 切换同组图片。 */
 
 #waline .wl-content img {
 	cursor: zoom-in;
@@ -281,13 +282,14 @@ body.wallpaper-transparent #waline .wl-panel {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: rgb(0 0 0 / 0.88);
-	-webkit-backdrop-filter: blur(6px);
-	backdrop-filter: blur(6px);
+	overflow: hidden;
+	background: rgb(8 8 10 / 0.9);
+	-webkit-backdrop-filter: blur(10px) saturate(120%);
+	backdrop-filter: blur(10px) saturate(120%);
 	opacity: 0;
 	pointer-events: none;
 	touch-action: none;
-	transition: opacity 0.22s var(--ease-standard, ease);
+	transition: opacity 0.2s var(--ease-standard, ease);
 }
 
 .wl-lightbox.is-open {
@@ -296,33 +298,112 @@ body.wallpaper-transparent #waline .wl-panel {
 }
 
 .wl-lightbox__img {
+	position: relative;
+	z-index: 1;
 	max-width: 92vw;
 	max-height: 86vh;
-	border-radius: 10px;
-	box-shadow: 0 24px 64px rgb(0 0 0 / 0.55);
-	cursor: grab;
+	border-radius: 6px;
+	box-shadow:
+		0 2px 8px rgb(0 0 0 / 0.3),
+		0 24px 70px rgb(0 0 0 / 0.55);
+	cursor: zoom-in;
 	user-select: none;
 	-webkit-user-drag: none;
-	transition: transform 0.18s var(--ease-standard, ease);
+	transform-origin: center center;
+	transition: transform 0.16s var(--ease-standard, ease);
 	will-change: transform;
 }
 
-.wl-lightbox__img:active {
+/* 放大后可拖动，光标跟着变 */
+.wl-lightbox__img.is-zoomed {
+	cursor: grab;
+}
+
+.wl-lightbox__img.is-dragging {
 	cursor: grabbing;
+	transition: none;
+}
+
+/* 控件统一：毛玻璃 + 细描边，比字符箭头干净 */
+.wl-lightbox__btn {
+	position: absolute;
+	z-index: 2;
+	display: grid;
+	place-items: center;
+	width: 2.5rem;
+	height: 2.5rem;
+	padding: 0;
+	border: 1px solid rgb(255 255 255 / 0.18);
+	border-radius: 50%;
+	background: rgb(0 0 0 / 0.38);
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
+	box-shadow: 0 2px 10px rgb(0 0 0 / 0.25);
+	color: rgb(255 255 255 / 0.95);
+	cursor: pointer;
+	transition:
+		background 0.18s ease,
+		border-color 0.18s ease,
+		transform 0.18s ease;
+}
+
+.wl-lightbox__btn:hover {
+	border-color: rgb(255 255 255 / 0.38);
+	background: rgb(0 0 0 / 0.58);
+}
+
+.wl-lightbox__btn:focus-visible {
+	outline: 2px solid rgb(255 255 255 / 0.6);
+	outline-offset: 2px;
+}
+
+.wl-lightbox__btn svg {
+	width: 1.05rem;
+	height: 1.05rem;
+}
+
+.wl-lightbox__close {
+	top: 1.25rem;
+	right: 1.25rem;
+}
+
+.wl-lightbox__nav {
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+.wl-lightbox__nav:hover {
+	transform: translateY(-50%) scale(1.06);
+}
+
+.wl-lightbox__nav[data-dir="prev"] {
+	left: 1.25rem;
+}
+
+.wl-lightbox__nav[data-dir="next"] {
+	right: 1.25rem;
+}
+
+.wl-lightbox__nav[hidden] {
+	display: none;
 }
 
 /* 图片序号 */
 .wl-lightbox__count {
 	position: absolute;
-	top: 1.4rem;
+	z-index: 2;
+	top: 1.55rem;
 	left: 50%;
-	padding: 0.24rem 0.72rem;
+	padding: 0.2rem 0.62rem;
+	border: 1px solid rgb(255 255 255 / 0.14);
 	border-radius: 999px;
-	background: rgb(255 255 255 / 0.14);
-	color: #fff;
-	font-size: 0.78rem;
+	background: rgb(0 0 0 / 0.42);
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
+	color: rgb(255 255 255 / 0.86);
+	font-size: 0.74rem;
 	font-variant-numeric: tabular-nums;
-	letter-spacing: 0.02em;
+	letter-spacing: 0.04em;
 	pointer-events: none;
 	transform: translateX(-50%);
 }
@@ -331,67 +412,25 @@ body.wallpaper-transparent #waline .wl-panel {
 	display: none;
 }
 
-/* 关闭 */
-.wl-lightbox__close {
+/* 缩放倍率，只在放大时出现 */
+.wl-lightbox__zoom {
 	position: absolute;
-	top: 1.1rem;
-	right: 1.1rem;
-	display: grid;
-	place-items: center;
-	width: 2.4rem;
-	height: 2.4rem;
-	padding: 0;
-	border: 0;
-	border-radius: 50%;
-	background: rgb(255 255 255 / 0.14);
-	color: #fff;
-	font-size: 1.35rem;
-	line-height: 1;
-	cursor: pointer;
-	transition:
-		background 0.18s ease,
-		transform 0.18s ease;
+	z-index: 2;
+	top: 1.55rem;
+	right: 4.4rem;
+	padding: 0.2rem 0.55rem;
+	border-radius: 999px;
+	background: rgb(0 0 0 / 0.42);
+	color: rgb(255 255 255 / 0.82);
+	font-size: 0.72rem;
+	font-variant-numeric: tabular-nums;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.18s ease;
 }
 
-.wl-lightbox__close:hover {
-	background: rgb(255 255 255 / 0.28);
-	transform: rotate(90deg);
-}
-
-/* 左右切换 */
-.wl-lightbox__nav {
-	position: absolute;
-	top: 50%;
-	display: grid;
-	place-items: center;
-	width: 2.8rem;
-	height: 2.8rem;
-	padding: 0;
-	border: 0;
-	border-radius: 50%;
-	background: rgb(255 255 255 / 0.14);
-	color: #fff;
-	font-size: 1.5rem;
-	line-height: 1;
-	cursor: pointer;
-	transform: translateY(-50%);
-	transition: background 0.18s ease;
-}
-
-.wl-lightbox__nav:hover {
-	background: rgb(255 255 255 / 0.28);
-}
-
-.wl-lightbox__nav[data-dir="prev"] {
-	left: 1.4rem;
-}
-
-.wl-lightbox__nav[data-dir="next"] {
-	right: 1.4rem;
-}
-
-.wl-lightbox__nav[hidden] {
-	display: none;
+.wl-lightbox__zoom.is-visible {
+	opacity: 1;
 }
 
 @media (max-width: 640px) {
@@ -401,6 +440,19 @@ body.wallpaper-transparent #waline .wl-panel {
 
 	.wl-lightbox__img {
 		max-width: 96vw;
-		max-height: 82vh;
+		max-height: 80vh;
+	}
+
+	.wl-lightbox__close {
+		top: 0.9rem;
+		right: 0.9rem;
+	}
+
+	.wl-lightbox__count {
+		top: 1.1rem;
+	}
+
+	.wl-lightbox__zoom {
+		display: none;
 	}
 }

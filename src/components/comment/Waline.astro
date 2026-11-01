@@ -194,13 +194,112 @@ const imageOptions = {
 
     /* ── 评论图片点击放大 ─────────────────────────────────────────
        Waline v3 没有内置 lightbox，正文里的图只能看缩略。
-       补一层：点击全屏查看，滚轮缩放，← → 切换同一条评论里的图，ESC 关闭。 */
+       补一层：点击全屏查看，滚轮缩放（锚定鼠标位置）、拖拽平移、
+       双击切换倍率、← → 切换同一条评论里的图、ESC 关闭。 */
+
+    const LB_MIN = 1;
+    const LB_MAX = 5;
 
     let lightbox = null;
     let lightboxImages = [];
     let lightboxIndex = 0;
     let lightboxScale = 1;
+    let lightboxOffset = { x: 0, y: 0 };
+    let dragStart = null;
+    let dragEndAt = 0;
     let prevOverflow = "";
+
+    const ICON = {
+      close:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>',
+      prev:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg>',
+      next:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 5.5L16 12l-6.5 6.5"/></svg>',
+    };
+
+    function clampOffset() {
+      const img = lightbox.querySelector(".wl-lightbox__img");
+      if (!img) return;
+      // 放大后溢出的部分最多拖到这个范围，避免把图拖飞
+      const maxX = Math.max(0, ((lightboxScale - 1) * img.offsetWidth) / 2);
+      const maxY = Math.max(0, ((lightboxScale - 1) * img.offsetHeight) / 2);
+      lightboxOffset.x = Math.min(maxX, Math.max(-maxX, lightboxOffset.x));
+      lightboxOffset.y = Math.min(maxY, Math.max(-maxY, lightboxOffset.y));
+    }
+
+    function applyTransform() {
+      const img = lightbox.querySelector(".wl-lightbox__img");
+      img.style.transform = `translate3d(${lightboxOffset.x}px, ${lightboxOffset.y}px, 0) scale(${lightboxScale})`;
+      img.classList.toggle("is-zoomed", lightboxScale > LB_MIN + 0.001);
+
+      const zoom = lightbox.querySelector(".wl-lightbox__zoom");
+      const visible = lightboxScale > LB_MIN + 0.001;
+      zoom.textContent = visible ? `${Math.round(lightboxScale * 100)}%` : "";
+      zoom.classList.toggle("is-visible", visible);
+    }
+
+    /** 以 (clientX, clientY) 为锚点缩放，鼠标下的那个点保持不动 */
+    function zoomAt(clientX, clientY, factor) {
+      const next = Math.min(LB_MAX, Math.max(LB_MIN, lightboxScale * factor));
+      if (Math.abs(next - lightboxScale) < 0.001) return;
+
+      const img = lightbox.querySelector(".wl-lightbox__img");
+      const rect = img.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const ratio = next / lightboxScale;
+
+      lightboxOffset.x -= (clientX - cx) * (ratio - 1);
+      lightboxOffset.y -= (clientY - cy) * (ratio - 1);
+      lightboxScale = next;
+      if (lightboxScale <= LB_MIN + 0.001) lightboxOffset = { x: 0, y: 0 };
+      clampOffset();
+      applyTransform();
+    }
+
+    function bindLightboxEvents(box) {
+      const img = box.querySelector(".wl-lightbox__img");
+
+      img.addEventListener("pointerdown", (event) => {
+        if (lightboxScale <= LB_MIN + 0.001) return;
+        event.preventDefault();
+        dragStart = {
+          x: event.clientX,
+          y: event.clientY,
+          ox: lightboxOffset.x,
+          oy: lightboxOffset.y,
+        };
+        img.classList.add("is-dragging");
+        img.setPointerCapture(event.pointerId);
+      });
+
+      img.addEventListener("pointermove", (event) => {
+        if (!dragStart) return;
+        lightboxOffset.x = dragStart.ox + (event.clientX - dragStart.x);
+        lightboxOffset.y = dragStart.oy + (event.clientY - dragStart.y);
+        clampOffset();
+        applyTransform();
+      });
+
+      const endDrag = (event) => {
+        if (!dragStart) return;
+        dragStart = null;
+        dragEndAt = Date.now();
+        img.classList.remove("is-dragging");
+        try {
+          img.releasePointerCapture(event.pointerId);
+        } catch {}
+      };
+      img.addEventListener("pointerup", endDrag);
+      img.addEventListener("pointercancel", endDrag);
+
+      // 双击在 1x 和 2.5x 之间切换
+      img.addEventListener("dblclick", (event) => {
+        event.preventDefault();
+        zoomAt(event.clientX, event.clientY, lightboxScale > LB_MIN + 0.001 ? 1 / lightboxScale : 2.5);
+      });
+    }
 
     function buildLightbox() {
       if (lightbox) return lightbox;
@@ -208,28 +307,28 @@ const imageOptions = {
       box.className = "wl-lightbox";
       box.setAttribute("aria-hidden", "true");
       box.innerHTML = [
-        '<button class="wl-lightbox__close" type="button" aria-label="关闭">×</button>',
+        `<button class="wl-lightbox__btn wl-lightbox__close" type="button" aria-label="关闭">${ICON.close}</button>`,
         '<span class="wl-lightbox__count"></span>',
-        '<button class="wl-lightbox__nav" type="button" data-dir="prev" aria-label="上一张">‹</button>',
-        '<img class="wl-lightbox__img" alt="" />',
-        '<button class="wl-lightbox__nav" type="button" data-dir="next" aria-label="下一张">›</button>',
+        '<span class="wl-lightbox__zoom"></span>',
+        `<button class="wl-lightbox__btn wl-lightbox__nav" type="button" data-dir="prev" aria-label="上一张">${ICON.prev}</button>`,
+        '<img class="wl-lightbox__img" alt="" draggable="false" />',
+        `<button class="wl-lightbox__btn wl-lightbox__nav" type="button" data-dir="next" aria-label="下一张">${ICON.next}</button>`,
       ].join("");
       document.body.appendChild(box);
       lightbox = box;
+      bindLightboxEvents(box);
       return box;
-    }
-
-    function applyScale(next) {
-      lightboxScale = Math.min(5, Math.max(1, next));
-      lightbox.querySelector(".wl-lightbox__img").style.transform = `scale(${lightboxScale})`;
     }
 
     function renderLightbox() {
       const img = lightbox.querySelector(".wl-lightbox__img");
       const current = lightboxImages[lightboxIndex];
+      lightboxScale = 1;
+      lightboxOffset = { x: 0, y: 0 };
       img.src = current.src;
       img.alt = current.alt || "";
-      applyScale(1);
+      applyTransform();
+
       lightbox.querySelector(".wl-lightbox__count").textContent =
         lightboxImages.length > 1 ? `${lightboxIndex + 1} / ${lightboxImages.length}` : "";
       for (const nav of lightbox.querySelectorAll(".wl-lightbox__nav")) {
@@ -279,8 +378,10 @@ const imageOptions = {
           closeLightbox();
           return;
         }
-        // 点图片本身保持打开，点遮罩空白处关闭
-        if (!el.closest(".wl-lightbox__img")) closeLightbox();
+        if (el.closest(".wl-lightbox__img")) return;
+        // 刚拖完松手也会冒一个 click，别把它当成"点空白关闭"
+        if (Date.now() - dragEndAt < 300) return;
+        closeLightbox();
         return;
       }
 
@@ -296,7 +397,7 @@ const imageOptions = {
         if (!lightbox?.classList.contains("is-open")) return;
         if (!(event.target instanceof Element) || !event.target.closest(".wl-lightbox__img")) return;
         event.preventDefault();
-        applyScale(lightboxScale * (event.deltaY < 0 ? 1.15 : 1 / 1.15));
+        zoomAt(event.clientX, event.clientY, event.deltaY < 0 ? 1.15 : 1 / 1.15);
       },
       { passive: false },
     );
@@ -306,6 +407,11 @@ const imageOptions = {
       if (event.key === "Escape") closeLightbox();
       else if (event.key === "ArrowLeft") stepLightbox(-1);
       else if (event.key === "ArrowRight") stepLightbox(1);
+      else if (event.key === "0") {
+        lightboxScale = 1;
+        lightboxOffset = { x: 0, y: 0 };
+        applyTransform();
+      }
     });
   </script>
 </div>
