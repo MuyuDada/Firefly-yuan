@@ -36,6 +36,28 @@ export type CommentConfig = {
 		 * 常用：nick / mail（输入框占位文字）、placeholder（评论框占位文字）。
 		 */
 		locale?: Record<string, string>;
+		/**
+		 * 图片上传配置。
+		 *
+		 * Waline 默认把图片转成 base64 直接塞进正文，而 wordLimit 统计的是
+		 * 「词数」——base64 里的 + / 会把长串切碎，128KB 的图就要算 5400 词，
+		 * 300 词上限下根本发不出去。
+		 *
+		 * 开启后改为：图片压缩成 WebP 暂存，正文里只写短标记 #wl-img-N，
+		 * 提交瞬间再展开成完整数据。编辑框保持干净，词数也不受影响。
+		 */
+		imageUpload?: {
+			/** 是否启用，默认 true */
+			enabled?: boolean;
+			/** 原图体积上限（MB），默认 10 */
+			maxSizeMB?: number;
+			/** 压缩后最长边（px），默认 1600 */
+			maxSide?: number;
+			/** WebP 画质 0–1，默认 0.82 */
+			quality?: number;
+			/** 压缩目标体积（KB），超过则继续降质，默认 300 */
+			maxOutputKB?: number;
+		};
 	};
 	artalk?: {
 		// 后端程序 API 地址

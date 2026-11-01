@@ -47,6 +47,15 @@ export const commentConfig: CommentConfig = {
 			nick: "昵称（必填）",
 			mail: "邮箱（必填）",
 		},
+		// 图片上传：压缩成 WebP，正文里只写短标记，提交时再展开
+		// 不加这段也能用，默认值见 src/types/commentConfig.ts
+		imageUpload: {
+			enabled: true,
+			maxSizeMB: 10, // 原图上限
+			maxSide: 1600, // 压缩后最长边
+			quality: 0.82, // WebP 画质
+			maxOutputKB: 300, // 压缩目标体积
+		},
 	},
 
 	// artalk评论系统配置

@@ -6,27 +6,188 @@ interface Props {
 	path: string;
 }
 
+// imageUpload 是本项目自定义的上传配置，不是 Waline 原生选项，
+// 单独取出来传，免得它被当成未知字段塞进 init()
+const { imageUpload, ...walineOptions } = commentConfig.waline ?? {};
+
 const config = {
-	...commentConfig.waline,
+	...walineOptions,
 	el: "#waline",
 	path: Astro.props.path,
 	dark: "html.dark",
-	wordLimit: ["2", "300"],
+	wordLimit: ["2", "1000"],
 	...(commentConfig.waline?.visitorCount ? { pageview: true } : {}),
+};
+
+const imageOptions = {
+	enabled: true,
+	maxSizeMB: 10,
+	maxSide: 1600,
+	quality: 0.82,
+	maxOutputKB: 300,
+	...(imageUpload ?? {}),
 };
 ---
 <!-- Waline -->
 <div class="relative w-full">
   <div id="waline"></div>
   <link rel="stylesheet" href="https://unpkg.com/@waline/client@v3/dist/waline.css" />
-  <script type="module" is:inline define:vars={{ config }}>
+  <script type="module" is:inline define:vars={{ config, imageOptions }}>
     import { init } from 'https://unpkg.com/@waline/client@v3/dist/waline.js';
+
+    /* ── 图片上传 ─────────────────────────────────────────────────
+       Waline 默认把图片转成 base64 直接写进正文，而 wordLimit 统计的是
+       「词数」：base64 里的 + / 会把长串切碎，128KB 的图就算出 5400 词，
+       300 词上限下根本发不出去，图片成了摆设。
+
+       这里改成：图片压缩成 WebP 后暂存，正文里只写一个短标记
+       #wl-img-N，提交那一刻再拦 fetch 把标记展开成完整数据。
+       于是编辑框干干净净，删掉一个标记就等于删掉整张图。 */
+
+    const TOKEN = "#wl-img-";
+    const STORE_KEY = "waline:img-store";
+
+    const opts = {
+      maxBytes: (imageOptions.maxSizeMB ?? 10) * 1024 * 1024,
+      maxSide: imageOptions.maxSide ?? 1600,
+      quality: imageOptions.quality ?? 0.82,
+      targetBytes: (imageOptions.maxOutputKB ?? 300) * 1024,
+    };
+
+    /** id -> dataURL */
+    const store = new Map();
+    let seq = 0;
+
+    // 刷新页面后还能接着提交：把没发出去的图存进 sessionStorage
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(STORE_KEY) || "{}");
+      for (const [key, value] of Object.entries(saved)) {
+        const id = Number(key);
+        if (Number.isFinite(id) && typeof value === "string") {
+          store.set(id, value);
+          seq = Math.max(seq, id);
+        }
+      }
+    } catch {}
+
+    const persist = () => {
+      try {
+        sessionStorage.setItem(STORE_KEY, JSON.stringify(Object.fromEntries(store)));
+      } catch {}
+    };
+
+    /** 用 <img> 解码，比 createImageBitmap 兼容性更好 */
+    function decode(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          resolve(img);
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error("这张图片解码失败了，换一张或先转成 JPG 试试"));
+        };
+        img.src = url;
+      });
+    }
+
+    /** 按指定长边和画质压一次 */
+    function encode(img, maxSide, quality) {
+      const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return Promise.resolve(null);
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return new Promise((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+    }
+
+    function toDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    /** Waline 的 imageUploader，返回的字符串会被原样插进 ![]( ) */
+    async function uploadImage(file) {
+      if (!file.type.startsWith("image/")) throw new Error("只能上传图片文件");
+      if (file.size > opts.maxBytes) {
+        throw new Error(`图片超过 ${imageOptions.maxSizeMB ?? 10}MB，先裁一下再传吧`);
+      }
+
+      let blob = file;
+
+      // GIF 压成 WebP 会丢掉动画，SVG 会被光栅化，这两种保留原样
+      const keepRaw = /^image\/(gif|svg\+xml)$/i.test(file.type);
+      if (!keepRaw) {
+        const img = await decode(file);
+        // 逐级降质，压到目标体积就停
+        const ladder = [
+          [opts.maxSide, opts.quality],
+          [Math.round(opts.maxSide * 0.85), opts.quality - 0.07],
+          [Math.round(opts.maxSide * 0.7), opts.quality - 0.15],
+          [Math.round(opts.maxSide * 0.55), opts.quality - 0.24],
+        ];
+        for (const [side, quality] of ladder) {
+          const next = await encode(img, side, Math.max(0.42, quality));
+          if (!next) break;
+          blob = next;
+          if (next.size <= opts.targetBytes) break;
+        }
+      }
+
+      const id = ++seq;
+      store.set(id, await toDataUrl(blob));
+      persist();
+      return `${TOKEN}${id}`;
+    }
+
+    /** 把正文里的短标记换回真正的图片数据 */
+    const expand = (text) => text.replace(/#wl-img-(\d+)/g, (raw, id) => store.get(Number(id)) || raw);
+
+    // 提交 / 编辑评论时展开标记。Waline v3 全部走 fetch，拦一层就够了。
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = function (input, init) {
+      try {
+        const method = (init?.method || "GET").toUpperCase();
+        const url = typeof input === "string" ? input : input?.url || "";
+        if (
+          init &&
+          typeof init.body === "string" &&
+          (method === "POST" || method === "PUT") &&
+          url.includes("/api/comment")
+        ) {
+          const body = expand(init.body);
+          if (body !== init.body) init = { ...init, body };
+        }
+      } catch {}
+      return nativeFetch(input, init);
+    };
+
+    // 预览区渲染时拿不到真实地址，等 DOM 更新后补上
+    const patchPreview = () => {
+      document.querySelectorAll('.wl-preview img[src^="#wl-img-"]').forEach((img) => {
+        const real = store.get(Number(img.getAttribute("src").slice(TOKEN.length)));
+        if (real) img.setAttribute("src", real);
+      });
+    };
+
     const requestedPath = new URLSearchParams(window.location.search).get("path");
-    const effectiveConfig = requestedPath
-      ? { ...config, path: requestedPath }
-      : config;
+    const effectiveConfig = requestedPath ? { ...config, path: requestedPath } : { ...config };
+    if (imageOptions.enabled !== false) effectiveConfig.imageUploader = uploadImage;
+
     try {
       init(effectiveConfig);
+      // Waline 是异步挂载的，等宿主就位后再观察预览区
+      const host = document.getElementById("waline");
+      if (host) new MutationObserver(patchPreview).observe(host, { childList: true, subtree: true });
     } catch (error) {
       console.error("[Waline] Failed to initialize:", error);
     }
