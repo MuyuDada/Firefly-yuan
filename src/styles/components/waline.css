@@ -265,3 +265,142 @@ body.wallpaper-transparent #waline .wl-panel {
 	backdrop-filter: blur(12px);
 	-webkit-backdrop-filter: blur(12px);
 }
+
+/* ── 9. 评论图片点击放大 ─────────────────────────────
+   Waline v3 没有内置 lightbox，正文里的图只能看缩略。
+   这里补一层：点击图片全屏查看，滚轮缩放，← → 切换，ESC 关闭。 */
+
+#waline .wl-content img {
+	cursor: zoom-in;
+}
+
+.wl-lightbox {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgb(0 0 0 / 0.88);
+	-webkit-backdrop-filter: blur(6px);
+	backdrop-filter: blur(6px);
+	opacity: 0;
+	pointer-events: none;
+	touch-action: none;
+	transition: opacity 0.22s var(--ease-standard, ease);
+}
+
+.wl-lightbox.is-open {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.wl-lightbox__img {
+	max-width: 92vw;
+	max-height: 86vh;
+	border-radius: 10px;
+	box-shadow: 0 24px 64px rgb(0 0 0 / 0.55);
+	cursor: grab;
+	user-select: none;
+	-webkit-user-drag: none;
+	transition: transform 0.18s var(--ease-standard, ease);
+	will-change: transform;
+}
+
+.wl-lightbox__img:active {
+	cursor: grabbing;
+}
+
+/* 图片序号 */
+.wl-lightbox__count {
+	position: absolute;
+	top: 1.4rem;
+	left: 50%;
+	padding: 0.24rem 0.72rem;
+	border-radius: 999px;
+	background: rgb(255 255 255 / 0.14);
+	color: #fff;
+	font-size: 0.78rem;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.02em;
+	pointer-events: none;
+	transform: translateX(-50%);
+}
+
+.wl-lightbox__count:empty {
+	display: none;
+}
+
+/* 关闭 */
+.wl-lightbox__close {
+	position: absolute;
+	top: 1.1rem;
+	right: 1.1rem;
+	display: grid;
+	place-items: center;
+	width: 2.4rem;
+	height: 2.4rem;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: rgb(255 255 255 / 0.14);
+	color: #fff;
+	font-size: 1.35rem;
+	line-height: 1;
+	cursor: pointer;
+	transition:
+		background 0.18s ease,
+		transform 0.18s ease;
+}
+
+.wl-lightbox__close:hover {
+	background: rgb(255 255 255 / 0.28);
+	transform: rotate(90deg);
+}
+
+/* 左右切换 */
+.wl-lightbox__nav {
+	position: absolute;
+	top: 50%;
+	display: grid;
+	place-items: center;
+	width: 2.8rem;
+	height: 2.8rem;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: rgb(255 255 255 / 0.14);
+	color: #fff;
+	font-size: 1.5rem;
+	line-height: 1;
+	cursor: pointer;
+	transform: translateY(-50%);
+	transition: background 0.18s ease;
+}
+
+.wl-lightbox__nav:hover {
+	background: rgb(255 255 255 / 0.28);
+}
+
+.wl-lightbox__nav[data-dir="prev"] {
+	left: 1.4rem;
+}
+
+.wl-lightbox__nav[data-dir="next"] {
+	right: 1.4rem;
+}
+
+.wl-lightbox__nav[hidden] {
+	display: none;
+}
+
+@media (max-width: 640px) {
+	.wl-lightbox__nav {
+		display: none;
+	}
+
+	.wl-lightbox__img {
+		max-width: 96vw;
+		max-height: 82vh;
+	}
+}

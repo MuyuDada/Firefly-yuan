@@ -191,5 +191,121 @@ const imageOptions = {
     } catch (error) {
       console.error("[Waline] Failed to initialize:", error);
     }
+
+    /* ── 评论图片点击放大 ─────────────────────────────────────────
+       Waline v3 没有内置 lightbox，正文里的图只能看缩略。
+       补一层：点击全屏查看，滚轮缩放，← → 切换同一条评论里的图，ESC 关闭。 */
+
+    let lightbox = null;
+    let lightboxImages = [];
+    let lightboxIndex = 0;
+    let lightboxScale = 1;
+    let prevOverflow = "";
+
+    function buildLightbox() {
+      if (lightbox) return lightbox;
+      const box = document.createElement("div");
+      box.className = "wl-lightbox";
+      box.setAttribute("aria-hidden", "true");
+      box.innerHTML = [
+        '<button class="wl-lightbox__close" type="button" aria-label="关闭">×</button>',
+        '<span class="wl-lightbox__count"></span>',
+        '<button class="wl-lightbox__nav" type="button" data-dir="prev" aria-label="上一张">‹</button>',
+        '<img class="wl-lightbox__img" alt="" />',
+        '<button class="wl-lightbox__nav" type="button" data-dir="next" aria-label="下一张">›</button>',
+      ].join("");
+      document.body.appendChild(box);
+      lightbox = box;
+      return box;
+    }
+
+    function applyScale(next) {
+      lightboxScale = Math.min(5, Math.max(1, next));
+      lightbox.querySelector(".wl-lightbox__img").style.transform = `scale(${lightboxScale})`;
+    }
+
+    function renderLightbox() {
+      const img = lightbox.querySelector(".wl-lightbox__img");
+      const current = lightboxImages[lightboxIndex];
+      img.src = current.src;
+      img.alt = current.alt || "";
+      applyScale(1);
+      lightbox.querySelector(".wl-lightbox__count").textContent =
+        lightboxImages.length > 1 ? `${lightboxIndex + 1} / ${lightboxImages.length}` : "";
+      for (const nav of lightbox.querySelectorAll(".wl-lightbox__nav")) {
+        nav.hidden = lightboxImages.length < 2;
+      }
+    }
+
+    function openLightbox(target) {
+      buildLightbox();
+      const content = target.closest(".wl-content");
+      lightboxImages = content
+        ? [...content.querySelectorAll("img")].filter((el) => !el.classList.contains("wl-emoji"))
+        : [target];
+      lightboxIndex = Math.max(0, lightboxImages.indexOf(target));
+      renderLightbox();
+      lightbox.classList.add("is-open");
+      lightbox.setAttribute("aria-hidden", "false");
+      prevOverflow = document.documentElement.style.overflow;
+      document.documentElement.style.overflow = "hidden";
+    }
+
+    function closeLightbox() {
+      if (!lightbox) return;
+      lightbox.classList.remove("is-open");
+      lightbox.setAttribute("aria-hidden", "true");
+      document.documentElement.style.overflow = prevOverflow;
+    }
+
+    function stepLightbox(delta) {
+      if (lightboxImages.length < 2) return;
+      lightboxIndex = (lightboxIndex + delta + lightboxImages.length) % lightboxImages.length;
+      renderLightbox();
+    }
+
+    // 打开和关闭放在同一个监听里：拆成两个的话，打开后会被第二个立即关掉
+    document.addEventListener("click", (event) => {
+      const el = event.target instanceof Element ? event.target : null;
+      if (!el) return;
+
+      if (lightbox?.classList.contains("is-open")) {
+        const nav = el.closest(".wl-lightbox__nav");
+        if (nav) {
+          stepLightbox(nav.dataset.dir === "next" ? 1 : -1);
+          return;
+        }
+        if (el.closest(".wl-lightbox__close")) {
+          closeLightbox();
+          return;
+        }
+        // 点图片本身保持打开，点遮罩空白处关闭
+        if (!el.closest(".wl-lightbox__img")) closeLightbox();
+        return;
+      }
+
+      const img = el.closest("img");
+      if (!img || !img.closest("#waline .wl-content")) return;
+      event.preventDefault();
+      openLightbox(img);
+    });
+
+    document.addEventListener(
+      "wheel",
+      (event) => {
+        if (!lightbox?.classList.contains("is-open")) return;
+        if (!(event.target instanceof Element) || !event.target.closest(".wl-lightbox__img")) return;
+        event.preventDefault();
+        applyScale(lightboxScale * (event.deltaY < 0 ? 1.15 : 1 / 1.15));
+      },
+      { passive: false },
+    );
+
+    document.addEventListener("keydown", (event) => {
+      if (!lightbox?.classList.contains("is-open")) return;
+      if (event.key === "Escape") closeLightbox();
+      else if (event.key === "ArrowLeft") stepLightbox(-1);
+      else if (event.key === "ArrowRight") stepLightbox(1);
+    });
   </script>
 </div>
