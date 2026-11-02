@@ -18,10 +18,6 @@ const { class: className, style, city, adcode, extended = true } = Astro.props;
 // 注意：静态站点没有服务端，该值会出现在页面源码中，请使用有额度上限的 key。
 const uapiKey = (import.meta.env.PUBLIC_UAPI_KEY || "").trim();
 
-// 缓存键名
-const CACHE_KEY = "weather_data_cache";
-const CACHE_DURATION = 30 * 60 * 1000; // 30分钟缓存
-
 const COLLAPSED_HEIGHT = "9rem";
 ---
 
@@ -525,24 +521,61 @@ const COLLAPSED_HEIGHT = "9rem";
 		const CACHE_KEY = "weather_data_cache";
 		const CACHE_TTL = 30 * 60 * 1000;
 
+		// UAPI 天气接口的响应字段（只列出本组件用到的部分）
+		interface WeatherForecastDay {
+			pop?: number | string | null;
+			sunrise?: string | null;
+			sunset?: string | null;
+		}
+
+		interface WeatherData {
+			city?: string | null;
+			district?: string | null;
+			temperature?: number | string | null;
+			weather?: string | null;
+			weather_icon?: number | string | null;
+			report_time?: string | null;
+			wind_direction?: string | null;
+			wind_power?: string | null;
+			temp_max?: number | string | null;
+			temp_min?: number | string | null;
+			feels_like?: number | string | null;
+			visibility?: number | string | null;
+			pressure?: number | string | null;
+			humidity?: number | string | null;
+			uv?: number | string | null;
+			precipitation?: number | string | null;
+			cloud?: number | string | null;
+			aqi?: number | string | null;
+			aqi_category?: string | null;
+			aqi_level?: number | string | null;
+			air_pollutants?: Record<string, number | string | null | undefined>;
+			forecast?: WeatherForecastDay[];
+		}
+
+		// Iconify 运行时只加载一次，加载中的 Promise 挂在 window 上供多处复用
+		const iconifyWindow = window as Window & {
+			__iconifyLoading?: Promise<void>;
+		};
+
 		// ✅ 修复：按需加载 Iconify 运行时（用于动态切换天气图标）
-		function ensureIconifyLoaded() {
+		function ensureIconifyLoaded(): Promise<void> {
 			if (typeof customElements !== "undefined" && customElements.get("iconify-icon")) {
 				return Promise.resolve();
 			}
-			if (window.__iconifyLoading) return window.__iconifyLoading;
-			window.__iconifyLoading = new Promise((resolve) => {
+			if (iconifyWindow.__iconifyLoading) return iconifyWindow.__iconifyLoading;
+			iconifyWindow.__iconifyLoading = new Promise<void>((resolve) => {
 				const s = document.createElement("script");
 				s.src = "https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js";
 				s.onload = () => resolve();
 				s.onerror = () => resolve(); // 加载失败也不阻塞其他逻辑
 				document.head.appendChild(s);
 			});
-			return window.__iconifyLoading;
+			return iconifyWindow.__iconifyLoading;
 		}
 
 		const cacheManager = {
-			set: function (key, data) {
+			set: function (key: string, data: WeatherData) {
 				try {
 					localStorage.setItem(key, JSON.stringify({
 						data: data,
@@ -550,7 +583,7 @@ const COLLAPSED_HEIGHT = "9rem";
 					}));
 				} catch {}
 			},
-			get: function (key) {
+			get: function (key: string): WeatherData | null {
 				try {
 					const raw = localStorage.getItem(key);
 					if (!raw) return null;
@@ -560,25 +593,25 @@ const COLLAPSED_HEIGHT = "9rem";
 						localStorage.removeItem(key);
 						return null;
 					}
-					return parsed.data;
+					return parsed.data as WeatherData;
 				} catch {
 					return null;
 				}
 			},
-			remove: function (key) {
+			remove: function (key: string) {
 				try { localStorage.removeItem(key); } catch {}
 			}
 		};
 
 		// IP 自动定位模式下没有 adcode/city，同样要缓存：
 		// 否则每次翻页都会重新打一次接口，更容易撞上限流（缓存按访客各自的 localStorage 存）
-		function getCacheKey(adcode, city) {
+		function getCacheKey(adcode: string, city: string): string {
 			if (adcode) return CACHE_KEY + "adcode_" + adcode;
 			if (city) return CACHE_KEY + "city_" + city;
 			return CACHE_KEY + "ip";
 		}
 
-		function fmt(value, suffix = "", fallback = "--") {
+		function fmt(value: unknown, suffix = "", fallback = "--"): string {
 			if (value === null || value === undefined || value === "") return fallback;
 			return `${value}${suffix}`;
 		}
@@ -614,7 +647,7 @@ const COLLAPSED_HEIGHT = "9rem";
 					headers: apiKey ? { "X-API-Key": apiKey } : undefined,
 				});
 			} catch (e) {
-				if (e && e.name === "AbortError") {
+				if (e instanceof Error && e.name === "AbortError") {
 					throw new Error("请求超时，请稍后重试");
 				}
 				throw e;
@@ -630,7 +663,7 @@ const COLLAPSED_HEIGHT = "9rem";
 			city: string,
 			extended: boolean,
 			apiKey: string,
-		) {
+		): Promise<WeatherData> {
 			let response = await requestWeather(adcode, city, extended, "");
 
 			if (!response.ok && response.status === 429 && apiKey) {
@@ -646,7 +679,7 @@ const COLLAPSED_HEIGHT = "9rem";
 				throw new Error(`请求失败: ${response.status}`);
 			}
 
-			const data = await response.json();
+			const data = (await response.json()) as WeatherData;
 
 			const cacheKey = getCacheKey(adcode, city);
 			if (cacheKey) {
@@ -807,7 +840,11 @@ const COLLAPSED_HEIGHT = "9rem";
 			return weatherIcons[key] || getWeatherAlertIcon(key) || FALLBACK_WEATHER_ICON;
 		}
 
-		function updateUI(container, data, error = null) {
+		function updateUI(
+			container: HTMLElement,
+			data: WeatherData | null,
+			error: string | null = null,
+		): void {
 			const loading = container.querySelector("[data-weather-loading]");
 			const errorEl = container.querySelector("[data-weather-error]");
 			const content = container.querySelector("[data-weather-content]");
@@ -825,7 +862,7 @@ const COLLAPSED_HEIGHT = "9rem";
 
 			if (errorEl) errorEl.classList.add("weather-hidden");
 
-			const setData = (selector, value) => {
+			const setData = (selector: string, value: string): void => {
 				const el = container.querySelector(selector);
 				if (el) el.textContent = value;
 			};
@@ -893,7 +930,7 @@ const COLLAPSED_HEIGHT = "9rem";
 			if (content) content.classList.remove("weather-hidden");
 		}
 
-		function initWidget(container) {
+		function initWidget(container: HTMLElement): void {
 			if (container.dataset.weatherInited === "true") return;
 			container.dataset.weatherInited = "true";
 
@@ -910,7 +947,7 @@ const COLLAPSED_HEIGHT = "9rem";
 
 			let requestSeq = 0;
 
-			async function loadWeather(forceRefresh = false) {
+			async function loadWeather(forceRefresh = false): Promise<void> {
 				const seq = ++requestSeq;
 
 				const cached = !forceRefresh && cacheKey ? cacheManager.get(cacheKey) : null;
@@ -930,7 +967,8 @@ const COLLAPSED_HEIGHT = "9rem";
 				} catch (e) {
 					if (seq !== requestSeq) return;
 					if (!cached) {
-						updateUI(container, null, e.message || "获取天气信息失败");
+						const message = e instanceof Error && e.message ? e.message : "获取天气信息失败";
+						updateUI(container, null, message);
 					}
 				}
 			}
@@ -945,13 +983,16 @@ const COLLAPSED_HEIGHT = "9rem";
 			// ✅ 修复：先确保 Iconify 运行时加载完成，再触发首次渲染，
 			// 避免 icon 属性在自定义元素未升级前被设置而丢失
 			ensureIconifyLoaded().then(() => {
-				const schedule = typeof window.requestIdleCallback === "function"
-					? (cb) => window.requestIdleCallback(cb, { timeout: 2000 })
-					: (cb) => setTimeout(cb, 300);
+				const schedule: (cb: () => void) => void =
+					typeof window.requestIdleCallback === "function"
+						? (cb) => window.requestIdleCallback(cb, { timeout: 2000 })
+						: (cb) => setTimeout(cb, 300);
 				schedule(() => loadWeather());
 			});
 		}
 
-		document.querySelectorAll("[data-weather-init]").forEach((el) => initWidget(el));
+		document
+			.querySelectorAll<HTMLElement>("[data-weather-init]")
+			.forEach((el) => initWidget(el));
 	})();
 </script>
