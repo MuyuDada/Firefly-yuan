@@ -41,5 +41,13 @@
   "src:content/projects/images/smart-notes.png": "eff2f3f2f0f0faedeb",
   "src:content/projects/images/homepage-shot.webp": "90b3b2577b8e5e6f7e",
   "src:content/projects/images/firefly-yuan.png": "f0f2f3f2efeff1eef1",
-  "src:content/projects/images/the-daily-mail.png": "f0f1f3f5f3f3fbf9ef"
+  "src:content/projects/images/the-daily-mail.png": "f0f1f3f5f3f3fbf9ef",
+  "public:assets/images/analytics/visitor-activity-character.webp": "6f70797a797eb6b2bb",
+  "public:assets/images/analytics/push-rhythm-character.webp": "935f5c8a645ec4a4a1",
+  "public:assets/images/analytics/analytics-hero.webp": "f3f6ffe2d9ebe8dbeb",
+  "src:content/projects/images/folia-lx-source-bridge.png": "f1f2f4f4f1f2fbf9ee",
+  "public:assets/images/analytics/summary/summary-visitors.webp": "f1f6fee8e3efe4d9e6",
+  "public:assets/images/analytics/summary/summary-today-visitors.webp": "f4f6f7f7e7dcf3d9ce",
+  "public:assets/images/analytics/summary/summary-today-pageviews.webp": "f2f3fee0d9ebd2c3da",
+  "public:assets/images/analytics/summary/summary-pageviews.webp": "eff7feeee8efe6d7e2"
 }
