@@ -2,7 +2,6 @@
     /* ===== 页脚（签名区 + 文案区，桌面双列 / 移动端居中堆叠） ===== */
     .badge-footer {
         --ftr-text: var(--deep-text, rgba(0, 0, 0, 0.85));
-        --ftr-line: rgba(0, 0, 0, 0.14);
         --ftr-hover-bg: rgba(0, 0, 0, 0.05);
         --ftr-btn-border: rgba(0, 0, 0, 0.32);
 
@@ -19,7 +18,6 @@
 
     :root.dark .badge-footer {
         --ftr-text: oklch(0.86 0.012 var(--hue, 260));
-        --ftr-line: rgba(255, 255, 255, 0.14);
         --ftr-hover-bg: rgba(255, 255, 255, 0.08);
         --ftr-btn-border: rgba(255, 255, 255, 0.32);
     }
@@ -109,13 +107,14 @@
         opacity: 0.3;
     }
 
-    /* ⑤ 社交圆钮 + 运行计时 */
+    /* ⑤ 社交圆钮 + 运行计时
+       计时固定独占一行：留在同一行时，秒数位数变化会让这一行在宽度
+       临界点上忽然折行，跳动很明显。竖排后位置恒定，也更符合单中轴 */
     .ftr-meta {
         display: flex;
-        flex-wrap: wrap;
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 0.65rem 0.9rem;
+        gap: 0.5rem;
         margin-top: 0.2rem;
     }
 
@@ -151,16 +150,12 @@
         pointer-events: none;
     }
 
-    .ftr-divider {
-        width: 1px;
-        height: 1.9rem;
-        background: var(--ftr-line);
-    }
-
     .ftr-status {
         font-size: 0.8125rem;
         line-height: 1.6;
+        /* 计时独占一行后仍不拆行，避免秒数变化时文字自己折成两截 */
         white-space: nowrap;
+        font-variant-numeric: tabular-nums;
     }
 
     .ftr-num {
@@ -234,18 +229,10 @@
             margin-top: 0.85rem;
             gap: 0.5rem;
         }
-
-        .ftr-meta {
-            flex-direction: column;
-            gap: 0.6rem;
-        }
-
-        .ftr-divider {
-            display: none;
-        }
     }
 
-    @media (max-width: 400px) {
+    /* 极窄屏才允许计时文字内部折行（"XX 天 XX 时…" 太长时） */
+    @media (max-width: 340px) {
         .ftr-status {
             white-space: normal;
         }
@@ -306,7 +293,6 @@
                         </svg>
                     </a>
                 </div>
-                <div class="ftr-divider" aria-hidden="true"></div>
                 <div class="ftr-status">
                     <span id="runtime">⌛ 小破站正在加载...</span>
                 </div>
