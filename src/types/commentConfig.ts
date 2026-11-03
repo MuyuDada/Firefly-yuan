@@ -1,3 +1,9 @@
+/**
+ * Waline 表情预设地址（指向含 info.json 的目录）。
+ * 远程预设用完整 URL，本站自托管的表情包用 `/emoji/xxx` 这样的站内路径。
+ */
+export type WalineEmojiPreset = string;
+
 export type CommentConfig = {
 	/**
 	 * 当前启用的评论系统类型
@@ -23,7 +29,12 @@ export type CommentConfig = {
 	waline?: {
 		serverURL: string;
 		lang?: string;
-		emoji: string[];
+		/**
+		 * 表情预设。字符串走 Waline 的 info.json 约定；
+		 * 对象则内联配置，可以指向任意支持 `${folder}/${prefix}${name}.${type}`
+		 * 结构的远程目录（用于没有 info.json 的资源站）。
+		 */
+		emoji: WalineEmojiPreset[];
 		login?: "enable" | "force" | "disable";
 		visitorCount?: boolean; // 是否统计访问量，true 启用访问量，false 关闭
 		/**

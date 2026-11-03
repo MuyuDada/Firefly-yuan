@@ -28,11 +28,19 @@ export const commentConfig: CommentConfig = {
 		lang: "zh-CN",
 		// 设置 Waline 评论系统表情地址
 		// qq 是 QQ 的那套动图大表情（56×56 gif，共 190 个），放第一位做默认分类
+		// 最后一个是自托管的「QQ超级表情」——QQ 里那套 Lottie 动画表情的原生导出
+		// （APNG，89 个，约 16MB，见 public/emoji/lottie_qq/）。
+		// Waline 只渲染 <img>、没有 lottie 运行时，APNG 是同一份动画的位图封装，
+		// 浏览器原生播放。自托管是为了不依赖外部 CDN（jsDelivr 会把大文件
+		// 302 到 raw.githubusercontent，国内常连不上）。
+		// 资源取自 Spixed/Qmoji（QQNT 客户端提取）；放最后是为了只有主动
+		// 点开该分类才去拉取，不拖累正常访客。
 		emoji: [
 			"https://unpkg.com/@waline/emojis@1.4.0/qq",
 			"https://unpkg.com/@waline/emojis@1.4.0/weibo",
 			"https://unpkg.com/@waline/emojis@1.4.0/bilibili",
 			"https://unpkg.com/@waline/emojis@1.4.0/bmoji",
+			"/emoji/lottie_qq",
 		],
 		// 评论登录模式。可选值如下：
 		//   'enable'   —— 默认，允许访客匿名评论和用第三方 OAuth 登录评论，兼容性最佳。

@@ -265,8 +265,10 @@
 	vertical-align: -0.45em;
 }
 
-/* QQ 大表情是 56×56 的动图，线条简单，比常规表情再大一档才好看 */
-#waline .wl-content img[src*="/qq/"] {
+/* QQ 大表情是 56×56 的动图，线条简单，比常规表情再大一档才好看。
+   超级表情是自托管的 APNG（/emoji/lottie_qq/），同样给这个尺寸 */
+#waline .wl-content img[src*="/qq/"],
+#waline .wl-content img[src*="/lottie_qq/"] {
 	width: 2.6em;
 	height: 2.6em;
 }
