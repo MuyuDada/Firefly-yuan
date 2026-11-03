@@ -27,7 +27,9 @@ export const commentConfig: CommentConfig = {
 		// 设置 Waline 评论系统语言
 		lang: "zh-CN",
 		// 设置 Waline 评论系统表情地址
+		// qq 是 QQ 的那套动图大表情（56×56 gif，共 190 个），放第一位做默认分类
 		emoji: [
+			"https://unpkg.com/@waline/emojis@1.4.0/qq",
 			"https://unpkg.com/@waline/emojis@1.4.0/weibo",
 			"https://unpkg.com/@waline/emojis@1.4.0/bilibili",
 			"https://unpkg.com/@waline/emojis@1.4.0/bmoji",

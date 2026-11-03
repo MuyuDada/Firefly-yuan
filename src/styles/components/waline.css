@@ -252,6 +252,32 @@
 	border-width: 0 1px 1px;
 }
 
+/* ── 7.1 表情尺寸 ─────────────────────────────────────
+   Waline 的 `.wl-content .wl-emoji { height: 1.25em }` 会把 96×96 的原图
+   压到 17px 左右，发出去基本看不出是什么表情。这里按正文行高放大。
+   注意选择器要压过上游的 `.wl-content .wl-emoji`（两个类），
+   所以带上 #waline 提权。 */
+
+#waline .wl-content .wl-emoji,
+#waline .wl-content .vemoji {
+	width: 2em;
+	height: 2em;
+	vertical-align: -0.45em;
+}
+
+/* QQ 大表情是 56×56 的动图，线条简单，比常规表情再大一档才好看 */
+#waline .wl-content img[src*="/qq/"] {
+	width: 2.6em;
+	height: 2.6em;
+}
+
+/* 表情面板里的缩略图同样偏小，跟着放大一点。
+   面板高度由上面的 .wl-tab-wrapper 固定，不会因此跳动 */
+#waline .wl-emoji-popup .wl-emoji {
+	max-width: 1.75em;
+	max-height: 1.75em;
+}
+
 /* ── 8. 透明壁纸模式：卡片本身是半透明的，评论面板也要跟上 ── */
 
 body.wallpaper-transparent #waline {
