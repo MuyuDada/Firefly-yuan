@@ -566,6 +566,7 @@ export const en: Translation = {
 	[Key.wavesAnimation]: "Waves Animation",
 	[Key.gradientTransition]: "Gradient Transition",
 	[Key.sakuraEffect]: "Sakura Effect",
+	[Key.bubbleEffect]: "Liquid Bubbles",
 	[Key.customCursor]: "Custom Cursor",
 	[Key.clickParticleEffect]: "Click Particle Effect",
 	[Key.fairyDustEffect]: "Fairy Dust Trail",

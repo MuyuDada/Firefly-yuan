@@ -30,6 +30,7 @@ const DISABLED_SETTINGS: DisplaySettingsConfig = {
 	wallpaperModeSwitchable: false,
 	fullscreenLayoutSwitchable: false,
 	wavesSwitchable: false,
+	bubblesSwitchable: false,
 	gradientSwitchable: false,
 	bannerTitleSwitchable: false,
 	bannerCarouselSwitchable: false,

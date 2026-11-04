@@ -15,6 +15,7 @@ import {
 	getDefaultClickParticleEnabled,
 	getDefaultCursorEnabled,
 	getDefaultFairyDustEnabled,
+	getDefaultBubbleEnabled,
 	getDefaultFullscreenLayout,
 	getDefaultGradientEnabled,
 	getDefaultHue,
@@ -27,6 +28,7 @@ import {
 	getHue,
 	getStoredBannerCarouselEnabled,
 	getStoredBannerTitleEnabled,
+	getStoredBubbleEnabled,
 	getStoredCardBorderEnabled,
 	getStoredCardFollowThemeEnabled,
 	getStoredClickParticleEnabled,
@@ -43,6 +45,7 @@ import {
 	getStoredWavesEnabled,
 	setBannerCarouselEnabled,
 	setBannerTitleEnabled,
+	setBubbleEnabled,
 	setCardBorderEnabled,
 	setCardFollowThemeEnabled,
 	setClickParticleEnabled,
@@ -139,6 +142,8 @@ let bannerCarouselEnabled = $state(true);
 const defaultBannerCarouselEnabled = getDefaultBannerCarouselEnabled();
 let sakuraEnabled = $state(true);
 const defaultSakuraEnabled = getDefaultSakuraEnabled();
+let bubbleEnabled = $state(true);
+const defaultBubbleEnabled = getDefaultBubbleEnabled();
 let cursorEnabled = $state(true);
 const defaultCursorEnabled = getDefaultCursorEnabled();
 let clickParticleEnabled = $state(true);
@@ -284,6 +289,7 @@ const isBannerTitleSwitchable =
 const isBannerCarouselSwitchable =
 	displaySettingsConfig.bannerCarouselSwitchable;
 const isSakuraSwitchable = displaySettingsConfig.sakuraSwitchable;
+const isBubblesSwitchable = displaySettingsConfig.bubblesSwitchable;
 const isCursorSwitchable = displaySettingsConfig.cursorSwitchable;
 const isClickParticleSwitchable = displaySettingsConfig.clickParticleSwitchable;
 const isFairyDustSwitchable = displaySettingsConfig.fairyDustSwitchable;
@@ -593,6 +599,11 @@ function toggleSakuraEnabled() {
 	setSakuraEnabled(sakuraEnabled);
 }
 
+function toggleBubblesEnabled() {
+	bubbleEnabled = !bubbleEnabled;
+	setBubbleEnabled(bubbleEnabled);
+}
+
 function toggleCursorEnabled() {
 	cursorEnabled = !cursorEnabled;
 	setCursorEnabled(cursorEnabled);
@@ -647,6 +658,10 @@ function resetEffectsToDefault() {
 	if (isSakuraSwitchable && sakuraEnabled !== defaultSakuraEnabled) {
 		sakuraEnabled = defaultSakuraEnabled;
 		setSakuraEnabled(defaultSakuraEnabled);
+	}
+	if (isBubblesSwitchable && bubbleEnabled !== defaultBubbleEnabled) {
+		bubbleEnabled = defaultBubbleEnabled;
+		setBubbleEnabled(defaultBubbleEnabled);
 	}
 }
 
@@ -765,6 +780,9 @@ onMount(() => {
 
 	// 从localStorage读取横幅轮播状态
 	bannerCarouselEnabled = getStoredBannerCarouselEnabled();
+
+	// 从localStorage读取壁纸气泡状态
+	bubbleEnabled = getStoredBubbleEnabled();
 
 	// 从localStorage读取樱花特效状态
 	sakuraEnabled = getStoredSakuraEnabled();
@@ -1229,6 +1247,25 @@ $effect(() => {
 				</button>
 			</div>
 		</div>
+		{/if}
+
+		<!-- Liquid Bubbles：气泡画在壁纸图之上、横幅文字之下，与壁纸模式联动 -->
+		{#if isBubblesSwitchable}
+		<button
+			class="w-full btn-regular rounded-md py-2.5 px-3 flex items-center gap-3 text-left active:scale-95 transition-all relative overflow-hidden"
+			class:bg-(--btn-regular-bg-hover)={bubbleEnabled}
+			onclick={toggleBubblesEnabled}
+		>
+			<Icon icon="material-symbols:bubbles-rounded" class="text-[1.25rem] shrink-0"></Icon>
+			<span class="text-sm flex-1">{i18n(I18nKey.bubbleEffect)}</span>
+			<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+				 class:bg-(--primary)={bubbleEnabled}
+				 class:bg-(--btn-regular-bg-active)={!bubbleEnabled}>
+				<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+					 class:left-0.5={!bubbleEnabled}
+					 class:left-5={bubbleEnabled}></div>
+			</div>
+		</button>
 		{/if}
 
 		<!-- Fullscreen Layout Section -->

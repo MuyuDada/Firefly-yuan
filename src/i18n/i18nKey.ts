@@ -534,6 +534,7 @@ enum I18nKey {
 	wavesAnimation = "wavesAnimation",
 	gradientTransition = "gradientTransition",
 	sakuraEffect = "sakuraEffect",
+	bubbleEffect = "bubbleEffect",
 	customCursor = "customCursor",
 	clickParticleEffect = "clickParticleEffect",
 	fairyDustEffect = "fairyDustEffect",

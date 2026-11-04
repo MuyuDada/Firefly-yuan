@@ -558,6 +558,7 @@ export const ko: Translation = {
 	[Key.wavesAnimation]: "파도 애니메이션",
 	[Key.gradientTransition]: "그라디언트 전환",
 	[Key.sakuraEffect]: "벚꽃 효과",
+	[Key.bubbleEffect]: "액체 버블",
 	[Key.customCursor]: "커스텀 커서",
 	[Key.clickParticleEffect]: "클릭 파티클 효과",
 	[Key.fairyDustEffect]: "별가루 트레일",

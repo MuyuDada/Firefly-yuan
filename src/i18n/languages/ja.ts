@@ -557,6 +557,7 @@ export const ja: Translation = {
 	[Key.wavesAnimation]: "波アニメーション",
 	[Key.gradientTransition]: "グラデーション遷移",
 	[Key.sakuraEffect]: "桜エフェクト",
+	[Key.bubbleEffect]: "液体バブル",
 	[Key.customCursor]: "カスタムカーソル",
 	[Key.clickParticleEffect]: "クリックパーティクル",
 	[Key.fairyDustEffect]: "星屑トレイル",

@@ -49,6 +49,9 @@ export type DisplaySettingsConfig = {
 	// 水波纹动画开关
 	wavesSwitchable: boolean;
 
+	// 壁纸液体气泡开关
+	bubblesSwitchable: boolean;
+
 	// 渐变过渡效果开关
 	gradientSwitchable: boolean;
 

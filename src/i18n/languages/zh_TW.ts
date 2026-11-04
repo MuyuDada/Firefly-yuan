@@ -543,6 +543,7 @@ export const zh_TW: Translation = {
 	[Key.wavesAnimation]: "水波紋動畫",
 	[Key.gradientTransition]: "漸變過渡",
 	[Key.sakuraEffect]: "櫻花特效",
+	[Key.bubbleEffect]: "液體氣泡",
 	[Key.customCursor]: "自訂游標",
 	[Key.clickParticleEffect]: "點擊粒子特效",
 	[Key.fairyDustEffect]: "星塵拖尾特效",

@@ -2,6 +2,7 @@
 import ImageWrapper from "@/components/common/ImageWrapper.astro";
 import ScrollDownIndicator from "@/components/controls/ScrollDownIndicator.astro";
 import BackgroundPlayer from "@/components/features/BackgroundPlayer.astro";
+import BubbleEffect from "@/components/features/BubbleEffect.astro";
 import BannerHomeTextOverlay from "@/components/layout/BannerHomeTextOverlay.astro";
 import BannerPostMetaOverlay from "@/components/layout/BannerPostMetaOverlay.astro";
 import { backgroundWallpaper } from "@/config";
@@ -535,6 +536,8 @@ const wallpaperPosition = state.isFullscreenMode
 
     <div id="banner-dim-container" class="absolute inset-0 z-10 pointer-events-none">
         {state.showBannerDim && <div class="banner-dim-overlay absolute inset-0" style={`background: rgba(0, 0, 0, ${state.dimOpacity})`}></div>}
+        <!-- 液体气泡特效：压在壁纸图之上、横幅文字（z-20）之下 -->
+        <BubbleEffect />
     </div>
 
     <div id="banner-overlay-container" class="absolute inset-0 z-20 pointer-events-none transition-swup-fade">    <!-- Home page text overlay - 始终渲染以便切换模式时控制显示 -->

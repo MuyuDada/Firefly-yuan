@@ -541,6 +541,7 @@ export const zh_CN: Translation = {
 	[Key.wavesAnimation]: "水波纹动画",
 	[Key.gradientTransition]: "渐变过渡",
 	[Key.sakuraEffect]: "樱花特效",
+	[Key.bubbleEffect]: "液体气泡",
 	[Key.customCursor]: "自定义光标",
 	[Key.clickParticleEffect]: "点击粒子特效",
 	[Key.fairyDustEffect]: "星尘拖尾特效",

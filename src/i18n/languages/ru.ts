@@ -564,6 +564,7 @@ export const ru: Translation = {
 	[Key.wavesAnimation]: "Анимация волн",
 	[Key.gradientTransition]: "Градиентный переход",
 	[Key.sakuraEffect]: "Эффект сакуры",
+	[Key.bubbleEffect]: "Жидкие пузырьки",
 	[Key.customCursor]: "Свой курсор",
 	[Key.clickParticleEffect]: "Частицы при клике",
 	[Key.fairyDustEffect]: "Звёздный след",

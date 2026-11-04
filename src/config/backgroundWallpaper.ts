@@ -130,6 +130,20 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 				mobile: true,
 			},
 		},
+		// 液体气泡特效：壁纸上缓缓上浮的气泡，画在壁纸图之上、横幅文字之下
+		// 设置面板「壁纸设置」里有开关，可实时启停（localStorage: bubbleEnabled）
+		bubbles: {
+			// 默认是否开启；访客在设置面板里手动关掉后，以自己的选择为准
+			enable: true,
+			// 气泡基准数量（按视口宽度缩放：窄屏约 45%，宽屏最多 115%）
+			count: 28,
+			// 半径范围（px）
+			size: { min: 8, max: 34 },
+			// 上升速度范围（px/s）
+			speed: { min: 14, max: 42 },
+			// 最大不透明度，越小越"若有若无"
+			opacity: 0.6,
+		},
 		// 渐变过渡效果配置，当水波纹关闭时自动启用，提供壁纸底部到背景色的平滑过渡
 		gradient: {
 			enable: {

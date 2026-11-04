@@ -806,6 +806,37 @@ export function setSakuraEnabled(enabled: boolean): void {
 	);
 }
 
+// Bubble effect functions（壁纸液体气泡）
+export function getDefaultBubbleEnabled(): boolean {
+	return backgroundWallpaper.common?.bubbles?.enable ?? false;
+}
+
+export function getStoredBubbleEnabled(): boolean {
+	if (typeof localStorage === "undefined") {
+		return getDefaultBubbleEnabled();
+	}
+	const stored = localStorage.getItem("bubbleEnabled");
+	if (stored === null) {
+		return getDefaultBubbleEnabled();
+	}
+	return stored === "true";
+}
+
+export function setBubbleEnabled(enabled: boolean): void {
+	if (
+		typeof localStorage === "undefined" ||
+		typeof localStorage.setItem !== "function"
+	) {
+		return;
+	}
+	localStorage.setItem("bubbleEnabled", String(enabled));
+	document.documentElement.setAttribute("data-bubble-enabled", String(enabled));
+	// 实时启停气泡：BubbleEffect 监听此事件
+	window.dispatchEvent(
+		new CustomEvent("bubbleToggle", { detail: { enabled } }),
+	);
+}
+
 // Banner title functions
 export function getDefaultBannerTitleEnabled(): boolean {
 	return backgroundWallpaper.common?.homeText?.enable ?? true;
