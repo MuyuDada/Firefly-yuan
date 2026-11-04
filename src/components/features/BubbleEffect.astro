@@ -1,375 +1,278 @@
 ---
-// 壁纸液体气泡特效：Canvas 2D 实现，画在壁纸图片之上、横幅文字之下
-// 每帧只做 drawImage（离屏精灵图），不做渐变计算，几十个气泡开销也很低。
-// 开关由设置面板控制（localStorage: bubbleEnabled，事件: bubbleToggle）。
+// 壁纸液体气泡特效
+//
+// 参考 bootstrapmb「css3 液体冒泡」的形态：底部一滩液体，气泡从液面升起，
+// 途中互相粘连、融合成不定形的一团，顶端偶尔脱离出小水滴。
+//
+// 实现要点：粘连不是靠圆角，而是 SVG 的 alpha 阈值滤镜——
+// feGaussianBlur 把相邻圆形糊在一起，feColorMatrix 再把 alpha 拉成硬边，
+// 于是两团靠近时会「融化」成一个，这才是液体感（常见的 gooey 做法）。
+// 挂在壁纸图之上、横幅文字（z-20）之下，不吃鼠标事件。
 import { backgroundWallpaper } from "@/config";
 
 const cfg = backgroundWallpaper.common?.bubbles;
 const enabled = cfg?.enable ?? false;
+
+// 底部的液堆：几个大小不一的圆压在底边外，只露出上缘。
+// 相邻两个靠得够近就会被 goo 融成一片，于是液面是起伏的，而不是一条直线
+const mounds = [
+	{ x: 6, w: 520, h: 200, dur: 15, delay: 0 },
+	{ x: 28, w: 620, h: 250, dur: 18, delay: -5 },
+	{ x: 50, w: 480, h: 176, dur: 13, delay: -9 },
+	{ x: 72, w: 600, h: 236, dur: 17, delay: -2 },
+	{ x: 94, w: 540, h: 210, dur: 16, delay: -7 },
+];
+
+// 固定种子的伪随机：分布每次构建都一样，不会刷新一次变一次
+function seeded(seed: number): () => number {
+	let s = seed;
+	return () => {
+		s = (s * 1664525 + 1013904223) % 4294967296;
+		return s / 4294967296;
+	};
+}
+
+const rnd = seeded(20261104);
+const blobCount = Math.max(4, cfg?.count ?? 14);
+const sizeMin = cfg?.size?.min ?? 40;
+const sizeMax = cfg?.size?.max ?? 84;
+
+// 上升的气泡：横向均匀铺开再抖一点，尺寸在配置区间内随机
+const blobs = Array.from({ length: blobCount }, (_, i) => ({
+	x: Math.round(((i + 0.5) / blobCount) * 100 + (rnd() - 0.5) * 5),
+	size: Math.round(sizeMin + rnd() * (sizeMax - sizeMin)),
+	dur: Number((9 + rnd() * 3.4).toFixed(1)),
+	delay: Number((-rnd() * 8).toFixed(1)),
+	sway: Math.round((rnd() - 0.5) * 46),
+	rise: Math.round(76 + rnd() * 34),
+}));
+
+// 飘得更高、脱离液面的小水滴
+const drops = [
+	{ x: 22, size: 18, dur: 13, delay: -6, sway: 16, rise: 190 },
+	{ x: 55, size: 13, dur: 15, delay: -9, sway: -20, rise: 214 },
+	{ x: 76, size: 21, dur: 14, delay: -2, sway: 18, rise: 178 },
+];
 ---
 
 {
 	cfg && (
-		<canvas
-			id="wallpaper-bubbles"
-			class="bubble-field"
+		<div
+			id="wallpaper-liquid"
+			class="liquid-field"
 			aria-hidden="true"
 			data-enabled={String(enabled)}
-			data-count={String(cfg.count ?? 26)}
-			data-size-min={String(cfg.size?.min ?? 7)}
-			data-size-max={String(cfg.size?.max ?? 30)}
-			data-speed-min={String(cfg.speed?.min ?? 14)}
-			data-speed-max={String(cfg.speed?.max ?? 42)}
-			data-opacity={String(cfg.opacity ?? 0.42)}
-		/>
+			style={`--liquid-opacity:${cfg.opacity ?? 0.6}`}
+		>
+			{mounds.map((m) => (
+				<span
+					class="liquid-mound"
+					style={`--x:${m.x}%;--w:${m.w}px;--h:${m.h}px;--dur:${m.dur}s;--delay:${m.delay}s`}
+				/>
+			))}
+			{blobs.map((b) => (
+				<span
+					class="liquid-blob"
+					style={`--x:${b.x}%;--size:${b.size}px;--dur:${b.dur}s;--delay:${b.delay}s;--sway:${b.sway}px;--rise:${b.rise}px`}
+				/>
+			))}
+			{drops.map((d) => (
+				<span
+					class="liquid-blob liquid-blob--drop"
+					style={`--x:${d.x}%;--size:${d.size}px;--dur:${d.dur}s;--delay:${d.delay}s;--sway:${d.sway}px;--rise:${d.rise}px`}
+				/>
+			))}
+		</div>
 	)
 }
 
+<!-- 粘连滤镜：模糊 → 拉高 alpha 对比度，相邻圆形自然融成一团 -->
+<svg class="liquid-filter-svg" aria-hidden="true" focusable="false">
+	<defs>
+		<filter
+			id="wallpaper-goo"
+			x="-15%"
+			y="-30%"
+			width="130%"
+			height="160%"
+			color-interpolation-filters="sRGB"
+		>
+			<feGaussianBlur in="SourceGraphic" stdDeviation="11" result="blur" />
+			<feColorMatrix
+				in="blur"
+				type="matrix"
+				values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9"
+			/>
+		</filter>
+	</defs>
+</svg>
+
 <style>
-	.bubble-field {
+	.liquid-filter-svg {
 		position: absolute;
-		inset: 0;
+		width: 0;
+		height: 0;
+		overflow: hidden;
+	}
+
+	.liquid-field {
+		position: absolute;
+		inset: auto 0 0 0;
 		z-index: 15;
-		width: 100%;
-		height: 100%;
+		height: clamp(120px, 21%, 200px);
+		overflow: hidden;
 		pointer-events: none;
+		filter: url("#wallpaper-goo");
+		opacity: var(--liquid-opacity, 0.55);
+		/* 液体颜色：深色主题用白，浅色主题用冷灰蓝 */
+		--liquid: rgba(255, 255, 255, 0.95);
+		transition: opacity 0.4s ease;
+	}
+
+	:global(:root:not(.dark)) .liquid-field {
+		--liquid: rgba(58, 80, 112, 0.72);
+	}
+
+	/* 底部的液堆：几个大圆压在底边外，只露出上缘。
+	   相邻两个靠得够近就被 goo 融成一片，于是液面起伏而非一条直线 */
+	.liquid-mound {
+		position: absolute;
+		bottom: calc(var(--h) * -0.62);
+		left: var(--x);
+		width: var(--w);
+		height: var(--h);
+		margin-left: calc(var(--w) / -2);
+		background: var(--liquid);
+		border-radius: 50%;
+		animation: liquid-pool-bob var(--dur) ease-in-out var(--delay) infinite
+			alternate;
+	}
+
+	.liquid-blob {
+		position: absolute;
+		bottom: 16%;
+		left: var(--x);
+		width: var(--size);
+		height: var(--size);
+		margin-left: calc(var(--size) / -2);
+		background: var(--liquid);
+		border-radius: 50%;
+		will-change: transform, opacity;
+		animation: liquid-rise var(--dur) cubic-bezier(0.42, 0, 0.58, 1) var(--delay)
+			infinite;
+	}
+
+	.liquid-blob--drop {
+		bottom: 26%;
+		animation-name: liquid-drop-rise;
+		animation-timing-function: ease-in-out;
+	}
+
+	@keyframes liquid-rise {
+		0% {
+			transform: translate3d(0, 34px, 0) scale(0.5);
+			opacity: 0;
+		}
+		12% {
+			opacity: 1;
+		}
+		45% {
+			transform: translate3d(calc(var(--sway) * 0.55), calc(var(--rise) * -0.55), 0)
+				scale(1);
+		}
+		82% {
+			opacity: 1;
+		}
+		100% {
+			transform: translate3d(var(--sway), calc(var(--rise) * -1), 0) scale(0.6);
+			opacity: 0;
+		}
+	}
+
+	@keyframes liquid-drop-rise {
+		0% {
+			transform: translate3d(0, 12px, 0) scale(0.4);
+			opacity: 0;
+		}
+		20% {
+			opacity: 1;
+		}
+		75% {
+			opacity: 0.9;
+		}
+		100% {
+			transform: translate3d(var(--sway), calc(var(--rise) * -1), 0) scale(0.85);
+			opacity: 0;
+		}
+	}
+
+	@keyframes liquid-pool-bob {
+		0% {
+			transform: translate3d(-1.5%, 0, 0) scaleY(1);
+		}
+		100% {
+			transform: translate3d(1.5%, -7px, 0) scaleY(1.08);
+		}
+	}
+
+	/* 滚出视口或标签页隐藏时暂停 */
+	.liquid-field.is-paused,
+	.liquid-field.is-paused .liquid-mound,
+	.liquid-field.is-paused .liquid-blob {
+		animation-play-state: paused;
+	}
+
+	.liquid-field.is-off {
+		opacity: 0;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.liquid-mound,
+		.liquid-blob {
+			animation: none;
+		}
+
+		.liquid-blob {
+			opacity: 0.75;
+		}
 	}
 </style>
 
 <script>
-	interface Bubble {
-		x: number;
-		y: number;
-		r: number;
-		speed: number;
-		phase: number;
-		freq: number;
-		sway: number;
-		alpha: number;
-		topY: number;
-		/** 破泡动画进度 0-1，null 表示正常上升 */
-		pop: number | null;
-	}
-
-	const SPRITE_SIZE = 128;
-
-	/**
-	 * 预渲染一颗气泡：边缘亮、中心通透，像水滴。
-	 * 深色主题用白色；浅色主题改用偏冷的灰蓝，否则白气泡在白底上直接消失。
-	 */
-	function createSprite(dark: boolean): HTMLCanvasElement {
-		const sprite = document.createElement("canvas");
-		sprite.width = SPRITE_SIZE;
-		sprite.height = SPRITE_SIZE;
-		const g = sprite.getContext("2d");
-		if (!g) return sprite;
-
-		const rgb = dark ? "255,255,255" : "92,112,140";
-		const c = SPRITE_SIZE / 2;
-		const body = g.createRadialGradient(
-			c * 1.14,
-			c * 1.1,
-			c * 0.62,
-			c,
-			c,
-			c * 0.96,
-		);
-		body.addColorStop(0, `rgba(${rgb},${dark ? 0.05 : 0.07})`);
-		body.addColorStop(0.62, `rgba(${rgb},${dark ? 0.16 : 0.13})`);
-		body.addColorStop(0.88, `rgba(${rgb},${dark ? 0.5 : 0.34})`);
-		body.addColorStop(1, `rgba(${rgb},${dark ? 0.88 : 0.6})`);
-		g.fillStyle = body;
-		g.beginPath();
-		g.arc(c, c, c * 0.96, 0, Math.PI * 2);
-		g.fill();
-
-		// 左上高光
-		const hl = g.createRadialGradient(
-			c * 0.68,
-			c * 0.58,
-			0,
-			c * 0.68,
-			c * 0.58,
-			c * 0.36,
-		);
-		hl.addColorStop(0, `rgba(${rgb},${dark ? 0.95 : 0.5})`);
-		hl.addColorStop(1, `rgba(${rgb},0)`);
-		g.fillStyle = hl;
-		g.beginPath();
-		g.arc(c * 0.68, c * 0.58, c * 0.36, 0, Math.PI * 2);
-		g.fill();
-
-		return sprite;
-	}
-
-	const rand = (min: number, max: number): number =>
-		min + Math.random() * (max - min);
-
-	class BubbleField {
-		private canvas: HTMLCanvasElement;
-		private ctx: CanvasRenderingContext2D;
-		private sprite: HTMLCanvasElement;
-		private bubbles: Bubble[] = [];
-		private raf: number | null = null;
-		private lastTs = 0;
-		private elapsed = 0;
-		private width = 0;
-		private height = 0;
-		private running = false;
-		private visible = true;
-
-		private readonly count: number;
-		private readonly sizeMin: number;
-		private readonly sizeMax: number;
-		private readonly speedMin: number;
-		private readonly speedMax: number;
-		private readonly opacity: number;
-
-		private reducedMotion = false;
-		private spriteIsDark = true;
-		private resizeObserver: ResizeObserver | null = null;
-		private intersectionObserver: IntersectionObserver | null = null;
-		private themeObserver: MutationObserver | null = null;
-
-		constructor(canvas: HTMLCanvasElement) {
-			this.canvas = canvas;
-			this.ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-			this.spriteIsDark = this.isDark();
-			this.sprite = createSprite(this.spriteIsDark);
-
-			const d = canvas.dataset;
-			this.count = Number(d.count) || 26;
-			this.sizeMin = Number(d.sizeMin) || 7;
-			this.sizeMax = Number(d.sizeMax) || 30;
-			this.speedMin = Number(d.speedMin) || 14;
-			this.speedMax = Number(d.speedMax) || 42;
-			this.opacity = Number(d.opacity) || 0.42;
-
-			this.reducedMotion = window.matchMedia(
-				"(prefers-reduced-motion: reduce)",
-			).matches;
-
-			this.measure();
-			this.reset();
-
-			this.resizeObserver = new ResizeObserver(() => {
-				this.measure();
-				this.reset();
-				if (this.reducedMotion) this.drawFrame();
-			});
-			const host = canvas.parentElement ?? canvas;
-			this.resizeObserver.observe(host);
-
-			// 壁纸滚出视口就停掉，长文章页不白烧 CPU
-			this.intersectionObserver = new IntersectionObserver((entries) => {
-				this.visible = entries.some((e) => e.isIntersecting);
-				this.sync();
-			});
-			this.intersectionObserver.observe(canvas);
-
-			// 明暗主题切换时换一套颜色的气泡
-			this.themeObserver = new MutationObserver(() => {
-				const dark = this.isDark();
-				if (dark === this.spriteIsDark) return;
-				this.spriteIsDark = dark;
-				this.sprite = createSprite(dark);
-				if (this.reducedMotion || !this.running) this.drawFrame();
-			});
-			this.themeObserver.observe(document.documentElement, {
-				attributes: true,
-				attributeFilter: ["class"],
-			});
-
-			document.addEventListener("visibilitychange", () => this.sync());
-		}
-
-		private isDark(): boolean {
-			return document.documentElement.classList.contains("dark");
-		}
-
-		private measure(): void {
-			const host = this.canvas.parentElement ?? this.canvas;
-			const rect = host.getBoundingClientRect();
-			this.width = Math.max(1, Math.round(rect.width));
-			this.height = Math.max(1, Math.round(rect.height));
-			const dpr = Math.min(window.devicePixelRatio || 1, 2);
-			this.canvas.width = Math.round(this.width * dpr);
-			this.canvas.height = Math.round(this.height * dpr);
-			this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-		}
-
-		/** 按视口宽度缩放数量，窄屏气泡少一些 */
-		private get target(): number {
-			const scale = Math.min(1.15, Math.max(0.45, this.width / 1440));
-			return Math.round(this.count * scale);
-		}
-
-		private makeBubble(initial: boolean): Bubble {
-			const r = rand(this.sizeMin, this.sizeMax);
-			const topY = rand(this.height * 0.02, this.height * 0.3);
-			return {
-				x: rand(r, this.width - r),
-				y: initial
-					? rand(topY, this.height + r)
-					: this.height + r * rand(1, 2.2),
-				r,
-				speed: rand(this.speedMin, this.speedMax),
-				phase: rand(0, Math.PI * 2),
-				freq: rand(0.35, 0.85),
-				sway: rand(6, 20),
-				alpha: rand(this.opacity * 0.45, this.opacity),
-				topY,
-				pop: null,
-			};
-		}
-
-		/**
-		 * 首次铺满整个高度；之后的调用（多为 ResizeObserver 回调）只做
-		 * 增量调整——否则每次 resize 都把气泡全塞回底部，上半屏会一直空着。
-		 */
-		private reset(): void {
-			if (this.bubbles.length === 0) {
-				this.bubbles = Array.from({ length: this.target }, () =>
-					this.makeBubble(true),
-				);
-				return;
-			}
-
-			// 尺寸变化：把越界的气泡拉回可视区，纵向按比例贴合新高度
-			for (const b of this.bubbles) {
-				b.x = Math.min(Math.max(b.x, b.r), Math.max(b.r, this.width - b.r));
-				b.y = Math.min(b.y, this.height - b.r);
-				b.topY = Math.min(b.topY, this.height * 0.3);
-			}
-
-			// 数量随宽度变化：多了补在可视区内，少了从尾部移除
-			while (this.bubbles.length < this.target) {
-				this.bubbles.push(this.makeBubble(true));
-			}
-			while (this.bubbles.length > this.target) {
-				this.bubbles.pop();
-			}
-		}
-
-		private drawFrame(): void {
-			const { ctx } = this;
-			ctx.clearRect(0, 0, this.width, this.height);
-			for (const b of this.bubbles) {
-				const scale = b.pop === null ? 1 : 1 + b.pop * 0.55;
-				const fade = b.pop === null ? 1 : 1 - b.pop;
-				ctx.globalAlpha = Math.max(0, b.alpha * fade);
-				const r = b.r * scale;
-				ctx.drawImage(this.sprite, b.x - r, b.y - r, r * 2, r * 2);
-			}
-			ctx.globalAlpha = 1;
-		}
-
-		private clear(): void {
-			this.ctx.clearRect(0, 0, this.width, this.height);
-		}
-
-		private step(dt: number): void {
-			this.elapsed += dt;
-			for (const b of this.bubbles) {
-				if (b.pop !== null) {
-					b.pop += dt * 3.2;
-					if (b.pop >= 1) Object.assign(b, this.makeBubble(false));
-					continue;
-				}
-
-				b.y -= b.speed * dt;
-				b.x += Math.sin(this.elapsed * b.freq + b.phase) * b.sway * dt;
-
-				if (b.y <= b.topY) {
-					b.pop = 0;
-					continue;
-				}
-
-				// 左右边界轻轻弹回，避免气泡从侧边消失
-				if (b.x < b.r) b.x = b.r;
-				else if (b.x > this.width - b.r) b.x = this.width - b.r;
-			}
-		}
-
-		private loop = (ts: number): void => {
-			if (!this.running) return;
-			const dt = Math.min(0.05, (ts - this.lastTs) / 1000 || 0.016);
-			this.lastTs = ts;
-			this.step(dt);
-			this.drawFrame();
-			this.raf = requestAnimationFrame(this.loop);
-		};
-
-		start(): void {
-			if (this.running) return;
-			if (this.reducedMotion) {
-				this.drawFrame();
-				return;
-			}
-			this.running = true;
-			this.lastTs = performance.now();
-			this.raf = requestAnimationFrame(this.loop);
-		}
-
-		stop(): void {
-			this.running = false;
-			if (this.raf !== null) {
-				cancelAnimationFrame(this.raf);
-				this.raf = null;
-			}
-			// 关闭时要真的清空，否则画布上会留下一帧残影
-			this.clear();
-		}
-
-		/** 页面可见 + 壁纸在视口内才跑 */
-		sync(): void {
-			if (this.visible && !document.hidden) this.start();
-			else this.stop();
-		}
-
-		destroy(): void {
-			this.stop();
-			this.resizeObserver?.disconnect();
-			this.intersectionObserver?.disconnect();
-			this.themeObserver?.disconnect();
-			this.bubbles = [];
-		}
-	}
-
-	// 当前实例：swup 换页后旧画布会被替换，先把上一份的观察器销毁掉
-	let current: BubbleField | null = null;
-
 	function setup(): void {
-		const canvas = document.getElementById(
-			"wallpaper-bubbles",
-		) as HTMLCanvasElement | null;
-		if (!canvas || canvas.dataset.ready === "true") return;
-		canvas.dataset.ready = "true";
-
-		current?.destroy();
-
-		const field = new BubbleField(canvas);
-		current = field;
+		const field = document.getElementById("wallpaper-liquid");
+		if (!field || field.dataset.ready === "true") return;
+		field.dataset.ready = "true";
 
 		const stored = localStorage.getItem("bubbleEnabled");
-		const defaultOn = canvas.dataset.enabled === "true";
-		const initial = stored === null ? defaultOn : stored === "true";
+		const defaultOn = field.dataset.enabled === "true";
 
-		document.documentElement.setAttribute(
-			"data-bubble-enabled",
-			String(initial),
-		);
-		if (initial) field.sync();
-		else field.stop();
+		const apply = (value: boolean): void => {
+			field.classList.toggle("is-off", !value);
+			document.documentElement.setAttribute(
+				"data-bubble-enabled",
+				String(value),
+			);
+		};
+
+		apply(stored === null ? defaultOn : stored === "true");
 
 		window.addEventListener("bubbleToggle", (event: Event) => {
 			const detail = (event as CustomEvent<{ enabled?: boolean }>).detail;
-			if (detail?.enabled) field.sync();
-			else field.stop();
+			apply(Boolean(detail?.enabled));
+		});
+
+		// 壁纸不在视口里 / 标签页隐藏时暂停，省电
+		new IntersectionObserver((entries) => {
+			const visible = entries.some((e) => e.isIntersecting);
+			field.classList.toggle("is-paused", !visible || document.hidden);
+		}).observe(field);
+
+		document.addEventListener("visibilitychange", () => {
+			field.classList.toggle("is-paused", document.hidden);
 		});
 	}
 
 	setup();
-	// 换页后壁纸区域会重建，重新挂一次
 	document.addEventListener("astro:page-load", setup);
 </script>

@@ -1249,25 +1249,6 @@ $effect(() => {
 		</div>
 		{/if}
 
-		<!-- Liquid Bubbles：气泡画在壁纸图之上、横幅文字之下，与壁纸模式联动 -->
-		{#if isBubblesSwitchable}
-		<button
-			class="w-full btn-regular rounded-md py-2.5 px-3 flex items-center gap-3 text-left active:scale-95 transition-all relative overflow-hidden"
-			class:bg-(--btn-regular-bg-hover)={bubbleEnabled}
-			onclick={toggleBubblesEnabled}
-		>
-			<Icon icon="material-symbols:bubbles-rounded" class="text-[1.25rem] shrink-0"></Icon>
-			<span class="text-sm flex-1">{i18n(I18nKey.bubbleEffect)}</span>
-			<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
-				 class:bg-(--primary)={bubbleEnabled}
-				 class:bg-(--btn-regular-bg-active)={!bubbleEnabled}>
-				<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
-					 class:left-0.5={!bubbleEnabled}
-					 class:left-5={bubbleEnabled}></div>
-			</div>
-		</button>
-		{/if}
-
 		<!-- Fullscreen Layout Section -->
 		{#if isFullscreenLayoutSwitchable}
 		<div>
@@ -1407,6 +1388,24 @@ $effect(() => {
 						<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
 							 class:left-0.5={!wavesEnabled}
 							 class:left-5={wavesEnabled}></div>
+					</div>
+				</button>
+				{/if}
+				<!-- Liquid Bubbles Switch（与水波纹并列，画在壁纸图之上、文字之下） -->
+				{#if isBubblesSwitchable && (wallpaperMode === WALLPAPER_BANNER || (wallpaperMode === WALLPAPER_FULLSCREEN && fullscreenLayout === "classic"))}
+				<button
+					class="w-full btn-regular rounded-md py-2 px-3 flex items-center gap-3 text-left active:scale-95 transition-all relative overflow-hidden"
+					class:bg-(--btn-regular-bg-hover)={bubbleEnabled}
+					onclick={toggleBubblesEnabled}
+				>
+					<Icon icon="material-symbols:bubbles-rounded" class="text-[1.25rem] shrink-0"></Icon>
+					<span class="text-sm flex-1">{i18n(I18nKey.bubbleEffect)}</span>
+					<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+						 class:bg-(--primary)={bubbleEnabled}
+						 class:bg-(--btn-regular-bg-active)={!bubbleEnabled}>
+						<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+							 class:left-0.5={!bubbleEnabled}
+							 class:left-5={bubbleEnabled}></div>
 					</div>
 				</button>
 				{/if}
