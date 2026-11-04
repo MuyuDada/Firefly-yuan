@@ -27,6 +27,7 @@ interface Props {
 			  }[];
 		position?: "bottom-left" | "bottom-right";
 		size?: number | { width: number; height: number };
+		defaultSleep?: boolean;
 		primaryColor?: string;
 		transitionDuration?: number;
 		transitionType?: "slide" | "fade";
@@ -94,6 +95,7 @@ function serializeMenus(menus: Props["config"]["menus"]) {
 	data-models={JSON.stringify(modelConfigs)}
 	data-position={config.position || "bottom-left"}
 	data-size={JSON.stringify(config.size || 300)}
+	data-default-sleep={config.defaultSleep ? "true" : undefined}
 	data-primary-color={config.primaryColor || ""}
 	data-transition-duration={config.transitionDuration?.toString() || ""}
 	data-transition-type={config.transitionType || ""}
@@ -164,6 +166,7 @@ function serializeMenus(menus: Props["config"]["menus"]) {
 			const models = JSON.parse(container.dataset.models || "[]");
 			const position = container.dataset.position || "bottom-left";
 			const size = JSON.parse(container.dataset.size || "300");
+			const defaultSleep = container.dataset.defaultSleep === "true";
 			const primaryColor = container.dataset.primaryColor || undefined;
 			const transitionDuration = container.dataset.transitionDuration
 				? parseInt(container.dataset.transitionDuration)
@@ -239,7 +242,17 @@ function serializeMenus(menus: Props["config"]["menus"]) {
 				}
 			}
 
-			createWidget(options);
+			const widget = createWidget(options);
+
+			// 默认休息：创建后立即休眠，模型加载完成后再补一次——
+			// 库内部注册的 loaded 回调会在加载完成时把模型滑入（并排播欢迎语），
+			// 同一帧里再休眠一次即可覆盖它，看板娘全程不会弹出，
+			// 只在角落显示「休息」状态条，点击状态条或菜单「休眠」可唤醒。
+			// （切换模型后 l2d 实例会被重建，新模型正常入场，属预期行为）
+			if (defaultSleep) {
+				widget.sleep();
+				widget.l2d.on("loaded", () => widget.sleep());
+			}
 		} catch (e) {
 			console.error("Failed to initialize Live2D widget:", e);
 		}

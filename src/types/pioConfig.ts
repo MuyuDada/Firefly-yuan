@@ -46,6 +46,7 @@ export type Live2DWidgetConfig = {
 		  }[]; // 模型配置，支持单个或多个模型
 	position?: "bottom-left" | "bottom-right"; // 显示位置，默认 "bottom-left"
 	size?: number | { width: number; height: number }; // 画布尺寸（px），默认 300
+	defaultSleep?: boolean; // 是否默认休息：加载后不入场，仅显示「休息」状态条，点击可唤醒
 	primaryColor?: string; // 主题色，用于菜单、状态条等 UI 元素
 	transitionDuration?: number; // 入场/退场动画时长（ms），默认 1500
 	transitionType?: "slide" | "fade"; // 入场/退场动画类型，默认 "slide"
