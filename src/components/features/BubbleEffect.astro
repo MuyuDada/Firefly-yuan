@@ -64,6 +64,8 @@ const drops = [
 			data-enabled={String(enabled)}
 			style={`--liquid-opacity:${cfg.opacity ?? 0.6}`}
 		>
+			{/* 贴底的直边底衬：保证液面底部永远是平口，不会在两端露出圆角缺口 */}
+			<div class="liquid-base" />
 			{mounds.map((m) => (
 				<span
 					class="liquid-mound"
@@ -124,13 +126,20 @@ const drops = [
 		pointer-events: none;
 		filter: url("#wallpaper-goo");
 		opacity: var(--liquid-opacity, 0.82);
-		/* 液体颜色：深色主题用白，浅色主题用冷灰蓝 */
-		--liquid: color-mix(in oklch, var(--primary, #7c9cf0) 42%, white);
+		/* 配色跟水波纹一致：波浪填充用的就是 --page-bg，液体同色才会和页面接成一体 */
+		--liquid: var(--page-bg, #f8f9fe);
 		transition: opacity 0.4s ease;
 	}
 
-	:global(:root:not(.dark)) .liquid-field {
-		--liquid: color-mix(in oklch, var(--primary, #7c9cf0) 62%, #22304a);
+
+	/* 贴底的直边底衬 */
+	.liquid-base {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 30%;
+		background: var(--liquid);
 	}
 
 	/* 底部的液堆：几个大圆压在底边外，只露出上缘。
