@@ -136,9 +136,9 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 			// 默认是否开启；访客在设置面板里手动关掉后，以自己的选择为准
 			enable: true,
 			// 上升气泡数量
-			count: 14,
+			count: 20,
 			// 气泡直径范围（px）
-			size: { min: 40, max: 84 },
+			size: { min: 34, max: 78 },
 			// 液体整体不透明度，越小越淡
 			opacity: 0.55,
 		},

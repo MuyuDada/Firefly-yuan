@@ -33,9 +33,9 @@ function seeded(seed: number): () => number {
 }
 
 const rnd = seeded(20261104);
-const blobCount = Math.max(4, cfg?.count ?? 14);
-const sizeMin = cfg?.size?.min ?? 40;
-const sizeMax = cfg?.size?.max ?? 84;
+const blobCount = Math.max(4, cfg?.count ?? 20);
+const sizeMin = cfg?.size?.min ?? 34;
+const sizeMax = cfg?.size?.max ?? 78;
 
 // 上升的气泡：横向均匀铺开再抖一点，尺寸在配置区间内随机
 const blobs = Array.from({ length: blobCount }, (_, i) => ({
@@ -44,7 +44,7 @@ const blobs = Array.from({ length: blobCount }, (_, i) => ({
 	dur: Number((9 + rnd() * 3.4).toFixed(1)),
 	delay: Number((-rnd() * 8).toFixed(1)),
 	sway: Math.round((rnd() - 0.5) * 46),
-	rise: Math.round(76 + rnd() * 34),
+	rise: Math.round(120 + rnd() * 70),
 }));
 
 // 飘得更高、脱离液面的小水滴
@@ -97,11 +97,11 @@ const drops = [
 			height="160%"
 			color-interpolation-filters="sRGB"
 		>
-			<feGaussianBlur in="SourceGraphic" stdDeviation="11" result="blur" />
+			<feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
 			<feColorMatrix
 				in="blur"
 				type="matrix"
-				values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9"
+				values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 34 -15"
 			/>
 		</filter>
 	</defs>
@@ -119,18 +119,18 @@ const drops = [
 		position: absolute;
 		inset: auto 0 0 0;
 		z-index: 15;
-		height: clamp(120px, 21%, 200px);
+		height: clamp(160px, 36%, 320px);
 		overflow: hidden;
 		pointer-events: none;
 		filter: url("#wallpaper-goo");
-		opacity: var(--liquid-opacity, 0.55);
+		opacity: var(--liquid-opacity, 0.82);
 		/* 液体颜色：深色主题用白，浅色主题用冷灰蓝 */
-		--liquid: rgba(255, 255, 255, 0.95);
+		--liquid: color-mix(in oklch, var(--primary, #7c9cf0) 42%, white);
 		transition: opacity 0.4s ease;
 	}
 
 	:global(:root:not(.dark)) .liquid-field {
-		--liquid: rgba(58, 80, 112, 0.72);
+		--liquid: color-mix(in oklch, var(--primary, #7c9cf0) 62%, #22304a);
 	}
 
 	/* 底部的液堆：几个大圆压在底边外，只露出上缘。
