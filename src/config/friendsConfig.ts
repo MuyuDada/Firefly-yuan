@@ -221,6 +221,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://r2tc.20030327.xyz/file/博客/主题/xGAV3car.webp",
 		desc: "雨滴会记录生命中的每一个瞬间",
 		siteurl: "https://daily.yybb.us",
+		previewurl:"https://muyuimg.cc.cd/file/blog/hfnpDYGC.webp",
 		recommended: true,
 		tags: ["Blog"],
 		weight: 97,
