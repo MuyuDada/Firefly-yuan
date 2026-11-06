@@ -99,13 +99,11 @@ export const calendarConfig: SiteCalendarConfig = {
 
 	// 右栏「当日事件」下方的节气图
 	// 图放在 public/wallpapers/solar-terms/ 下，按拼音命名（lidong.jpg、shuangjiang.jpg…）
-	// 缺图不会报错，只会隐藏那一块，不影响日历
+	// 只在节气当天显示；缺图不会报错，只会隐藏那一块，不影响日历
+	// 图片按原始比例完整显示，不裁切
 	solarTermImage: {
 		enable: true,
 		basePath: "/wallpapers/solar-terms/",
 		extension: "jpg",
-		// 官方节气图是竖版长图，横着裁成 4:3 只露中间一段，所以取偏上的位置
-		aspectRatio: "3 / 4",
-		position: "center 28%",
 	},
 };

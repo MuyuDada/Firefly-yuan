@@ -12,16 +12,12 @@ interface Props {
 const { term, image } = Astro.props;
 
 const src = term ? `${image.basePath}${term.slug}.${image.extension}` : "";
-const frameStyle = [
-	`--term-ratio: ${image.aspectRatio ?? "4 / 3"}`,
-	`--term-position: ${image.position ?? "center"}`,
-].join("; ");
 ---
 
 {/*
 	始终渲染（哪怕当天没有节气），否则客户端切到节气日时找不到容器。
 	没有节气就挂 is-hidden，不占版面。
-	客户端翻月/选日期时会替换图与文字。
+	图片按原始比例完整显示，不做裁切。
 */}
 <section
 	class:list={["term-card", !term && "is-hidden"]}
@@ -29,7 +25,7 @@ const frameStyle = [
 	data-slug={term?.slug ?? ""}
 	aria-live="polite"
 >
-	<div class="term-card__frame" style={frameStyle}>
+	<div class="term-card__frame">
 		<img
 			id="calendar-term-image"
 			class="term-card__image"
@@ -38,9 +34,11 @@ const frameStyle = [
 			loading="lazy"
 			decoding="async"
 		/>
-		<span class="term-card__badge" id="calendar-term-name">{term?.name ?? ""}</span>
 	</div>
+	{/* 节气名不压在图上：图底部本来就有书法字/票根，压上去会重影 */}
 	<p class="term-card__meta">
+		<span class="term-card__name" id="calendar-term-name">{term?.name ?? ""}</span>
+		<span class="term-card__sep" aria-hidden="true">·</span>
 		<span class="term-card__date" id="calendar-term-date">
 			{term ? `${term.month} 月 ${term.day} 日` : ""}
 		</span>

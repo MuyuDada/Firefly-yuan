@@ -109,9 +109,5 @@ export interface SiteCalendarConfig {
 		basePath: string;
 		/** 扩展名，如 "jpg" / "webp" */
 		extension: string;
-		/** 显示比例（CSS aspect-ratio），默认 "4 / 3" */
-		aspectRatio?: string;
-		/** 图片填充位置（CSS object-position），竖版长图想留上面就写 "center 28%" */
-		position?: string;
 	};
 }
