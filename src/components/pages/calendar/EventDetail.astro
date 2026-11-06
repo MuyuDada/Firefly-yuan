@@ -1,9 +1,12 @@
 ---
 import { Icon } from "astro-icon/components";
+import SolarTermCard from "@/components/pages/calendar/SolarTermCard.astro";
+import { calendarConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import type { CalendarEvent, OfficialDay } from "@/utils/calendar-events";
 import { formatDateI18n } from "@/utils/date-utils";
+import { getCurrentSolarTerm } from "@/utils/solar-terms";
 
 interface Props {
 	/** 初始（今天）的事件 */
@@ -29,6 +32,11 @@ const initialOfficial = officialDays[initialDateKey];
 
 // 客户端切换日期时按图标名取 svg，只需预渲染去重后的少量图标
 const uniqueIcons = [...new Set(allEvents.map((event) => event.icon))].sort();
+
+// 右栏底部的节气图：初始显示今天所处的节气，切日期时由页面脚本更新
+const termImage = calendarConfig.solarTermImage;
+const initialTerm =
+	termImage?.enable === true ? getCurrentSolarTerm(initialDate) : null;
 ---
 
 <aside class="calendar-page__rail calendar-page__rail--right card-base">
@@ -89,6 +97,10 @@ const uniqueIcons = [...new Set(allEvents.map((event) => event.icon))].sort();
 			}
 		</div>
 	</div>
+
+	{termImage && initialTerm && (
+		<SolarTermCard term={initialTerm} image={termImage} />
+	)}
 </aside>
 
 <!--

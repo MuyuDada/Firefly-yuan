@@ -18,6 +18,7 @@ import {
 } from "@/utils/calendar-events";
 import { getMonthMatrix } from "@/utils/calendar-grid-utils";
 import { getSortedPosts } from "@/utils/content-utils";
+import { getSolarTerms } from "@/utils/solar-terms";
 import {
 	formatDateKey,
 	lunarDayShort,
@@ -181,6 +182,25 @@ const clientPayload = {
 	moreTemplate: i18n(I18nKey.calendarMoreEvents),
 	emptyText: i18n(I18nKey.calendarNoEvents),
 	maxChips: 3,
+	// 右栏节气图：翻月/选日期时按「已到来的最近一个节气」换图
+	termImage: calendarConfig.solarTermImage?.enable
+		? {
+				basePath: calendarConfig.solarTermImage.basePath,
+				extension: calendarConfig.solarTermImage.extension,
+			}
+		: null,
+	termTimeline: calendarConfig.solarTermImage?.enable
+		? years
+				.flatMap((year) => getSolarTerms(year))
+				.map((term) => ({
+					dateKey: term.dateKey,
+					name: term.name,
+					slug: term.slug,
+					month: term.month,
+					day: term.day,
+				}))
+				.sort((a, b) => a.dateKey.localeCompare(b.dateKey))
+		: [],
 };
 ---
 
@@ -551,6 +571,57 @@ const clientPayload = {
 				box.innerHTML = html;
 			}
 
+			// 右栏节气图：取「已到来的最近一个节气」
+			// 比如 11 月 7 日前显示霜降、7 日之后显示立冬，跟日历格子里标的节气一致
+			function renderTermCard(key) {
+				var card = document.getElementById("calendar-term-card");
+				var img = document.getElementById("calendar-term-image");
+				if (!card || !img || !payload.termImage) return;
+
+				var timeline = payload.termTimeline || [];
+				var term = null;
+				for (var i = 0; i < timeline.length; i++) {
+					if (timeline[i].dateKey <= key) term = timeline[i];
+					else break;
+				}
+				if (!term) return;
+
+				var nameEl = document.getElementById("calendar-term-name");
+				var dateEl = document.getElementById("calendar-term-date");
+				if (nameEl) nameEl.textContent = term.name;
+				if (dateEl) dateEl.textContent = term.month + " 月 " + term.day + " 日";
+
+				// 同一节气不重设 src，避免翻月时重复下载同一张图
+				if (card.getAttribute("data-slug") === term.slug) return;
+				card.setAttribute("data-slug", term.slug);
+				img.setAttribute("alt", term.name + "节气图");
+				img.setAttribute(
+					"src",
+					payload.termImage.basePath +
+						term.slug +
+						"." +
+						payload.termImage.extension,
+				);
+			}
+
+			// 缺图时把整块收起来，不留一个空框
+			function bindTermCard() {
+				var card = document.getElementById("calendar-term-card");
+				var img = document.getElementById("calendar-term-image");
+				if (!card || !img || img.dataset.bound) return;
+				img.dataset.bound = "1";
+				img.addEventListener("load", function () {
+					card.classList.remove("is-missing");
+				});
+				img.addEventListener("error", function () {
+					card.classList.add("is-missing");
+				});
+				// 缓存命中时上面的 error 不会再触发，补一次判断
+				if (img.complete && img.naturalWidth === 0) {
+					card.classList.add("is-missing");
+				}
+			}
+
 			function renderMonthTitle() {
 				var el = document.getElementById("calendar-month-title");
 				if (!el) return;
@@ -564,6 +635,7 @@ const clientPayload = {
 				renderGrid();
 				renderMonthTitle();
 				renderDetail(state.selected);
+				renderTermCard(state.selected);
 			}
 
 			function shiftMonth(delta) {
@@ -755,6 +827,7 @@ const clientPayload = {
 				bind();
 				bindHero();
 				bindOverview();
+				bindTermCard();
 				playHero(false);
 				update();
 			}
@@ -769,6 +842,7 @@ const clientPayload = {
 				bind();
 				bindHero();
 				bindOverview();
+				bindTermCard();
 				playHero(false);
 				update();
 			}

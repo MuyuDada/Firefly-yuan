@@ -101,4 +101,17 @@ export interface SiteCalendarConfig {
 		/** 最多显示几条 */
 		maxItems: number;
 	};
+	/** 右栏「当日事件」下方的节气图；不配则不显示 */
+	solarTermImage?: {
+		/** 是否显示 */
+		enable: boolean;
+		/** 图片目录，以 / 开头（public 下的路径） */
+		basePath: string;
+		/** 扩展名，如 "jpg" / "webp" */
+		extension: string;
+		/** 显示比例（CSS aspect-ratio），默认 "4 / 3" */
+		aspectRatio?: string;
+		/** 图片填充位置（CSS object-position），竖版长图想留上面就写 "center 28%" */
+		position?: string;
+	};
 }

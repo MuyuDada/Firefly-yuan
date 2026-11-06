@@ -5,7 +5,7 @@ import BackgroundPlayer from "@/components/features/BackgroundPlayer.astro";
 import BubbleEffect from "@/components/features/BubbleEffect.astro";
 import BannerHomeTextOverlay from "@/components/layout/BannerHomeTextOverlay.astro";
 import BannerPostMetaOverlay from "@/components/layout/BannerPostMetaOverlay.astro";
-import { backgroundWallpaper, solarTermWallpaper } from "@/config";
+import { backgroundWallpaper } from "@/config";
 import type {
 	BannerPostMeta,
 	BannerVisibilityState,
@@ -185,30 +185,6 @@ const wallpaperPosition = state.isFullscreenMode
                 </div>
             )}
         </noscript>
-    </div>
-    )}
-
-    {/* 二十四节气壁纸：叠在默认壁纸之上，挡不住点击。
-        客户端算出当前节气再加载对应那张，加载失败就保持透明、露出下面的默认壁纸 */}
-    {solarTermWallpaper.enable && (
-    <div
-        id="solar-term-layer"
-        class="absolute inset-0 pointer-events-none"
-        style={`z-index: 6; opacity: 0; transition: opacity ${solarTermWallpaper.fadeDuration ?? 600}ms ease;`}
-        data-config={JSON.stringify({
-            basePath: solarTermWallpaper.basePath,
-            mobileBasePath: solarTermWallpaper.mobileBasePath,
-            extension: solarTermWallpaper.extension,
-            files: solarTermWallpaper.files,
-        })}
-    >
-        <img
-            id="solar-term-img"
-            alt=""
-            class="object-cover h-full w-full"
-            style={`object-position: ${solarTermWallpaper.position ?? "center"}`}
-            decoding="async"
-        />
     </div>
     )}
 
@@ -660,10 +636,3 @@ const wallpaperPosition = state.isFullscreenMode
     <div id="banner-dim-container" class="hidden"></div>
 </>
 )}
-
-<script>
-import { initSolarTermWallpaper } from "@/utils/solar-term-wallpaper";
-
-initSolarTermWallpaper();
-document.addEventListener("astro:page-load", initSolarTermWallpaper);
-</script>

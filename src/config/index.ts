@@ -68,7 +68,6 @@ export { analyticsConfig } from "./analyticsConfig"; // 统计分析配置
 export { announcementConfig } from "./announcementConfig"; // 公告配置
 // 样式配置
 export { backgroundWallpaper } from "./backgroundWallpaper"; // 背景壁纸配置
-export { solarTermWallpaper } from "./solarTermWallpaper"; // 二十四节气壁纸配置
 export { booknavConfig, booknavPageConfig } from "./booknavConfig"; // 书签导航配置
 export { calendarConfig } from "./calendarConfig"; // 站点日历页面配置
 // 功能配置

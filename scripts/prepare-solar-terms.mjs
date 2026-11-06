@@ -1,42 +1,54 @@
 #!/usr/bin/env node
 /**
- * 把二十四节气图批量整理成横幅壁纸
+ * 把二十四节气图整理成日历页可用的资源
  *
- * 官方节气图是竖版长图（常见 1080×2275、2000×2829），直接铺到宽幅横幅上
- * 会裁掉一大半，人物也容易只剩半个身子。这个脚本干两件事：
- *   1. 按文件名里的中文节气名识别，重命名成拼音（lidong.jpg 之类）
- *   2. 裁成横幅比例，用 attention 策略挑信息最密集的区域，而不是硬切中间
+ * 官方节气图是竖版长图（1100×2000、1800×3800 之类），单张动辄 3–7MB。
+ * 日历右栏只有 300px 宽，原图直接放进去纯属浪费带宽，所以这个脚本干三件事：
+ *   1. 按文件名里的中文节气名识别（「2024年小雪节气图.png」→ xiaoxue）
+ *   2. 重命名成拼音
+ *   3. 等比缩到指定宽度（不裁切——竖图要靠 CSS 的 object-position 决定露哪一段，
+ *      先裁死就再也调不回来了）
  *
  * 用法：
  *   node scripts/prepare-solar-terms.mjs <原图目录>
- *   node scripts/prepare-solar-terms.mjs ./原图 --width=1920 --height=800
- *   node scripts/prepare-solar-terms.mjs ./原图 --position=centre   # 想看正中间就换成这个
+ *   node scripts/prepare-solar-terms.mjs ./原图 --width=800 --format=webp
  *
- * 输出到 public/wallpapers/solar-terms/，然后去 src/config/solarTermWallpaper.ts
- * 把 enable 改成 true 即可生效。
+ * 输出到 public/wallpapers/solar-terms/，日历页会自动按当前节气取。
  */
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
-const UTILS = path.join(ROOT, "src/utils/solar-term-utils.ts");
+const TERMS_SRC = path.join(ROOT, "src/utils/solar-terms.ts");
 const OUT_DIR = path.join(ROOT, "public/wallpapers/solar-terms");
 
-const IMAGE_EXT = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif", ".gif", ".bmp"]);
+const IMAGE_EXT = new Set([
+	".jpg",
+	".jpeg",
+	".png",
+	".webp",
+	".avif",
+	".gif",
+	".bmp",
+]);
 
 /** 从工具模块读节气表，避免两边各写一份 24 条对不上 */
 const readTerms = () => {
-	const source = fs.readFileSync(UTILS, "utf8");
-	const pattern = /\{\s*name:\s*"([^"]+)",\s*slug:\s*"([^"]+)"/g;
-	const terms = [];
-	for (const m of source.matchAll(pattern)) {
-		terms.push({ name: m[1], slug: m[2] });
+	const source = fs.readFileSync(TERMS_SRC, "utf8");
+	const readArray = (exportName) => {
+		const block = source.match(
+			new RegExp(`export const ${exportName}: string\\[\\] = \\[([\\s\\S]*?)\\];`),
+		);
+		if (!block) throw new Error(`找不到 ${exportName}`);
+		return [...block[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+	};
+	const names = readArray("SOLAR_TERM_NAMES");
+	const slugs = readArray("SOLAR_TERM_SLUGS");
+	if (names.length !== 24 || slugs.length !== 24) {
+		throw new Error(`节气表解析异常：${names.length} 名 / ${slugs.length} 拼音`);
 	}
-	if (terms.length !== 24) {
-		throw new Error(`节气表解析异常，只拿到 ${terms.length} 项`);
-	}
-	return terms;
+	return names.map((name, i) => ({ name, slug: slugs[i] }));
 };
 
 const args = process.argv.slice(2);
@@ -61,10 +73,9 @@ if (!fs.existsSync(srcDir)) {
 	process.exit(1);
 }
 
-const width = Number(flags.get("width") ?? 1920);
-const height = Number(flags.get("height") ?? 800);
+const width = Number(flags.get("width") ?? 800);
 const quality = Number(flags.get("quality") ?? 82);
-const position = flags.get("position") ?? "attention";
+const format = (flags.get("format") ?? "jpg").toLowerCase();
 
 const terms = readTerms();
 fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -81,7 +92,7 @@ if (files.length === 0) {
 const hit = new Map();
 
 for (const file of files) {
-	// 文件名里同时出现两个节气名时，取更长的那个（避免「小寒」和「大寒」之类误判）
+	// 文件名里同时出现两个节气名时取更长的，避免误判
 	const matched = terms
 		.filter((t) => file.includes(t.name))
 		.sort((a, b) => b.name.length - a.name.length)[0];
@@ -90,25 +101,39 @@ for (const file of files) {
 		continue;
 	}
 	if (hit.has(matched.slug)) {
-		console.log(`  跳过（重复，保留先遇到的）：${file} -> ${matched.name}`);
+		console.log(`  跳过（重复，保留先遇到的）：${file} → ${matched.name}`);
 		continue;
 	}
 	hit.set(matched.slug, file);
 
-	const out = path.join(OUT_DIR, `${matched.slug}.jpg`);
-	await sharp(path.join(srcDir, file))
-		.resize(width, height, { fit: "cover", position })
-		.jpeg({ quality, mozjpeg: true })
-		.toFile(out);
+	const out = path.join(OUT_DIR, `${matched.slug}.${format}`);
+	// 只缩不裁：右栏用 object-fit: cover 决定露哪一段，这里裁掉就调不回来了
+	const pipeline = sharp(path.join(srcDir, file)).resize({
+		width,
+		withoutEnlargement: true,
+	});
 
+	if (format === "webp") {
+		await pipeline.webp({ quality, effort: 4 }).toFile(out);
+	} else {
+		await pipeline.jpeg({ quality, mozjpeg: true }).toFile(out);
+	}
+
+	const meta = await sharp(out).metadata();
 	const size = (fs.statSync(out).size / 1024).toFixed(0);
-	console.log(`  ${matched.name} → ${matched.slug}.jpg  ${size}KB`);
+	console.log(
+		`  ${matched.name} → ${matched.slug}.${format}  ${meta.width}×${meta.height}  ${size}KB`,
+	);
 }
 
 const missing = terms.filter((t) => !hit.has(t.slug)).map((t) => t.name);
 console.log(`\n完成：${hit.size}/24 张，输出到 public/wallpapers/solar-terms/`);
 if (missing.length > 0) {
 	console.log(`缺：${missing.join("、")}`);
-	console.log("缺的节气不会报错，只会继续显示原来的随机壁纸。");
+	console.log("缺的节气不会报错，右栏那块会自动隐藏。");
 }
-console.log("\n别忘了把 src/config/solarTermWallpaper.ts 里的 enable 改成 true。");
+if (format !== "jpg") {
+	console.log(
+		`\n注意：输出的是 .${format}，记得把 src/config/calendarConfig.ts 里 solarTermImage.extension 也改成 "${format}"`,
+	);
+}

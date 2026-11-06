@@ -1,0 +1,44 @@
+---
+import type { SiteCalendarConfig } from "@/types/calendarConfig";
+import type { SolarTerm } from "@/utils/solar-terms";
+
+interface Props {
+	/** 当前所处节气（服务端渲染的初始值） */
+	term: SolarTerm;
+	/** 图片配置，来自 calendarConfig.solarTermImage */
+	image: NonNullable<SiteCalendarConfig["solarTermImage"]>;
+}
+
+const { term, image } = Astro.props;
+
+const src = `${image.basePath}${term.slug}.${image.extension}`;
+const frameStyle = [
+	`--term-ratio: ${image.aspectRatio ?? "4 / 3"}`,
+	`--term-position: ${image.position ?? "center"}`,
+].join("; ");
+---
+
+{/* 客户端翻月/选日期时会替换图与文字，id 供 calendar.astro 的脚本更新 */}
+<section
+	class="term-card"
+	id="calendar-term-card"
+	data-slug={term.slug}
+	aria-live="polite"
+>
+	<div class="term-card__frame" style={frameStyle}>
+		<img
+			id="calendar-term-image"
+			class="term-card__image"
+			src={src}
+			alt={`${term.name}节气图`}
+			loading="lazy"
+			decoding="async"
+		/>
+		<span class="term-card__badge" id="calendar-term-name">{term.name}</span>
+	</div>
+	<p class="term-card__meta">
+		<span class="term-card__date" id="calendar-term-date">
+			{term.month} 月 {term.day} 日
+		</span>
+	</p>
+</section>

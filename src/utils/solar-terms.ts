@@ -34,6 +34,34 @@ export const SOLAR_TERM_NAMES: string[] = [
 	"冬至",
 ];
 
+/** 节气对应的拼音，用于拼图片文件名，顺序与 SOLAR_TERM_NAMES 一致 */
+export const SOLAR_TERM_SLUGS: string[] = [
+	"xiaohan",
+	"dahan",
+	"lichun",
+	"yushui",
+	"jingzhe",
+	"chunfen",
+	"qingming",
+	"guyu",
+	"lixia",
+	"xiaoman",
+	"mangzhong",
+	"xiazhi",
+	"xiaoshu",
+	"dashu",
+	"liqiu",
+	"chushu",
+	"bailu",
+	"qiufen",
+	"hanlu",
+	"shuangjiang",
+	"lidong",
+	"xiaoxue",
+	"daxue",
+	"dongzhi",
+];
+
 /** 节气对应的 Iconify 图标名（material-symbols 集合已全量包含） */
 export const SOLAR_TERM_ICONS: string[] = [
 	"material-symbols:severe-cold",
@@ -79,6 +107,8 @@ const TROPICAL_YEAR_MS = 31556925974.7;
 export interface SolarTerm {
 	/** 节气名，如「谷雨」 */
 	name: string;
+	/** 拼音，用于拼图片文件名，如「guyu」 */
+	slug: string;
 	/** Iconify 图标名 */
 	icon: string;
 	/** 节气序号 0-23 */
@@ -106,6 +136,7 @@ export function getSolarTerms(year: number): SolarTerm[] {
 		const day = new Date(time).getUTCDate();
 		terms.push({
 			name: SOLAR_TERM_NAMES[index],
+			slug: SOLAR_TERM_SLUGS[index],
 			icon: SOLAR_TERM_ICONS[index],
 			index,
 			month,
@@ -123,4 +154,25 @@ export function getSolarTermMap(year: number): Map<string, SolarTerm> {
 		map.set(term.dateKey, term);
 	}
 	return map;
+}
+
+/** Date -> YYYY-MM-DD（按本地时区，与日历用的键一致） */
+const toDateKey = (date: Date): string =>
+	`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+/**
+ * 某个日期处在哪个节气里（取最近一个已经到来的）
+ *
+ * 1 月初还没到小寒时，其实还在上一年的冬至里，所以要把前一年的表也带上。
+ * 与日历格子用同一份数据，保证「日历显示霜降」和「图片显示霜降」永远一致。
+ */
+export function getCurrentSolarTerm(date: Date = new Date()): SolarTerm {
+	const key = toDateKey(date);
+	const year = date.getFullYear();
+	const candidates = [
+		...getSolarTerms(year - 1),
+		...getSolarTerms(year),
+	].filter((term) => term.dateKey <= key);
+	const fallback = getSolarTerms(year)[0];
+	return candidates[candidates.length - 1] ?? fallback;
 }
