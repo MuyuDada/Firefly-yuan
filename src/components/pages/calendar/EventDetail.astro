@@ -6,7 +6,7 @@ import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import type { CalendarEvent, OfficialDay } from "@/utils/calendar-events";
 import { formatDateI18n } from "@/utils/date-utils";
-import { getCurrentSolarTerm } from "@/utils/solar-terms";
+import type { SolarTerm } from "@/utils/solar-terms";
 
 interface Props {
 	/** 初始（今天）的事件 */
@@ -18,10 +18,18 @@ interface Props {
 	lunarLabels: Record<string, string>;
 	/** 日期 -> 法定节假日 / 调休补班 */
 	officialDays: Record<string, OfficialDay>;
+	/** 右栏底部的节气图，由页面按「有图的最近节气」算好传入；null 则不显示 */
+	initialTerm?: SolarTerm | null;
 }
 
-const { initialDateKey, initialEvents, allEvents, lunarLabels, officialDays } =
-	Astro.props;
+const {
+	initialDateKey,
+	initialEvents,
+	allEvents,
+	lunarLabels,
+	officialDays,
+	initialTerm,
+} = Astro.props;
 
 const initialDate = new Date(`${initialDateKey}T00:00:00`);
 const initialTitle = formatDateI18n(initialDate);
@@ -33,10 +41,8 @@ const initialOfficial = officialDays[initialDateKey];
 // 客户端切换日期时按图标名取 svg，只需预渲染去重后的少量图标
 const uniqueIcons = [...new Set(allEvents.map((event) => event.icon))].sort();
 
-// 右栏底部的节气图：初始显示今天所处的节气，切日期时由页面脚本更新
+// 右栏底部的节气图：初始值由页面按「有图的最近节气」算好传入
 const termImage = calendarConfig.solarTermImage;
-const initialTerm =
-	termImage?.enable === true ? getCurrentSolarTerm(initialDate) : null;
 ---
 
 <aside class="calendar-page__rail calendar-page__rail--right card-base">

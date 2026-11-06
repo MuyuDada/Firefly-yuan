@@ -155,24 +155,3 @@ export function getSolarTermMap(year: number): Map<string, SolarTerm> {
 	}
 	return map;
 }
-
-/** Date -> YYYY-MM-DD（按本地时区，与日历用的键一致） */
-const toDateKey = (date: Date): string =>
-	`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-
-/**
- * 某个日期处在哪个节气里（取最近一个已经到来的）
- *
- * 1 月初还没到小寒时，其实还在上一年的冬至里，所以要把前一年的表也带上。
- * 与日历格子用同一份数据，保证「日历显示霜降」和「图片显示霜降」永远一致。
- */
-export function getCurrentSolarTerm(date: Date = new Date()): SolarTerm {
-	const key = toDateKey(date);
-	const year = date.getFullYear();
-	const candidates = [
-		...getSolarTerms(year - 1),
-		...getSolarTerms(year),
-	].filter((term) => term.dateKey <= key);
-	const fallback = getSolarTerms(year)[0];
-	return candidates[candidates.length - 1] ?? fallback;
-}

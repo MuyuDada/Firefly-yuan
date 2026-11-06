@@ -1,4 +1,6 @@
 ---
+import fs from "node:fs";
+import path from "node:path";
 import Footer from "@/components/layout/Footer.astro";
 import HeaderTopRow from "@/components/layout/HeaderTopRow.astro";
 import NavMenuPanel from "@/components/layout/NavMenuPanel.astro";
@@ -166,6 +168,35 @@ const monthNames = [
 	I18nKey.calendarDecember,
 ].map((key) => i18n(key));
 
+// ── 节气图 ──────────────────────────────────────────────────────────
+// 构建期扫一遍目录，知道哪些节气真的有图。缺图的不进时间线，客户端取到的
+// 就是「最近一个确实有图的节气」——比如立冬还没放图时继续显示霜降，
+// 而不是一交节整块就空掉。
+const termImageCfg = calendarConfig.solarTermImage;
+const termDir =
+	termImageCfg?.basePath.startsWith("/") === true
+		? path.join(process.cwd(), "public", termImageCfg.basePath.slice(1))
+		: "";
+const availableTermSlugs = new Set<string>();
+if (termImageCfg && termDir && fs.existsSync(termDir)) {
+	const suffix = `.${termImageCfg.extension}`;
+	for (const file of fs.readdirSync(termDir)) {
+		if (file.endsWith(suffix)) {
+			availableTermSlugs.add(file.slice(0, -suffix.length));
+		}
+	}
+}
+
+const termsWithImage = years
+	.flatMap((year) => getSolarTerms(year))
+	.filter((term) => availableTermSlugs.has(term.slug))
+	.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+
+const initialTerm =
+	[...termsWithImage].reverse().find((term) => term.dateKey <= todayKey) ??
+	termsWithImage[0] ??
+	null;
+
 // 供客户端翻月使用的数据
 const clientPayload = {
 	eventsByDate,
@@ -183,24 +214,23 @@ const clientPayload = {
 	emptyText: i18n(I18nKey.calendarNoEvents),
 	maxChips: 3,
 	// 右栏节气图：翻月/选日期时按「已到来的最近一个节气」换图
-	termImage: calendarConfig.solarTermImage?.enable
-		? {
-				basePath: calendarConfig.solarTermImage.basePath,
-				extension: calendarConfig.solarTermImage.extension,
-			}
-		: null,
-	termTimeline: calendarConfig.solarTermImage?.enable
-		? years
-				.flatMap((year) => getSolarTerms(year))
-				.map((term) => ({
+	termImage:
+		termImageCfg?.enable === true
+			? {
+					basePath: termImageCfg.basePath,
+					extension: termImageCfg.extension,
+				}
+			: null,
+	termTimeline:
+		termImageCfg?.enable === true
+			? termsWithImage.map((term) => ({
 					dateKey: term.dateKey,
 					name: term.name,
 					slug: term.slug,
 					month: term.month,
 					day: term.day,
 				}))
-				.sort((a, b) => a.dateKey.localeCompare(b.dateKey))
-		: [],
+			: [],
 };
 ---
 
@@ -251,6 +281,7 @@ const clientPayload = {
 					allEvents={events}
 					lunarLabels={lunarLabels}
 					officialDays={officialDays}
+					initialTerm={initialTerm}
 				/>
 			</div>
 		</div>
