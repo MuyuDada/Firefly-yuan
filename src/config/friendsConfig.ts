@@ -137,7 +137,7 @@ export const friendsConfig: FriendLink[] = [
 		siteurl: "https://yujingblog.top",
 		recommendedTheme: "silver", // 银色主题
 		tags: ["Blog"],
-		weight: 95,
+		weight: 14,
 		enabled: true,
 	},
 	{
@@ -146,7 +146,7 @@ export const friendsConfig: FriendLink[] = [
 		desc: "✦在代码与文字间，寻找生活的回响✦",
 		siteurl: "https://blog.onlycc.ltd",
 		tags: ["Blog"],
-		weight: 94,
+		weight: 13,
 		enabled: true,
 	},
 	{
@@ -155,7 +155,7 @@ export const friendsConfig: FriendLink[] = [
 		desc: "守岁花开，季季不同",
 		siteurl: "https://blog.kwicaii.moe/",
 		tags: ["Blog"],
-		weight: 93,
+		weight: 12,
 		enabled: true,
 	},
 	{
@@ -175,7 +175,7 @@ export const friendsConfig: FriendLink[] = [
 		desc: "记录学习，分享笔记",
 		siteurl: "https://hello123.fun",
 		tags: ["Blog"],
-		weight: 91,
+		weight: 11,
 		enabled: true,
 	},
 	{
@@ -184,7 +184,7 @@ export const friendsConfig: FriendLink[] = [
 		desc: "专注于个人搞笑和后端开发",
 		siteurl: "https://www.sunandyou.cn",
 		tags: ["Blog"],
-		weight: 90,
+		weight: 10,
 		enabled: true,
 	},
 	{
@@ -193,7 +193,7 @@ export const friendsConfig: FriendLink[] = [
 		desc: "医学生×互联网折腾爱好者",
 		siteurl: "https://zhongweb.cn",
 		tags: ["Blog"],
-		weight: 88,
+		weight: 9,
 		enabled: true,
 	},
 	{
@@ -203,7 +203,7 @@ export const friendsConfig: FriendLink[] = [
 		siteurl: "https://www.jerrynis.com",
 		recommendedTheme: "purple", // 紫色主题		
 		tags: ["Blog"],
-		weight: 87,
+		weight: 8,
 		enabled: true,
 	},
 	{
@@ -252,6 +252,15 @@ export const friendsConfig: FriendLink[] = [
 		siteurl: "https://blog.mibase.top",
 		tags: ["Blog"],
 		weight: 7,
+		enabled: true,
+	},
+	{
+		title: "Hyde Blog",
+		imgurl: "https://seasir.top/assets/avatar.avif",
+		desc: "人心中的成见是一座大山",
+		siteurl: "https://seasir.top",
+		tags: ["Blog"],
+		weight: 95,
 		enabled: true,
 	},
 	// {
