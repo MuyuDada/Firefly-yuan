@@ -709,6 +709,8 @@ const clientPayload = {
 				}
 				cell.classList.add("is-selected");
 				renderDetail(key);
+				// 点格子走的不是 update()，节气图要单独同步一次
+				renderTermCard(key);
 			}
 
 			function backToToday() {
