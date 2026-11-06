@@ -22,6 +22,7 @@
     "preinstall": "npx only-allow pnpm",
     "lqips": "npx tsx scripts/generate-lqips.ts",
     "holidays": "node scripts/fetch-holidays.mjs",
+    "solar-terms": "node scripts/prepare-solar-terms.mjs",
     "github-cards": "npx tsx scripts/generate-github-card-data.ts"
   },
   "dependencies": {
