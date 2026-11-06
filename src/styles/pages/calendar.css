@@ -1352,8 +1352,8 @@
 	border-top: 1px solid var(--cal-border);
 }
 
-/* 图缺失时整块收起，不留一个空框 */
-.term-card.is-missing {
+/* 当天不是节气（或图缺失）时整块收起，不占版面 */
+.term-card.is-hidden {
 	display: none;
 }
 

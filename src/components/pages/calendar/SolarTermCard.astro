@@ -3,42 +3,46 @@ import type { SiteCalendarConfig } from "@/types/calendarConfig";
 import type { SolarTerm } from "@/utils/solar-terms";
 
 interface Props {
-	/** 当前所处节气（服务端渲染的初始值） */
-	term: SolarTerm;
+	/** 选中日如果正好是节气才给值，否则为 null（整块隐藏） */
+	term?: SolarTerm | null;
 	/** 图片配置，来自 calendarConfig.solarTermImage */
 	image: NonNullable<SiteCalendarConfig["solarTermImage"]>;
 }
 
 const { term, image } = Astro.props;
 
-const src = `${image.basePath}${term.slug}.${image.extension}`;
+const src = term ? `${image.basePath}${term.slug}.${image.extension}` : "";
 const frameStyle = [
 	`--term-ratio: ${image.aspectRatio ?? "4 / 3"}`,
 	`--term-position: ${image.position ?? "center"}`,
 ].join("; ");
 ---
 
-{/* 客户端翻月/选日期时会替换图与文字，id 供 calendar.astro 的脚本更新 */}
+{/*
+	始终渲染（哪怕当天没有节气），否则客户端切到节气日时找不到容器。
+	没有节气就挂 is-hidden，不占版面。
+	客户端翻月/选日期时会替换图与文字。
+*/}
 <section
-	class="term-card"
+	class:list={["term-card", !term && "is-hidden"]}
 	id="calendar-term-card"
-	data-slug={term.slug}
+	data-slug={term?.slug ?? ""}
 	aria-live="polite"
 >
 	<div class="term-card__frame" style={frameStyle}>
 		<img
 			id="calendar-term-image"
 			class="term-card__image"
-			src={src}
-			alt={`${term.name}节气图`}
+			src={src || undefined}
+			alt={term ? `${term.name}节气图` : ""}
 			loading="lazy"
 			decoding="async"
 		/>
-		<span class="term-card__badge" id="calendar-term-name">{term.name}</span>
+		<span class="term-card__badge" id="calendar-term-name">{term?.name ?? ""}</span>
 	</div>
 	<p class="term-card__meta">
 		<span class="term-card__date" id="calendar-term-date">
-			{term.month} 月 {term.day} 日
+			{term ? `${term.month} 月 ${term.day} 日` : ""}
 		</span>
 	</p>
 </section>

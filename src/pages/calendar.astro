@@ -192,10 +192,9 @@ const termsWithImage = years
 	.filter((term) => availableTermSlugs.has(term.slug))
 	.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
 
-const initialTerm =
-	[...termsWithImage].reverse().find((term) => term.dateKey <= todayKey) ??
-	termsWithImage[0] ??
-	null;
+// 只在节气当天显示，所以必须精确命中今天；今天不是节气就是 null
+const todayTerm =
+	termsWithImage.find((term) => term.dateKey === todayKey) ?? null;
 
 // 供客户端翻月使用的数据
 const clientPayload = {
@@ -281,7 +280,7 @@ const clientPayload = {
 					allEvents={events}
 					lunarLabels={lunarLabels}
 					officialDays={officialDays}
-					initialTerm={initialTerm}
+					initialTerm={todayTerm}
 				/>
 			</div>
 		</div>
@@ -602,8 +601,8 @@ const clientPayload = {
 				box.innerHTML = html;
 			}
 
-			// 右栏节气图：取「已到来的最近一个节气」
-			// 比如 11 月 7 日前显示霜降、7 日之后显示立冬，跟日历格子里标的节气一致
+			// 右栏节气图：只在选中日本身就是节气时才出现
+			// （一年就 24 天能看到，其余日子整块隐藏）
 			function renderTermCard(key) {
 				var card = document.getElementById("calendar-term-card");
 				var img = document.getElementById("calendar-term-image");
@@ -612,17 +611,24 @@ const clientPayload = {
 				var timeline = payload.termTimeline || [];
 				var term = null;
 				for (var i = 0; i < timeline.length; i++) {
-					if (timeline[i].dateKey <= key) term = timeline[i];
-					else break;
+					if (timeline[i].dateKey === key) {
+						term = timeline[i];
+						break;
+					}
 				}
-				if (!term) return;
+
+				if (!term) {
+					card.classList.add("is-hidden");
+					return;
+				}
+				card.classList.remove("is-hidden");
 
 				var nameEl = document.getElementById("calendar-term-name");
 				var dateEl = document.getElementById("calendar-term-date");
 				if (nameEl) nameEl.textContent = term.name;
 				if (dateEl) dateEl.textContent = term.month + " 月 " + term.day + " 日";
 
-				// 同一节气不重设 src，避免翻月时重复下载同一张图
+				// 同一个节气不重设 src，避免来回翻月时重复下载
 				if (card.getAttribute("data-slug") === term.slug) return;
 				card.setAttribute("data-slug", term.slug);
 				img.setAttribute("alt", term.name + "节气图");
@@ -635,21 +641,21 @@ const clientPayload = {
 				);
 			}
 
-			// 缺图时把整块收起来，不留一个空框
+			// 图缺失时同样收起来，不留空框
 			function bindTermCard() {
 				var card = document.getElementById("calendar-term-card");
 				var img = document.getElementById("calendar-term-image");
 				if (!card || !img || img.dataset.bound) return;
 				img.dataset.bound = "1";
 				img.addEventListener("load", function () {
-					card.classList.remove("is-missing");
+					card.classList.remove("is-hidden");
 				});
 				img.addEventListener("error", function () {
-					card.classList.add("is-missing");
+					card.classList.add("is-hidden");
 				});
 				// 缓存命中时上面的 error 不会再触发，补一次判断
-				if (img.complete && img.naturalWidth === 0) {
-					card.classList.add("is-missing");
+				if (img.getAttribute("src") && img.complete && img.naturalWidth === 0) {
+					card.classList.add("is-hidden");
 				}
 			}
 
