@@ -265,7 +265,158 @@
             position: relative;
         }
     }
+    /* ===== 极光页脚灯效 =====
+       5 层横向椭圆叠在一起，每层用超大 box-shadow 发光，颜色在两种色之间
+       来回渐变（alternate）。尺寸/时长/配色沿用原 pen，只把「黑底全屏容器」
+       换成了页脚块，所以光是从页脚底部透出来的。 */
+    .ftr-aurora {
+        position: absolute;
+        /* 祖先被收窄到 46rem 了，用 100vw 反向撑开，光才能铺满整屏 */
+        left: 50%;
+        width: 100vw;
+        margin-left: -50vw;
+        top: 0;
+        bottom: 0;
+        z-index: 0;
+        pointer-events: none;
+        filter: saturate(1.4) brightness(1.35);
+        /* screen 混合：暗部当透明，光晕叠加更亮，也不会在中心留出暗洞 */
+        mix-blend-mode: screen;
+
+        /* 不用 overflow:hidden —— 一裁就会在边缘留下直角硬边。
+           box-shadow 不占布局，任它自然扩散更柔和 */
+    }
+
+    /* 100vw 的元素会超出页脚容器，把横向溢出裁掉，免得撑出横向滚动条。
+       overflow-x: clip 不会创建滚动容器，纵向仍然正常 */
+    .site-footer {
+        position: relative;
+        overflow-x: clip;
+    }
+
+    /* box-shadow 只向外发光，最内层椭圆里是没有光的，会显出一个暗洞。
+       补一个柔光核填在中心，当作「光源本体」。
+       位置要和 .ftr-aurora__lights 同心（bottom:-60px + 半个自身高度） */
+    .ftr-aurora::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: 4px;
+        width: 64%;
+        height: 78px;
+        transform: translateX(-50%);
+        border-radius: 50%;
+        background: radial-gradient(ellipse at center,
+                rgba(226, 214, 255, 0.55),
+                rgba(160, 205, 255, 0.25) 58%,
+                transparent 80%);
+        filter: blur(26px);
+        z-index: 5;
+    }
+
+    .ftr-aurora__lights {
+        position: absolute;
+        /* 贴住容器底部：光晕中线正好落在页脚最低处，光只往上散 */
+        bottom: 0;
+        left: 0;
+        width: 100%;
+    }
+
+    .ftr-aurora__l {
+        display: block;
+        position: relative;
+        width: 100%;
+        /* 压薄：box-shadow 只向外发光，椭圆「内部」是条暗槽，越高越显眼 */
+        height: 6px;
+        margin: auto;
+        border-radius: 50%;
+        /* 元素本身不填色：box-shadow 只向外发光，screen 混合会把空白处
+           当透明处理，不会在中心形成暗洞 */
+    }
+
+    .ftr-aurora__l--1 {
+        animation: ftr-aurora-1 5s ease-in-out infinite alternate;
+    }
+
+    .ftr-aurora__l--2 {
+        width: 90%;
+        animation: ftr-aurora-2 4s ease-in-out infinite alternate;
+    }
+
+    .ftr-aurora__l--3 {
+        width: 80%;
+        animation: ftr-aurora-3 3s ease-in-out infinite alternate;
+    }
+
+    .ftr-aurora__l--4 {
+        width: 70%;
+        animation: ftr-aurora-4 2s ease-in-out infinite alternate;
+    }
+
+    .ftr-aurora__l--5 {
+        width: 60%;
+        animation: ftr-aurora-5 1s ease-in-out infinite alternate;
+    }
+
+    @keyframes ftr-aurora-1 {
+        from { box-shadow: 0 0 400px 0 #473C78; }
+        to { box-shadow: 0 0 220px 0 #F72A3B; }
+    }
+
+    @keyframes ftr-aurora-2 {
+        from { box-shadow: 0 0 400px 0 #18C499; }
+        to { box-shadow: 0 0 220px 0 #D8F05E; }
+    }
+
+    @keyframes ftr-aurora-3 {
+        from { box-shadow: 0 0 400px 0 #FFDD00; }
+        to { box-shadow: 0 0 220px 0 #3E33FF; }
+    }
+
+    @keyframes ftr-aurora-4 {
+        from { box-shadow: 0 0 400px 0 #781848; }
+        to { box-shadow: 0 0 220px 0 #F2BBE9; }
+    }
+
+    @keyframes ftr-aurora-5 {
+        from { box-shadow: 0 0 400px 0 #42F2A1; }
+        to { box-shadow: 0 0 220px 0 #F4F6AD; }
+    }
+
+    /* 白天模式（浅色主题）不显示：这组高饱和色在白底上只会发脏 */
+    :root:not(.dark) .ftr-aurora {
+        display: none;
+    }
+
+    /* 降低动画偏好：停掉脉动，各层用起始色留一点静态光 */
+    @media (prefers-reduced-motion: reduce) {
+        .ftr-aurora__l {
+            animation: none;
+        }
+
+        :root .ftr-aurora {
+            opacity: 0.4;
+        }
+    }
 </style>
+
+<!-- 极光灯效：5 层椭圆光晕从底部透出，纯装饰，不接事件。
+     必须放在 .badge-footer 外面：PC 端粒子画布激活时会给它加
+     .ftr-particles-active，那个类带 position: relative，会把极光的定位基准
+     从 .site-footer 抢走，光就抬到页脚中间去了（移动端不激活粒子，所以正常） -->
+<div class="ftr-aurora" aria-hidden="true">
+    <div class="ftr-aurora__lights">
+        <span class="ftr-aurora__l ftr-aurora__l--1">
+            <span class="ftr-aurora__l ftr-aurora__l--2">
+                <span class="ftr-aurora__l ftr-aurora__l--3">
+                    <span class="ftr-aurora__l ftr-aurora__l--4">
+                        <span class="ftr-aurora__l ftr-aurora__l--5"></span>
+                    </span>
+                </span>
+            </span>
+        </span>
+    </div>
+</div>
 
 <div class="badge-footer">
     <!-- ⑩ 粒子签名画布：JS 采样签名 SVG 生成粒子背景，激活时隐藏静态签名 -->
