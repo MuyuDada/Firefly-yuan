@@ -551,6 +551,10 @@ export const zh_CN: Translation = {
 	[Key.overlayOpacity]: "壁纸透明度",
 	[Key.overlayBlur]: "背景模糊度",
 	[Key.overlayCardOpacity]: "卡片透明度",
+	[Key.liquidGlassSettings]: "液态玻璃",
+	[Key.glassBlur]: "玻璃模糊度",
+	[Key.glassDistortion]: "折射强度",
+	[Key.glassWaveDensity]: "波纹密度",
 
 	// 设置面板标签
 	[Key.settingsTabAppearance]: "外观",

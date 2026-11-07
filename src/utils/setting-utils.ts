@@ -421,9 +421,9 @@ export function updateNavbarTransparency(mode: WALLPAPER_MODE): void {
 
 	// 根据当前壁纸模式设置导航栏透明模式和模糊效果
 	if (mode === WALLPAPER_OVERLAY) {
-		// 全屏透明模式
+		// 全屏透明模式：导航栏跟随卡片样式，毛玻璃由 --navbar-glass-blur 提供默认 20px
 		transparentMode = "none";
-		blurAmount = 0;
+		blurAmount = 20;
 	} else if (mode === WALLPAPER_NONE) {
 		// 纯色背景模式
 		transparentMode = "none";
@@ -446,7 +446,22 @@ export function updateNavbarTransparency(mode: WALLPAPER_MODE): void {
 
 	// 更新导航栏的透明模式属性
 	navbar.setAttribute("data-transparent-mode", transparentMode);
-	navbar.style.setProperty("--navbar-glass-blur", `${blurAmount}px`);
+	// 用户液态玻璃模糊度覆盖（设置面板滑块写入 localStorage），仅作用于玻璃态（blur > 0）
+	const storedGlassBlur = readNavbarGlassBlurOverride();
+	const effectiveBlur =
+		blurAmount > 0 && storedGlassBlur !== null ? storedGlassBlur : blurAmount;
+	navbar.style.setProperty("--navbar-glass-blur", `${effectiveBlur}px`);
+	// 同步玻璃面开关与折射总开关（Swup 切页 / 模式切换后保持一致）
+	const glassOn = effectiveBlur > 0;
+	navbar.setAttribute("data-glass", glassOn ? "on" : "off");
+	applyNavbarGlassDistortionFlag(glassOn);
+	// 面板毛玻璃跟随用户覆盖（仅存在覆盖时，避免覆盖 Layout SSR 注入的配置默认值）
+	if (storedGlassBlur !== null) {
+		document.documentElement.style.setProperty(
+			"--navbar-panel-blur",
+			`${Math.max(effectiveBlur, 2)}px`,
+		);
+	}
 
 	// 移除现有的透明模式类
 	navbar.classList.remove(
@@ -657,6 +672,211 @@ export function applyStoredOverlaySettingsToDocument(): void {
 	applyOverlayOpacityToDocument(getStoredOverlayOpacity());
 	applyOverlayBlurToDocument(getStoredOverlayBlur());
 	applyOverlayCardOpacityToDocument(getStoredOverlayCardOpacity());
+}
+
+// ── 液态玻璃（导航栏 / 面板 / 首页标题图标）参数 ─────────────────────────
+// blur 与折射参数都可被设置面板滑块覆盖，写入 localStorage 后由两处消费：
+// - Navbar.astro 的解析期内联脚本（首帧前读 localStorage，避免闪烁）
+// - 本文件的应用函数（滑块拖动时实时生效）
+// blur 走 CSS 变量（--navbar-glass-blur / --navbar-panel-blur）；
+// 折射参数必须走 JS —— SVG 滤镜属性（feDisplacementMap@scale、
+// feTurbulence@baseFrequency）无法被 CSS 变量驱动。
+
+// 默认值与 SVG 滤镜标记（Navbar.astro）保持一致，对齐 lucasromerodb 的
+// Liquid Glass 参考实现：baseFrequency 0.01、feGaussianBlur stdDeviation 3、
+// feDisplacementMap scale 150、blur 3px（blur 走 backgroundWallpaper 配置）。
+export const NAVBAR_GLASS_DEFAULT_SCALE = 150;
+export const NAVBAR_GLASS_DEFAULT_FREQUENCY = 0.01;
+const NAVBAR_GLASS_MAX_BLUR = 30;
+const NAVBAR_GLASS_MAX_SCALE = 200;
+const NAVBAR_GLASS_MIN_FREQUENCY = 0.002;
+const NAVBAR_GLASS_MAX_FREQUENCY = 0.03;
+
+export function getDefaultNavbarGlassBlur(): number {
+	return backgroundWallpaper.banner?.navbar?.blur ?? 20;
+}
+
+/** 读取用户覆盖的模糊度；未覆盖时返回 null（与"回退到配置默认值"区分开） */
+function readNavbarGlassBlurOverride(): number | null {
+	if (
+		typeof localStorage === "undefined" ||
+		typeof localStorage.getItem !== "function"
+	) {
+		return null;
+	}
+	const stored = localStorage.getItem("navbarGlassBlur");
+	if (stored === null) {
+		return null;
+	}
+	const parsed = Number.parseFloat(stored);
+	if (Number.isNaN(parsed)) {
+		return null;
+	}
+	return clampNumber(parsed, 0, NAVBAR_GLASS_MAX_BLUR);
+}
+
+export function getStoredNavbarGlassBlur(): number {
+	return readNavbarGlassBlurOverride() ?? getDefaultNavbarGlassBlur();
+}
+
+export function getStoredNavbarGlassScale(): number {
+	if (
+		typeof localStorage === "undefined" ||
+		typeof localStorage.getItem !== "function"
+	) {
+		return NAVBAR_GLASS_DEFAULT_SCALE;
+	}
+	const stored = localStorage.getItem("navbarGlassScale");
+	if (stored === null) {
+		return NAVBAR_GLASS_DEFAULT_SCALE;
+	}
+	const parsed = Number.parseFloat(stored);
+	if (Number.isNaN(parsed)) {
+		return NAVBAR_GLASS_DEFAULT_SCALE;
+	}
+	return clampNumber(parsed, 0, NAVBAR_GLASS_MAX_SCALE);
+}
+
+export function getStoredNavbarGlassFrequency(): number {
+	if (
+		typeof localStorage === "undefined" ||
+		typeof localStorage.getItem !== "function"
+	) {
+		return NAVBAR_GLASS_DEFAULT_FREQUENCY;
+	}
+	const stored = localStorage.getItem("navbarGlassFrequency");
+	if (stored === null) {
+		return NAVBAR_GLASS_DEFAULT_FREQUENCY;
+	}
+	const parsed = Number.parseFloat(stored);
+	if (Number.isNaN(parsed)) {
+		return NAVBAR_GLASS_DEFAULT_FREQUENCY;
+	}
+	return clampNumber(parsed, NAVBAR_GLASS_MIN_FREQUENCY, NAVBAR_GLASS_MAX_FREQUENCY);
+}
+
+/** 判断当前壁纸/透明模式下是否存在玻璃面（blur > 0 才有可模糊的对象） */
+function navbarGlassSurfaceOn(blur: number): boolean {
+	if (typeof document === "undefined") {
+		return false;
+	}
+	if (document.documentElement.getAttribute("data-wallpaper-mode") === "none") {
+		return false;
+	}
+	const navbar = document.getElementById("navbar");
+	if (navbar?.getAttribute("data-transparent-mode") === "none") {
+		return false;
+	}
+	return blur > 0;
+}
+
+/** data-glass-distortion 挂在 :root 上，导航栏/面板/首页图标共用同一开关 */
+function applyNavbarGlassDistortionFlag(glassOn: boolean): void {
+	const scale = getStoredNavbarGlassScale();
+	document.documentElement.setAttribute(
+		"data-glass-distortion",
+		glassOn && scale > 0 ? "on" : "off",
+	);
+}
+
+export function applyNavbarGlassBlurToDocument(blur: number): void {
+	if (typeof document === "undefined") {
+		return;
+	}
+	const safeBlur = clampNumber(blur, 0, NAVBAR_GLASS_MAX_BLUR);
+	const navbar = document.getElementById("navbar");
+	navbar?.style.setProperty("--navbar-glass-blur", `${safeBlur}px`);
+	// 面板毛玻璃跟随调节，带 2px 最小值（与 Layout.astro 的 SSR 注入规则一致）
+	document.documentElement.style.setProperty(
+		"--navbar-panel-blur",
+		`${Math.max(safeBlur, 2)}px`,
+	);
+	const glassOn = navbarGlassSurfaceOn(safeBlur);
+	navbar?.setAttribute("data-glass", glassOn ? "on" : "off");
+	applyNavbarGlassDistortionFlag(glassOn);
+}
+
+export function applyNavbarGlassParamsToDocument(
+	scale: number,
+	frequency: number,
+): void {
+	if (typeof document === "undefined") {
+		return;
+	}
+	const safeScale = clampNumber(scale, 0, NAVBAR_GLASS_MAX_SCALE);
+	const safeFrequency = clampNumber(
+		frequency,
+		NAVBAR_GLASS_MIN_FREQUENCY,
+		NAVBAR_GLASS_MAX_FREQUENCY,
+	);
+	const turbulence = document.querySelector(
+		"#navbar-glass-distortion feTurbulence",
+	);
+	turbulence?.setAttribute(
+		"baseFrequency",
+		`${safeFrequency} ${safeFrequency.toFixed(4)}`,
+	);
+	const displacement = document.querySelector(
+		"#navbar-glass-distortion feDisplacementMap",
+	);
+	displacement?.setAttribute("scale", String(Math.round(safeScale)));
+	const glassOn =
+		document.getElementById("navbar")?.getAttribute("data-glass") === "on";
+	applyNavbarGlassDistortionFlag(glassOn);
+}
+
+export function setNavbarGlassBlur(blur: number): void {
+	const safeBlur = clampNumber(blur, 0, NAVBAR_GLASS_MAX_BLUR);
+	if (
+		typeof localStorage !== "undefined" &&
+		typeof localStorage.setItem === "function"
+	) {
+		localStorage.setItem("navbarGlassBlur", String(safeBlur));
+	}
+	applyNavbarGlassBlurToDocument(safeBlur);
+}
+
+export function setNavbarGlassScale(scale: number): void {
+	const safeScale = clampNumber(scale, 0, NAVBAR_GLASS_MAX_SCALE);
+	if (
+		typeof localStorage !== "undefined" &&
+		typeof localStorage.setItem === "function"
+	) {
+		localStorage.setItem("navbarGlassScale", String(safeScale));
+	}
+	applyNavbarGlassParamsToDocument(safeScale, getStoredNavbarGlassFrequency());
+}
+
+export function setNavbarGlassFrequency(frequency: number): void {
+	const safeFrequency = clampNumber(
+		frequency,
+		NAVBAR_GLASS_MIN_FREQUENCY,
+		NAVBAR_GLASS_MAX_FREQUENCY,
+	);
+	if (
+		typeof localStorage !== "undefined" &&
+		typeof localStorage.setItem === "function"
+	) {
+		localStorage.setItem("navbarGlassFrequency", String(safeFrequency));
+	}
+	applyNavbarGlassParamsToDocument(getStoredNavbarGlassScale(), safeFrequency);
+}
+
+/** 恢复默认：清除覆盖并按配置默认值重新应用 */
+export function resetNavbarGlassSettings(): void {
+	if (
+		typeof localStorage !== "undefined" &&
+		typeof localStorage.removeItem === "function"
+	) {
+		localStorage.removeItem("navbarGlassBlur");
+		localStorage.removeItem("navbarGlassScale");
+		localStorage.removeItem("navbarGlassFrequency");
+	}
+	applyNavbarGlassBlurToDocument(getDefaultNavbarGlassBlur());
+	applyNavbarGlassParamsToDocument(
+		NAVBAR_GLASS_DEFAULT_SCALE,
+		NAVBAR_GLASS_DEFAULT_FREQUENCY,
+	);
 }
 
 // Waves animation functions

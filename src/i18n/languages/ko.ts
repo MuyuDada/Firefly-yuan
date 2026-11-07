@@ -568,6 +568,10 @@ export const ko: Translation = {
 	[Key.overlayOpacity]: "배경화면 불투명도",
 	[Key.overlayBlur]: "배경 흐림",
 	[Key.overlayCardOpacity]: "카드 불투명도",
+	[Key.liquidGlassSettings]: "리퀴드 글래스",
+	[Key.glassBlur]: "글래스 흐림",
+	[Key.glassDistortion]: "굴절 강도",
+	[Key.glassWaveDensity]: "물결 밀도",
 
 	// Settings Panel Tabs
 	[Key.settingsTabAppearance]: "외형",

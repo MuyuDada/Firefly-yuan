@@ -49,6 +49,15 @@ const navbarBlur =
 		? (backgroundWallpaper.banner?.navbar?.blur ?? 20)
 		: 0;
 
+// 液态玻璃折射滤镜开关：只有存在毛玻璃面（blur > 0）时才扭曲背景，
+// overlay 模式的毛玻璃由 main.css 强制提供，始终开启；none 纯色模式无玻璃
+const navbarGlassOn =
+	backgroundWallpaper.mode === "banner"
+		? navbarBlur > 0 && navbarTransparentMode !== "none"
+		: backgroundWallpaper.mode === "fullscreen"
+			? (backgroundWallpaper.fullscreen?.navbar?.blur ?? 20) > 0
+			: backgroundWallpaper.mode !== "none";
+
 // 获取导航栏标题，如果没有设置则使用 siteConfig.title
 const navbarTitle = siteConfig.navbar.title || siteConfig.title;
 
@@ -123,7 +132,19 @@ const logoVariants = await Promise.all(
 		})),
 );
 ---
-<div id="navbar" class="z-50" style={`--navbar-glass-blur: ${navbarBlur}px;`} data-transparent-mode={navbarTransparentMode} data-is-home={isHomePageCheck} data-full-width={navbarWidthFull}>
+<svg aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute">
+    <defs>
+        <!-- 液态玻璃折射滤镜（参数对齐 lucasromerodb 的 Liquid Glass 参考）：
+             feTurbulence 生成噪声 → feGaussianBlur 平滑成位移图 → feDisplacementMap 扭曲毛玻璃背景。
+             scale 越大扭曲越强，baseFrequency 越小波纹越宽缓；设置面板滑块的默认值与此处保持一致。 -->
+        <filter id="navbar-glass-distortion" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.01 0.01" numOctaves="1" seed="5" result="noise" />
+            <feGaussianBlur in="noise" stdDeviation="3" result="soft-noise" />
+            <feDisplacementMap in="SourceGraphic" in2="soft-noise" scale="150" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+    </defs>
+</svg>
+<div id="navbar" class="z-50" style={`--navbar-glass-blur: ${navbarBlur}px;`} data-transparent-mode={navbarTransparentMode} data-is-home={isHomePageCheck} data-full-width={navbarWidthFull} data-glass={navbarGlassOn ? "on" : "off"}>
     <script is:inline define:vars={{
       bannerTMode: backgroundWallpaper.banner?.navbar?.transparentMode || "semi",
       bannerBlur: backgroundWallpaper.banner?.navbar?.blur ?? 20,
@@ -138,6 +159,20 @@ const logoVariants = await Promise.all(
         const navbar = document.getElementById("navbar");
         if (!wm || !navbar) return;
         const isHome = navbar.getAttribute("data-is-home") === "true";
+        // 液态玻璃参数运行时覆盖（设置面板滑块写入 localStorage），
+        // 与 setting-utils.ts 的应用逻辑保持一致
+        const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+        const readStored = (key) => {
+          try {
+            const v = parseFloat(localStorage.getItem(key));
+            return Number.isFinite(v) ? v : null;
+          } catch {
+            return null;
+          }
+        };
+        const storedBlur = readStored("navbarGlassBlur");
+        const storedScale = readStored("navbarGlassScale");
+        const storedFreq = readStored("navbarGlassFrequency");
         let mode;
         let blur;
         if (wm === "fullscreen") {
@@ -146,13 +181,40 @@ const logoVariants = await Promise.all(
         } else if (wm === "banner") {
           mode = bannerTMode === "semifull" && !isHome ? "semi" : bannerTMode;
           blur = mode === "none" ? 0 : bannerBlur;
-        } else {
-          // overlay / none
+        } else if (wm === "none") {
+          // 纯色背景无可模糊对象
           mode = "none";
           blur = 0;
+        } else {
+          // overlay：main.css 强制 20px 毛玻璃
+          mode = "none";
+          blur = 20;
+        }
+        // 用户覆盖的模糊度对所有玻璃模式生效（透明态除外）
+        if (blur > 0 && storedBlur !== null) {
+          blur = clamp(storedBlur, 0, 30);
         }
         navbar.setAttribute("data-transparent-mode", mode);
         navbar.style.setProperty("--navbar-glass-blur", `${blur}px`);
+        // 同步玻璃面开关：blur 是否大于 0
+        const glassOn = blur > 0;
+        navbar.setAttribute("data-glass", glassOn ? "on" : "off");
+        // SVG 滤镜参数同步（无法被 CSS 变量驱动）+ 折射总开关（挂 :root，面板/首页图标共用）
+        // 默认值与 SVG 标记及 setting-utils 常量保持一致（对齐 Liquid Glass 参考）
+        const scale = storedScale !== null ? clamp(storedScale, 0, 200) : 150;
+        const freq = storedFreq !== null ? clamp(storedFreq, 0.002, 0.03) : 0.01;
+        const turb = document.querySelector("#navbar-glass-distortion feTurbulence");
+        if (turb) turb.setAttribute("baseFrequency", `${freq} ${freq.toFixed(4)}`);
+        const disp = document.querySelector("#navbar-glass-distortion feDisplacementMap");
+        if (disp) disp.setAttribute("scale", String(Math.round(scale)));
+        document.documentElement.setAttribute(
+          "data-glass-distortion",
+          glassOn && scale > 0 ? "on" : "off",
+        );
+        // 面板毛玻璃跟随覆盖（Layout SSR 注入的是配置默认值）
+        if (storedBlur !== null) {
+          document.documentElement.style.setProperty("--navbar-panel-blur", `${Math.max(blur, 2)}px`);
+        }
       })();
     </script>
     <div class:list={[

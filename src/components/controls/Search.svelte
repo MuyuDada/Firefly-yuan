@@ -204,9 +204,11 @@ $: if (initialized && (keywordMobile || keywordMobile === "")) {
 </button>
 
 <!-- search panel -->
-<div id="search-panel" class="float-panel float-panel-closed search-panel absolute md:w-120
+<div id="search-panel" class="float-panel float-panel-closed absolute md:w-120
 top-20 left-4 md:left-[unset] right-4 shadow-2xl rounded-2xl p-2"
      data-floating-panel data-floating-panel-trigger="search-switch search-input-desktop" inert aria-hidden="true">
+    <!-- 滚动内层化：毛玻璃折射层挂在面板 ::before 上，面板自身不能再滚动（否则玻璃层会跟着滚走） -->
+    <div class="search-panel-scroll">
 
     <!-- search bar inside panel for phone/tablet -->
     <div id="search-bar-inside" class="flex relative lg:hidden transition-all items-center h-11 rounded-xl
@@ -277,6 +279,7 @@ top-20 left-4 md:left-[unset] right-4 shadow-2xl rounded-2xl p-2"
             {i18n(I18nKey.searchTypeSomething)}
         </div>
     {/if}
+    </div>
 </div>
 
 <style>
@@ -284,7 +287,7 @@ top-20 left-4 md:left-[unset] right-4 shadow-2xl rounded-2xl p-2"
         outline: 0;
     }
 
-    .search-panel {
+    .search-panel-scroll {
         max-height: calc(100vh - 100px);
         overflow-y: auto;
     }

@@ -359,9 +359,28 @@ html.is-page-transitioning .banner-home-text-overlay {
     color: rgba(255, 255, 255, 0.92);
     background: rgba(255, 255, 255, 0.14);
     border: 1px solid rgba(255, 255, 255, 0.18);
+    /* 玻璃层 ::before 的定位包含块 */
+    position: relative;
+    /* backdrop-filter 移到 ::before：本体带滤镜会形成 backdrop root，
+       子层折射滤镜会采样不到横幅背景 */
+    transition: background-color 0.25s ease, color 0.25s ease, transform 0.2s ease;
+}
+
+/* 液态玻璃层：blur + 折射（与导航栏同款滤镜），落在底色之上、图标之下 */
+.banner-link::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    transition: background-color 0.25s ease, color 0.25s ease, transform 0.2s ease;
+}
+
+/* 折射跟随设置面板"折射强度"滑块（html[data-glass-distortion]） */
+html[data-glass-distortion="on"] .banner-link::before {
+    filter: url(#navbar-glass-distortion);
 }
 
 /* 图标跟随按钮颜色（SVG 默认 fill 为黑，需显式指定） */

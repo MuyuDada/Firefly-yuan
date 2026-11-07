@@ -77,6 +77,14 @@ export const displaySettingsConfig: DisplaySettingsConfig =
 			cardOpacity: true,
 		},
 
+		// 液态玻璃参数调节开关（导航栏/面板/首页标题图标的玻璃材质）
+		// 设为 false 关闭所有滑块，或用对象形式单独控制每个滑块
+		liquidGlassSwitchable: {
+			blur: true, // 玻璃模糊度
+			distortion: true, // 折射强度
+			wave: true, // 波纹密度
+		},
+
 		// ── 特效 (Effects) ────────────────────────────────────
 
 		// 樱花特效开关

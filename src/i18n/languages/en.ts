@@ -576,6 +576,10 @@ export const en: Translation = {
 	[Key.overlayOpacity]: "Wallpaper Opacity",
 	[Key.overlayBlur]: "Background Blur",
 	[Key.overlayCardOpacity]: "Card Opacity",
+	[Key.liquidGlassSettings]: "Liquid Glass",
+	[Key.glassBlur]: "Glass Blur",
+	[Key.glassDistortion]: "Refraction Strength",
+	[Key.glassWaveDensity]: "Wave Density",
 
 	// Settings Panel Tabs
 	[Key.settingsTabAppearance]: "Appearance",

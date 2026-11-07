@@ -567,6 +567,10 @@ export const ja: Translation = {
 	[Key.overlayOpacity]: "壁紙の透明度",
 	[Key.overlayBlur]: "背景ぼかし",
 	[Key.overlayCardOpacity]: "カード透明度",
+	[Key.liquidGlassSettings]: "リキッドグラス",
+	[Key.glassBlur]: "グラスぼかし",
+	[Key.glassDistortion]: "屈折の強さ",
+	[Key.glassWaveDensity]: "波紋の密度",
 
 	// 設定パネルタブ
 	[Key.settingsTabAppearance]: "外観",

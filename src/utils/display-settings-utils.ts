@@ -35,6 +35,7 @@ const DISABLED_SETTINGS: DisplaySettingsConfig = {
 	bannerTitleSwitchable: false,
 	bannerCarouselSwitchable: false,
 	overlaySwitchable: false,
+	liquidGlassSwitchable: false,
 	sakuraSwitchable: false,
 	cursorSwitchable: false,
 	clickParticleSwitchable: false,

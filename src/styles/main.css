@@ -346,14 +346,14 @@ html {
         outline: none !important;
     }
 
-    /* overlay 滚动后：模糊 + 投影 + 线 */
+    /* overlay 滚动后：模糊 + 投影 + 线（模糊度跟随用户液态玻璃设置，默认 20px） */
     .wallpaper-transparent #navbar.navbar-sticky-shadow > div {
-        --navbar-surface-blur: 20px !important;
+        --navbar-surface-blur: var(--navbar-glass-blur, 20px) !important;
         box-shadow: inset 0 1px 0 var(--navbar-glass-highlight), 0 1px 0 var(--navbar-glass-hairline) !important;
     }
 
     :root.dark .wallpaper-transparent #navbar.navbar-sticky-shadow > div {
-        --navbar-surface-blur: 20px !important;
+        --navbar-surface-blur: var(--navbar-glass-blur, 20px) !important;
         box-shadow: inset 0 1px 0 var(--navbar-glass-highlight), 0 1px 0 var(--navbar-glass-hairline) !important;
     }
     
@@ -483,7 +483,10 @@ html {
     }
 
     .dropdown-content {
-        @apply bg-(--card-bg) rounded-(--radius-large) shadow-xl border border-black/5 dark:border-white/10 py-2 min-w-48
+        /* relative：作为玻璃层 ::before 的定位包含块。
+           top-0 抵消 .float-panel 基类的 top-21 —— 静态定位时 top 不生效，
+           改为 relative 后若不归零会把整个面板推下 84px */
+        @apply relative top-0 bg-(--card-bg) rounded-(--radius-large) shadow-xl border border-black/5 dark:border-white/10 py-2 min-w-48
         opacity-0 translate-y-[-8px] transition-[opacity,translate,background-color,border-color] duration-200 ease-out;
     }
 

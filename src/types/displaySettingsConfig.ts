@@ -8,6 +8,15 @@ export type OverlaySwitchable =
 			cardOpacity?: boolean; // 卡片透明度调节开关
 	  };
 
+// 液态玻璃参数调节开关（导航栏 / 面板 / 首页标题图标的玻璃材质）
+export type LiquidGlassSwitchable =
+	| boolean
+	| {
+			blur?: boolean; // 玻璃模糊度滑块开关
+			distortion?: boolean; // 折射强度滑块开关
+			wave?: boolean; // 波纹密度滑块开关
+	  };
+
 export type DisplaySettingsConfig = {
 	// ── 总开关 (Master switch) ────────────────────────────
 
@@ -64,6 +73,10 @@ export type DisplaySettingsConfig = {
 	// 全屏透明模式参数调节开关
 	// 设为 false 关闭所有滑块，或用对象形式单独控制每个滑块
 	overlaySwitchable: OverlaySwitchable;
+
+	// 液态玻璃参数调节开关（玻璃模糊度 / 折射强度 / 波纹密度）
+	// 设为 false 关闭所有滑块，或用对象形式单独控制每个滑块
+	liquidGlassSwitchable: LiquidGlassSwitchable;
 
 	// ── 特效 (Effects) ────────────────────────────────────
 

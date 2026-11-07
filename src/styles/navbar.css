@@ -70,6 +70,35 @@
     backdrop-filter: blur(var(--navbar-surface-blur, 0px));
 }
 
+/* ============================================
+ * 液态玻璃折射层（参考 lucasromerodb 的 Liquid Glass）
+ * 导航栏：data-glass="on"（有毛玻璃面）且 html[data-glass-distortion="on"]
+ * （折射强度 > 0，由设置滑块控制）时，给毛玻璃层叠加 SVG 湍流置换滤镜
+ * （#navbar-glass-distortion，定义在 Navbar.astro 内），让模糊背景产生
+ * 玻璃折射的波动。CodePen 中滤镜与 blur 同层；这里 blur 在 ::before、
+ * 折射也在 ::before，等价。Safari 不支持用元素滤镜扭曲 backdrop 结果，
+ * 会安全退化成普通毛玻璃。
+ *
+ * ::after 复刻 CodePen 的斜向内阴影高光（liquidGlass-shine 层）：
+ * 高光不被扭曲、保持锐利，压在玻璃面之上、内容之下（同为 z-index:-1，
+ * ::after 在树序上晚于 ::before，绘制在其上方）。
+ * ============================================ */
+html[data-glass-distortion="on"] #navbar[data-glass="on"]>div::before {
+    filter: url(#navbar-glass-distortion);
+}
+
+#navbar[data-glass="on"] > div::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow:
+        inset 2px 2px 1px 0 var(--navbar-glass-shine),
+        inset -1px -1px 1px 1px var(--navbar-glass-shine);
+}
+
 /* 通用滚动阴影：下滑到内容区时给导航栏加向下投影，与内容区分层。
    #navbar > div 的 box-shadow 会被各壁纸/透明模式规则（main.css 的 @layer components、特异性更高）覆盖，
    所以把投影加到没有冲突的父级 #navbar 上；#navbar 本身无 border-radius，需同步圆角让阴影随底部圆角 */
@@ -231,6 +260,24 @@ html[data-has-wallpaper] #navbar[data-transparent-mode="semifull"]:not(.scrolled
     transition: none !important;
 }
 
+/* ============================================
+ * 全透明阶段（semifull 未滚动 / 页面切换中）没有毛玻璃面：
+ * 折射滤镜必须关闭，否则会扭曲清晰的壁纸背景形成"波浪带"；
+ * 高光内阴影同样关闭，避免透明导航栏上浮出白色斜线。
+ * 覆盖 banner（桌面+移动共用）与 fullscreen 两种壁纸模式。
+ * ============================================ */
+html[data-has-wallpaper] #navbar[data-transparent-mode="semifull"]:not(.scrolled)>div::before,
+html[data-wallpaper-mode="fullscreen"] #navbar[data-transparent-mode="semifull"]:not(.scrolled)>div::before,
+.is-page-transitioning[data-has-wallpaper] #navbar[data-transparent-mode="semifull"]:not(.scrolled)>div::before {
+    filter: none;
+}
+
+html[data-has-wallpaper] #navbar[data-transparent-mode="semifull"]:not(.scrolled)>div::after,
+html[data-wallpaper-mode="fullscreen"] #navbar[data-transparent-mode="semifull"]:not(.scrolled)>div::after,
+.is-page-transitioning[data-has-wallpaper] #navbar[data-transparent-mode="semifull"]:not(.scrolled)>div::after {
+    box-shadow: none;
+}
+
 
 
 /* ============================================
@@ -239,8 +286,9 @@ html[data-has-wallpaper] #navbar[data-transparent-mode="semifull"]:not(.scrolled
  * 模糊半径跟随 navbar.blur（Layout.astro 注入到 :root 的 --navbar-panel-blur），
  * 但带一个最小值 —— 导航栏可以用 blur: 0 关掉毛玻璃，面板则始终保留毛玻璃。
  *
- * 能生效的前提是导航栏自身的滤镜已经下移到 #navbar>div::before（见文件顶部），
- * 面板不再被祖先的 backdrop root 截断。
+ * 毛玻璃与折射下移到 ::before（与导航栏同构）：本体带 backdrop-filter 会形成
+ * backdrop root，导致面板内子元素的毛玻璃采样不到背景；折射滤镜也必须只作用于
+ * 背景层 —— 挂在本体上会把面板文字一起扭曲。::before 落在底色之上、内容之下。
  *
  * 纯色背景模式（data-wallpaper-mode="none"）底下没有可模糊的对象，
  * 排除掉，落回 main.css 里 .float-panel 原本的不透明卡片样式。
@@ -253,8 +301,9 @@ html:not([data-wallpaper-mode="none"])
     body.wallpaper-transparent
     :is(.dropdown-content, .float-panel) {
     background: rgba(255, 255, 255, 0.55) !important;
-    backdrop-filter: blur(var(--navbar-panel-blur, 20px)) saturate(1.5) !important;
-    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        inset 2px 2px 1px 0 var(--navbar-glass-shine),
+        inset -1px -1px 1px 1px var(--navbar-glass-shine) !important;
     border: 1px solid rgba(0, 0, 0, 0.06) !important;
 }
 
@@ -265,9 +314,37 @@ html:not([data-wallpaper-mode="none"])
     body.wallpaper-transparent
     :is(.dropdown-content, .float-panel) {
     background: rgba(23, 23, 23, 0.6) !important;
-    backdrop-filter: blur(var(--navbar-panel-blur, 20px)) saturate(1.5) !important;
-    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        inset 2px 2px 1px 0 var(--navbar-glass-shine),
+        inset -1px -1px 1px 1px var(--navbar-glass-shine) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 面板玻璃层：blur + saturate（原本体上的滤镜下移至此） */
+html:not([data-wallpaper-mode="none"])[data-has-wallpaper]
+    :is(.dropdown-content, .float-panel)::before,
+html:not([data-wallpaper-mode="none"])
+    body.wallpaper-transparent
+    :is(.dropdown-content, .float-panel)::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    backdrop-filter: blur(var(--navbar-panel-blur, 20px)) saturate(1.5);
+    /* 常驻合成层：面板从 opacity:0 淡入时 backdrop-filter 结果可复用，
+       避免出现瞬间无玻璃的闪烁 */
+    will-change: backdrop-filter;
+}
+
+/* 折射：设置面板"折射强度"滑块 > 0 时启用（html[data-glass-distortion]） */
+html[data-glass-distortion="on"]:not([data-wallpaper-mode="none"])[data-has-wallpaper]
+    :is(.dropdown-content, .float-panel)::before,
+html[data-glass-distortion="on"]:not([data-wallpaper-mode="none"])
+    body.wallpaper-transparent
+    :is(.dropdown-content, .float-panel)::before {
+    filter: url(#navbar-glass-distortion);
 }
 
 /* ============================================

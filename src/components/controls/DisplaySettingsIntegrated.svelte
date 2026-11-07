@@ -20,6 +20,7 @@ import {
 	getDefaultGradientEnabled,
 	getDefaultHue,
 	getDefaultInputFireEnabled,
+	getDefaultNavbarGlassBlur,
 	getDefaultOverlayBlur,
 	getDefaultOverlayCardOpacity,
 	getDefaultOverlayOpacity,
@@ -37,12 +38,18 @@ import {
 	getStoredFullscreenLayout,
 	getStoredGradientEnabled,
 	getStoredInputFireEnabled,
+	getStoredNavbarGlassBlur,
+	getStoredNavbarGlassFrequency,
+	getStoredNavbarGlassScale,
 	getStoredOverlayBlur,
 	getStoredOverlayCardOpacity,
 	getStoredOverlayOpacity,
 	getStoredSakuraEnabled,
 	getStoredWallpaperMode,
 	getStoredWavesEnabled,
+	NAVBAR_GLASS_DEFAULT_FREQUENCY,
+	NAVBAR_GLASS_DEFAULT_SCALE,
+	resetNavbarGlassSettings,
 	setBannerCarouselEnabled,
 	setBannerTitleEnabled,
 	setBubbleEnabled,
@@ -55,6 +62,9 @@ import {
 	setGradientEnabled,
 	setHue,
 	setInputFireEnabled,
+	setNavbarGlassBlur,
+	setNavbarGlassFrequency,
+	setNavbarGlassScale,
 	setOverlayBlur,
 	setOverlayCardOpacity,
 	setOverlayOpacity,
@@ -158,6 +168,13 @@ let overlayBlur = $state(getDefaultOverlayBlur());
 const defaultOverlayBlur = getDefaultOverlayBlur();
 let overlayCardOpacity = $state(getDefaultOverlayCardOpacity());
 const defaultOverlayCardOpacity = getDefaultOverlayCardOpacity();
+// 液态玻璃参数（blur 走 CSS 变量；折射参数由 setting-utils 同步到 SVG 滤镜属性）
+let glassBlur = $state(getDefaultNavbarGlassBlur());
+const defaultGlassBlur = getDefaultNavbarGlassBlur();
+let glassScale = $state(NAVBAR_GLASS_DEFAULT_SCALE);
+const defaultGlassScale = NAVBAR_GLASS_DEFAULT_SCALE;
+let glassFrequency = $state(NAVBAR_GLASS_DEFAULT_FREQUENCY);
+const defaultGlassFrequency = NAVBAR_GLASS_DEFAULT_FREQUENCY;
 let cardBorderEnabled = $state(false);
 const defaultCardBorderEnabled = getDefaultCardBorderEnabled();
 let cardFollowThemeEnabled = $state(false);
@@ -328,6 +345,24 @@ const hasOverlaySettings =
 	(isOverlayOpacitySwitchable ||
 		isOverlayBlurSwitchable ||
 		isOverlayCardOpacitySwitchable);
+// 液态玻璃参数调节开关（对象形式与 OverlaySwitchable 同构）
+const liquidGlassSwitchableConfig = displaySettingsConfig.liquidGlassSwitchable;
+const isGlassBlurSwitchable =
+	typeof liquidGlassSwitchableConfig === "boolean"
+		? liquidGlassSwitchableConfig
+		: (liquidGlassSwitchableConfig.blur ?? false);
+const isGlassDistortionSwitchable =
+	typeof liquidGlassSwitchableConfig === "boolean"
+		? liquidGlassSwitchableConfig
+		: (liquidGlassSwitchableConfig.distortion ?? false);
+const isGlassWaveSwitchable =
+	typeof liquidGlassSwitchableConfig === "boolean"
+		? liquidGlassSwitchableConfig
+		: (liquidGlassSwitchableConfig.wave ?? false);
+const hasLiquidGlassSettings =
+	isGlassBlurSwitchable ||
+	isGlassDistortionSwitchable ||
+	isGlassWaveSwitchable;
 // 全屏壁纸模式的模糊渐变是否启用（按当前设备读取 fullscreen.blurRamp 配置，未配置默认开启）
 const isFullscreenBlurRampEnabled = $derived.by(() => {
 	const enable = backgroundWallpaper.fullscreen?.blurRamp?.enable;
@@ -355,6 +390,12 @@ let cardSettingsIsDefault = $derived(
 		(!isCardFollowThemeSwitchable ||
 			cardFollowThemeEnabled === defaultCardFollowThemeEnabled),
 );
+// 液态玻璃设置是否全部为默认值（用于控制恢复默认按钮的显隐）
+let liquidGlassSettingsIsDefault = $derived(
+	(!isGlassBlurSwitchable || glassBlur === defaultGlassBlur) &&
+		(!isGlassDistortionSwitchable || glassScale === defaultGlassScale) &&
+		(!isGlassWaveSwitchable || glassFrequency === defaultGlassFrequency),
+);
 
 const hasAnyContent = $derived(
 	showThemeColor ||
@@ -380,6 +421,7 @@ const hasAppearanceTab = $derived(
 const hasWallpaperTab = $derived(
 	isWallpaperSwitchable ||
 		isFullscreenLayoutSwitchable ||
+		hasLiquidGlassSettings ||
 		((wallpaperMode === WALLPAPER_OVERLAY ||
 			wallpaperMode === WALLPAPER_FULLSCREEN) &&
 			hasOverlaySettings) ||
@@ -692,6 +734,15 @@ function resetCardSettings() {
 	}
 }
 
+// 恢复液态玻璃默认值：清除 localStorage 覆盖并按配置默认值重新应用
+function resetLiquidGlassSettings() {
+	resetNavbarGlassSettings();
+	glassBlur = defaultGlassBlur;
+	glassScale = defaultGlassScale;
+	glassFrequency = defaultGlassFrequency;
+	requestAnimationFrame(refreshAllRangeProgress);
+}
+
 function switchWallpaperMode(newMode: WALLPAPER_MODE) {
 	wallpaperMode = newMode;
 	setWallpaperMode(newMode);
@@ -801,6 +852,11 @@ onMount(() => {
 	overlayOpacity = getStoredOverlayOpacity();
 	overlayBlur = getStoredOverlayBlur();
 	overlayCardOpacity = getStoredOverlayCardOpacity();
+
+	// 从localStorage读取液态玻璃参数
+	glassBlur = getStoredNavbarGlassBlur();
+	glassScale = getStoredNavbarGlassScale();
+	glassFrequency = getStoredNavbarGlassFrequency();
 
 	// 从localStorage读取配色风格 / 配色规范 / 背景纹理
 	colorStyle = getColorStyle();
@@ -922,7 +978,9 @@ $effect(() => {
 </script>
 
 {#if hasAnyContent}
-<div id="display-setting" class="float-panel float-panel-closed absolute transition-all w-80 right-4 px-3 pt-0 pb-3 max-h-[80vh] overflow-y-auto custom-scrollbar" data-floating-panel data-floating-panel-trigger="display-settings-switch" inert aria-hidden="true">
+<div id="display-setting" class="float-panel float-panel-closed absolute transition-all w-80 right-4 px-3 pt-0 pb-3" data-floating-panel data-floating-panel-trigger="display-settings-switch" inert aria-hidden="true">
+	 <!-- 滚动内层化：毛玻璃折射层挂在面板 ::before 上，面板自身不能再滚动（否则玻璃层会跟着滚走），滚动移到内层 -->
+	<div class="max-h-[80vh] overflow-y-auto custom-scrollbar">
 	<!-- Tab Bar -->
 	{#if showTabBar}
 	<div class="flex gap-1 border-b border-black/5 dark:border-white/10 pt-3 pb-1 mb-3">
@@ -1430,6 +1488,88 @@ $effect(() => {
 			</div>
 		</div>
 		{/if}
+
+		<!-- Liquid Glass Settings Section（液态玻璃：导航栏/面板/首页标题图标共用材质，与壁纸模式无关） -->
+		{#if hasLiquidGlassSettings}
+		<div>
+			<div class="section-title">
+				{i18n(I18nKey.liquidGlassSettings)}
+				<button aria-label="Reset to Default" class="btn-regular rounded-md active:scale-90"
+						class:opacity-0={liquidGlassSettingsIsDefault} class:pointer-events-none={liquidGlassSettingsIsDefault}
+						disabled={liquidGlassSettingsIsDefault} aria-hidden={liquidGlassSettingsIsDefault ? "true" : undefined}
+						onclick={resetLiquidGlassSettings}>
+					<div class="text-(--btn-content)">
+						<Icon icon="fa7-solid:arrow-rotate-left" class="text-[0.75rem]"></Icon>
+					</div>
+				</button>
+			</div>
+			<div class="space-y-2">
+				{#if isGlassBlurSwitchable}
+				<div class="rounded-md bg-(--btn-regular-bg) p-2">
+					<div class="flex items-center justify-between mb-1">
+						<span class="text-xs font-medium text-(--btn-content) opacity-80">{i18n(I18nKey.glassBlur)}</span>
+						<span class="text-xs text-(--btn-content)">{Math.round(glassBlur)}px</span>
+					</div>
+					<input
+						aria-label={i18n(I18nKey.glassBlur)}
+						type="range"
+						min="0"
+						max="30"
+						step="1"
+						value={glassBlur}
+						oninput={(e) => {
+							glassBlur = Number((e.currentTarget as HTMLInputElement).value);
+							setNavbarGlassBlur(glassBlur);
+						}}
+						class="slider w-full"
+					/>
+				</div>
+				{/if}
+				{#if isGlassDistortionSwitchable}
+				<div class="rounded-md bg-(--btn-regular-bg) p-2">
+					<div class="flex items-center justify-between mb-1">
+						<span class="text-xs font-medium text-(--btn-content) opacity-80">{i18n(I18nKey.glassDistortion)}</span>
+						<span class="text-xs text-(--btn-content)">{Math.round(glassScale)}</span>
+					</div>
+					<input
+						aria-label={i18n(I18nKey.glassDistortion)}
+						type="range"
+						min="0"
+						max="200"
+						step="5"
+						value={glassScale}
+						oninput={(e) => {
+							glassScale = Number((e.currentTarget as HTMLInputElement).value);
+							setNavbarGlassScale(glassScale);
+						}}
+						class="slider w-full"
+					/>
+				</div>
+				{/if}
+				{#if isGlassWaveSwitchable}
+				<div class="rounded-md bg-(--btn-regular-bg) p-2">
+					<div class="flex items-center justify-between mb-1">
+						<span class="text-xs font-medium text-(--btn-content) opacity-80">{i18n(I18nKey.glassWaveDensity)}</span>
+						<span class="text-xs text-(--btn-content)">{glassFrequency.toFixed(3)}</span>
+					</div>
+					<input
+						aria-label={i18n(I18nKey.glassWaveDensity)}
+						type="range"
+						min="0.004"
+						max="0.02"
+						step="0.001"
+						value={glassFrequency}
+						oninput={(e) => {
+							glassFrequency = Number((e.currentTarget as HTMLInputElement).value);
+							setNavbarGlassFrequency(glassFrequency);
+						}}
+						class="slider w-full"
+					/>
+				</div>
+				{/if}
+			</div>
+		</div>
+		{/if}
 	{/if}
 
 	<!-- Effects Tab: 樱花 / 自定义光标 / 点击粒子 / 星尘拖尾 / 输入火焰 -->
@@ -1535,5 +1675,6 @@ $effect(() => {
 		</div>
 		{/if}
 	{/if}
+	</div>
 </div>
 {/if}

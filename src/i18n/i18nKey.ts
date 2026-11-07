@@ -544,6 +544,10 @@ enum I18nKey {
 	overlayOpacity = "overlayOpacity",
 	overlayBlur = "overlayBlur",
 	overlayCardOpacity = "overlayCardOpacity",
+	liquidGlassSettings = "liquidGlassSettings",
+	glassBlur = "glassBlur",
+	glassDistortion = "glassDistortion",
+	glassWaveDensity = "glassWaveDensity",
 
 	// 设置面板标签
 	settingsTabAppearance = "settingsTabAppearance",

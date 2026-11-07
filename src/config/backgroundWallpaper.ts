@@ -166,7 +166,8 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 			transparentMode: "semi",
 			// 毛玻璃模糊度，0 即关闭导航栏的毛玻璃
 			// 注意：导航栏子菜单与浮动面板始终保留毛玻璃，模糊度跟随此项但有最小值
-			blur: 12,
+			// 默认对齐 Liquid Glass 参考实现的 blur(3px)，可在设置面板"液态玻璃"中调节
+			blur: 3,
 		},
 	},
 	// 覆盖透明覆盖模式特有配置
@@ -192,8 +193,8 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 		navbar: {
 			// 导航栏透明模式："semi" 半透明，"semifull" 动态透明（仅首页顶部透明、下滑玻璃化；非首页均跟卡片半透明）
 			transparentMode: "semifull",
-			// 导航栏毛玻璃模糊度，0 即关闭（玻璃态生效）
-			blur: 12,
+			// 导航栏毛玻璃模糊度，0 即关闭（玻璃态生效）；默认对齐 Liquid Glass 参考实现
+			blur: 3,
 		},
 		// 首页下滑时壁纸模糊渐变开关（从 0 渐变为 overlay.blur 的最大模糊）
 		// 关闭后该设备上全屏壁纸保持清晰（首页与非首页都不模糊），设置面板的模糊度滑块也会隐藏
