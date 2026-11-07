@@ -51,12 +51,10 @@ export type BackgroundWallpaperConfig = {
 						mobile: boolean; // 移动端是否启用水波纹动画效果
 				  }; // 是否启用水波纹动画效果，支持布尔值或分别设置桌面端和移动端
 		};
-		// 壁纸液体冒泡特效配置：底部液面 + 冒泡，画在图片之上、横幅文字之下
+		// 壁纸底部冒泡动画：气泡从底部液面冒出，离开时与液面粘连融合
 		bubbles?: {
 			enable: boolean; // 默认是否开启（设置面板「壁纸」里可实时切换）
-			count?: number; // 上升气泡数量
-			size?: { min: number; max: number }; // 气泡直径范围（px）
-			opacity?: number; // 液体整体不透明度
+			count?: number; // 气泡数量，每个都是独立动画且参与滤镜融合，不宜太多
 		};
 		// 渐变过渡效果配置，当水波纹关闭时自动启用，提供壁纸底部到背景色的平滑过渡
 		gradient?: {

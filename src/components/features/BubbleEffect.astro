@@ -1,29 +1,20 @@
 ---
-// 壁纸液体气泡特效
+// 壁纸底部冒泡动画
 //
-// 参考 bootstrapmb「css3 液体冒泡」的形态：底部一滩液体，气泡从液面升起，
-// 途中互相粘连、融合成不定形的一团，顶端偶尔脱离出小水滴。
+// 参考 CodePen「CSS Gooey footer」(z- / zYxdRQy)：底部一条色带，气泡从带子里
+// 冒出来、升到一定高度后缩成 0 消失。气泡离开液面时会和色带拉丝粘连——
+// 那不是圆角做的，而是 SVG 的 alpha 阈值滤镜：feGaussianBlur 把相邻的圆糊在
+// 一起，feColorMatrix 再把 alpha 拉成硬边，两团靠近就融成一个；
+// feComposite atop 把原始色块盖回去，保证颜色是实的而不是半透明雾。
 //
-// 实现要点：粘连不是靠圆角，而是 SVG 的 alpha 阈值滤镜——
-// feGaussianBlur 把相邻圆形糊在一起，feColorMatrix 再把 alpha 拉成硬边，
-// 于是两团靠近时会「融化」成一个，这才是液体感（常见的 gooey 做法）。
-// 挂在壁纸图之上、横幅文字（z-20）之下，不吃鼠标事件。
+// 配色跟水波纹一致（--page-bg），两者在横幅底部接成一片。
 import { backgroundWallpaper } from "@/config";
 
 const cfg = backgroundWallpaper.common?.bubbles;
 const enabled = cfg?.enable ?? false;
+const count = Math.max(6, cfg?.count ?? 24);
 
-// 底部的液堆：几个大小不一的圆压在底边外，只露出上缘。
-// 相邻两个靠得够近就会被 goo 融成一片，于是液面是起伏的，而不是一条直线
-const mounds = [
-	{ x: 6, w: 520, h: 200, dur: 15, delay: 0 },
-	{ x: 28, w: 620, h: 250, dur: 18, delay: -5 },
-	{ x: 50, w: 480, h: 176, dur: 13, delay: -9 },
-	{ x: 72, w: 600, h: 236, dur: 17, delay: -2 },
-	{ x: 94, w: 540, h: 210, dur: 16, delay: -7 },
-];
-
-// 固定种子的伪随机：分布每次构建都一样，不会刷新一次变一次
+// 固定种子的伪随机：同一版本构建出来的分布稳定，不会每次刷新换一批
 function seeded(seed: number): () => number {
 	let s = seed;
 	return () => {
@@ -32,217 +23,141 @@ function seeded(seed: number): () => number {
 	};
 }
 
-const rnd = seeded(20261104);
-const blobCount = Math.max(4, cfg?.count ?? 20);
-const sizeMin = cfg?.size?.min ?? 34;
-const sizeMax = cfg?.size?.max ?? 78;
+const rnd = seeded(20261108);
 
-// 上升的气泡：横向均匀铺开再抖一点，尺寸在配置区间内随机
-const blobs = Array.from({ length: blobCount }, (_, i) => ({
-	x: Math.round(((i + 0.5) / blobCount) * 100 + (rnd() - 0.5) * 5),
-	size: Math.round(sizeMin + rnd() * (sizeMax - sizeMin)),
-	dur: Number((9 + rnd() * 3.4).toFixed(1)),
-	delay: Number((-rnd() * 8).toFixed(1)),
-	sway: Math.round((rnd() - 0.5) * 46),
-	rise: Math.round(120 + rnd() * 70),
+// 尺寸 / 上升高度 / 水平位置 / 周期 / 延迟，取值范围沿用原 pen
+const bubbles = Array.from({ length: count }, () => ({
+	size: (2 + rnd() * 4).toFixed(2),
+	distance: (6 + rnd() * 4).toFixed(2),
+	position: (-5 + rnd() * 110).toFixed(1),
+	time: (2 + rnd() * 2).toFixed(2),
+	delay: -(2 + rnd() * 2).toFixed(2),
 }));
-
-// 飘得更高、脱离液面的小水滴
-const drops = [
-	{ x: 22, size: 18, dur: 13, delay: -6, sway: 16, rise: 190 },
-	{ x: 55, size: 13, dur: 15, delay: -9, sway: -20, rise: 214 },
-	{ x: 76, size: 21, dur: 14, delay: -2, sway: 18, rise: 178 },
-];
 ---
 
 {
 	cfg && (
-		<div
-			id="wallpaper-liquid"
-			class="liquid-field"
-			aria-hidden="true"
-			data-enabled={String(enabled)}
-			style={`--liquid-opacity:${cfg.opacity ?? 0.6}`}
-		>
-			{/* 贴底的直边底衬：保证液面底部永远是平口，不会在两端露出圆角缺口 */}
-			<div class="liquid-base" />
-			{mounds.map((m) => (
-				<span
-					class="liquid-mound"
-					style={`--x:${m.x}%;--w:${m.w}px;--h:${m.h}px;--dur:${m.dur}s;--delay:${m.delay}s`}
-				/>
-			))}
-			{blobs.map((b) => (
-				<span
-					class="liquid-blob"
-					style={`--x:${b.x}%;--size:${b.size}px;--dur:${b.dur}s;--delay:${b.delay}s;--sway:${b.sway}px;--rise:${b.rise}px`}
-				/>
-			))}
-			{drops.map((d) => (
-				<span
-					class="liquid-blob liquid-blob--drop"
-					style={`--x:${d.x}%;--size:${d.size}px;--dur:${d.dur}s;--delay:${d.delay}s;--sway:${d.sway}px;--rise:${d.rise}px`}
-				/>
-			))}
-		</div>
+		<>
+			<div
+				id="wallpaper-liquid"
+				class="bubble-field"
+				data-enabled={String(enabled)}
+				aria-hidden="true"
+			>
+				<div class="bubble-field__surface">
+					{bubbles.map((b) => (
+						<span
+							class="bubble-field__bubble"
+							style={`--size:${b.size}rem;--distance:${b.distance}rem;--position:${b.position}%;--time:${b.time}s;--delay:${b.delay}s`}
+						/>
+					))}
+				</div>
+			</div>
+
+			{/* goo 滤镜定义：尺寸为 0，只给上面那层引用 */}
+			<svg class="bubble-field__defs" aria-hidden="true" focusable="false">
+				<defs>
+					{/* 滤镜区域要放大，否则升到 10rem 高的气泡会被 region 裁掉 */}
+					<filter
+						id="bubble-blob"
+						x="-20%"
+						y="-1500%"
+						width="140%"
+						height="3100%"
+						color-interpolation-filters="sRGB"
+					>
+						<feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+						<feColorMatrix
+							in="blur"
+							mode="matrix"
+							values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
+							result="blob"
+						/>
+						<feComposite in="SourceGraphic" in2="blob" operator="atop" />
+					</filter>
+				</defs>
+			</svg>
+		</>
 	)
 }
 
-<!-- 粘连滤镜：模糊 → 拉高 alpha 对比度，相邻圆形自然融成一团 -->
-<svg class="liquid-filter-svg" aria-hidden="true" focusable="false">
-	<defs>
-		<filter
-			id="wallpaper-goo"
-			x="-15%"
-			y="-30%"
-			width="130%"
-			height="160%"
-			color-interpolation-filters="sRGB"
-		>
-			<feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
-			<feColorMatrix
-				in="blur"
-				type="matrix"
-				values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 34 -15"
-			/>
-		</filter>
-	</defs>
-</svg>
-
 <style>
-	.liquid-filter-svg {
-		position: absolute;
-		width: 0;
-		height: 0;
-		overflow: hidden;
-	}
-
-	.liquid-field {
-		position: absolute;
-		inset: auto 0 0 0;
-		z-index: 15;
-		height: clamp(160px, 36%, 320px);
-		overflow: hidden;
-		pointer-events: none;
-		filter: url("#wallpaper-goo");
-		opacity: var(--liquid-opacity, 0.82);
-		/* 配色跟水波纹一致：波浪填充用的就是 --page-bg，液体同色才会和页面接成一体 */
-		--liquid: var(--page-bg, #f8f9fe);
-		transition: opacity 0.4s ease;
-	}
-
-
-	/* 贴底的直边底衬 */
-	.liquid-base {
+	.bubble-field {
 		position: absolute;
 		left: 0;
 		right: 0;
 		bottom: 0;
-		height: 30%;
-		background: var(--liquid);
+		height: 1rem;
+		pointer-events: none;
+		/* 与水波纹同色：波浪画布填的就是 --page-bg，两者在底部接成一片 */
+		--bubble-color: var(--page-bg, #f8f9fe);
+		transition: opacity 0.35s ease;
 	}
 
-	/* 底部的液堆：几个大圆压在底边外，只露出上缘。
-	   相邻两个靠得够近就被 goo 融成一片，于是液面起伏而非一条直线 */
-	.liquid-mound {
+	/* 底部那条「液面」。气泡是它的子元素，才会被同一层滤镜一起融合 */
+	.bubble-field__surface {
 		position: absolute;
-		bottom: calc(var(--h) * -0.62);
-		left: var(--x);
-		width: var(--w);
-		height: var(--h);
-		margin-left: calc(var(--w) / -2);
-		background: var(--liquid);
-		border-radius: 50%;
-		animation: liquid-pool-bob var(--dur) ease-in-out var(--delay) infinite
-			alternate;
+		inset: 0;
+		background: var(--bubble-color);
+		filter: url("#bubble-blob");
 	}
 
-	.liquid-blob {
+	.bubble-field__bubble {
 		position: absolute;
-		bottom: 16%;
-		left: var(--x);
-		width: var(--size);
-		height: var(--size);
-		margin-left: calc(var(--size) / -2);
-		background: var(--liquid);
-		border-radius: 50%;
-		will-change: transform, opacity;
-		animation: liquid-rise var(--dur) cubic-bezier(0.42, 0, 0.58, 1) var(--delay)
-			infinite;
+		left: var(--position, 50%);
+		background: var(--bubble-color);
+		border-radius: 100%;
+		transform: translate(-50%, 100%);
+		animation:
+			bubble-field-size var(--time, 4s) ease-in infinite var(--delay, 0s),
+			bubble-field-move var(--time, 4s) ease-in infinite var(--delay, 0s);
 	}
 
-	.liquid-blob--drop {
-		bottom: 26%;
-		animation-name: liquid-drop-rise;
-		animation-timing-function: ease-in-out;
-	}
-
-	@keyframes liquid-rise {
-		0% {
-			transform: translate3d(0, 34px, 0) scale(0.5);
-			opacity: 0;
-		}
-		12% {
-			opacity: 1;
-		}
-		45% {
-			transform: translate3d(calc(var(--sway) * 0.55), calc(var(--rise) * -0.55), 0)
-				scale(1);
-		}
-		82% {
-			opacity: 1;
-		}
-		100% {
-			transform: translate3d(var(--sway), calc(var(--rise) * -1), 0) scale(0.6);
-			opacity: 0;
-		}
-	}
-
-	@keyframes liquid-drop-rise {
-		0% {
-			transform: translate3d(0, 12px, 0) scale(0.4);
-			opacity: 0;
-		}
-		20% {
-			opacity: 1;
-		}
+	@keyframes bubble-field-size {
+		0%,
 		75% {
-			opacity: 0.9;
+			width: var(--size, 4rem);
+			height: var(--size, 4rem);
 		}
 		100% {
-			transform: translate3d(var(--sway), calc(var(--rise) * -1), 0) scale(0.85);
-			opacity: 0;
+			width: 0;
+			height: 0;
 		}
 	}
 
-	@keyframes liquid-pool-bob {
+	@keyframes bubble-field-move {
 		0% {
-			transform: translate3d(-1.5%, 0, 0) scaleY(1);
+			bottom: -4rem;
 		}
 		100% {
-			transform: translate3d(1.5%, -7px, 0) scaleY(1.08);
+			bottom: var(--distance, 10rem);
 		}
+	}
+
+	.bubble-field__defs {
+		position: absolute;
+		width: 0;
+		height: 0;
+		overflow: hidden;
+		pointer-events: none;
+	}
+
+	/* 设置面板关掉：整块收起，连滤镜计算一起停掉 */
+	.bubble-field.is-off {
+		opacity: 0;
+		visibility: hidden;
 	}
 
 	/* 滚出视口或标签页隐藏时暂停 */
-	.liquid-field.is-paused,
-	.liquid-field.is-paused .liquid-mound,
-	.liquid-field.is-paused .liquid-blob {
+	.bubble-field.is-paused .bubble-field__bubble {
 		animation-play-state: paused;
 	}
 
-	.liquid-field.is-off {
-		opacity: 0;
-	}
-
+	/* 尊重「减少动态效果」：只留底部那条液面，不起泡 */
 	@media (prefers-reduced-motion: reduce) {
-		.liquid-mound,
-		.liquid-blob {
+		.bubble-field__bubble {
 			animation: none;
-		}
-
-		.liquid-blob {
-			opacity: 0.75;
+			opacity: 0;
 		}
 	}
 </style>

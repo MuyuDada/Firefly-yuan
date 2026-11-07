@@ -130,17 +130,13 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 				mobile: true,
 			},
 		},
-		// 液体冒泡特效：底部一滩液体 + 气泡升起，气泡与液面会粘连融合
+		// 冒泡动画：底部一条液面，气泡从里面冒出来再缩没，离开时和液面拉丝粘连
 		// 设置面板「壁纸」里有开关，可实时启停（localStorage: bubbleEnabled）
 		bubbles: {
 			// 默认是否开启；访客在设置面板里手动关掉后，以自己的选择为准
 			enable: true,
-			// 上升气泡数量
-			count: 20,
-			// 气泡直径范围（px）
-			size: { min: 34, max: 78 },
-			// 液体整体不透明度，越小越淡
-			opacity: 0.55,
+			// 气泡数量。每个都是一个独立动画 + 参与滤镜融合，不宜太多
+			count: 24,
 		},
 		// 渐变过渡效果配置，当水波纹关闭时自动启用，提供壁纸底部到背景色的平滑过渡
 		gradient: {
