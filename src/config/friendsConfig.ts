@@ -263,6 +263,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 95,
 		enabled: true,
 	},
+	{
+		title: "一只喵⁹ 作者名称:LuvGaze",
+		imgurl: "https://luvgaze.com/favicon.ico",
+		desc: "❀ 等风听雨 ︱ 梅花落 ❀",
+		siteurl: "https://luvgaze.com",
+		tags: ["Blog"],
+		weight: 8,
+		enabled: true,
+	},
 	// {
 	// 	title: "Firefly Docs",
 	// 	imgurl: "https://docs-firefly.cuteleaf.cn/logo.png",
