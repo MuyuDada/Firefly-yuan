@@ -1093,7 +1093,7 @@ $effect(() => {
 				>
 					<Icon icon="material-symbols:border-outer-rounded" class="text-[1.25rem] shrink-0"></Icon>
 					<span class="text-sm flex-1">{i18n(I18nKey.cardBorder)}</span>
-					<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+					<div class="settings-toggle-track w-10 h-5 rounded-full transition-all duration-200 relative"
 						 class:bg-(--primary)={cardBorderEnabled}
 						 class:bg-(--btn-regular-bg-active)={!cardBorderEnabled}>
 						<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
@@ -1110,7 +1110,7 @@ $effect(() => {
 				>
 					<Icon icon="material-symbols:palette" class="text-[1.25rem] shrink-0"></Icon>
 					<span class="text-sm flex-1">{i18n(I18nKey.cardFollowTheme)}</span>
-					<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+					<div class="settings-toggle-track w-10 h-5 rounded-full transition-all duration-200 relative"
 						 class:bg-(--primary)={cardFollowThemeEnabled}
 						 class:bg-(--btn-regular-bg-active)={!cardFollowThemeEnabled}>
 						<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
@@ -1228,19 +1228,18 @@ $effect(() => {
 			<div class="mt-2">
 				<div class="text-xs text-(--content-meta) mb-1 flex items-center justify-between">
 					<span>{i18n(I18nKey.textureOpacity)}</span>
-					<span class="transition bg-(--btn-regular-bg) rounded-md px-2 font-bold text-(--btn-content)">
+					<span class="transition bg-(--btn-regular-bg) rounded-full px-2 py-0.5 font-bold text-(--btn-content)">
 						{Math.round(textureOpacity * 100)}%
 					</span>
 				</div>
-				<div class="w-full h-6 px-1 bg-(--btn-regular-bg) rounded-md select-none">
+				<div class="w-full py-1 select-none">
 					<input
 						aria-label={i18n(I18nKey.textureOpacity)}
 						type="range"
 						min="0"
 						max="100"
 						step="1"
-						class="slider"
-						style="width: 100%"
+						class="slider w-full"
 						value={Math.round(textureOpacity * 100)}
 						oninput={(e) => { textureOpacity = Number(e.currentTarget.value) / 100; }}
 						onchange={(e) => setTextureOpacity(Number(e.currentTarget.value) / 100)}
@@ -1356,13 +1355,13 @@ $effect(() => {
 					</div>
 				</button>
 			</div>
-			<div class="space-y-2">
+			<div class="space-y-1">
 				{#each overlaySliderItems as item (item.key)}
 					{#if item.enabled}
-						<div class="rounded-md bg-(--btn-regular-bg) p-2">
-							<div class="flex items-center justify-between mb-1">
+						<div class="py-1">
+							<div class="flex items-center justify-between mb-1.5">
 								<span class="text-xs font-medium text-(--btn-content) opacity-80">{item.label}</span>
-								<span class="text-xs text-(--btn-content)">{item.displayValue}</span>
+								<span class="text-xs font-bold text-(--btn-content) bg-(--btn-regular-bg) rounded-full px-2 py-0.5">{item.displayValue}</span>
 							</div>
 							<input
 								aria-label={item.ariaLabel}
@@ -1372,7 +1371,7 @@ $effect(() => {
 								step={item.step}
 								value={item.value}
 								oninput={(e) => item.onValueChange(Number((e.currentTarget as HTMLInputElement).value))}
-								class="slider w-full overlay-slider"
+								class="slider w-full"
 							/>
 						</div>
 					{/if}
@@ -1404,7 +1403,7 @@ $effect(() => {
 				>
 					<Icon icon="material-symbols:titlecase-rounded" class="text-[1.25rem] shrink-0"></Icon>
 					<span class="text-sm flex-1">{i18n(I18nKey.wallpaperTitle)}</span>
-					<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+					<div class="settings-toggle-track w-10 h-5 rounded-full transition-all duration-200 relative"
 						 class:bg-(--primary)={bannerTitleEnabled}
 						 class:bg-(--btn-regular-bg-active)={!bannerTitleEnabled}>
 						<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
@@ -1422,7 +1421,7 @@ $effect(() => {
 				>
 					<Icon icon="material-symbols:view-carousel-outline" class="text-[1.25rem] shrink-0"></Icon>
 					<span class="text-sm flex-1">{i18n(I18nKey.wallpaperCarousel)}</span>
-					<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+					<div class="settings-toggle-track w-10 h-5 rounded-full transition-all duration-200 relative"
 						 class:bg-(--primary)={bannerCarouselEnabled}
 						 class:bg-(--btn-regular-bg-active)={!bannerCarouselEnabled}>
 						<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
@@ -1440,7 +1439,7 @@ $effect(() => {
 				>
 					<Icon icon="material-symbols:airwave-rounded" class="text-[1.25rem] shrink-0"></Icon>
 					<span class="text-sm flex-1">{i18n(I18nKey.wavesAnimation)}</span>
-					<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+					<div class="settings-toggle-track w-10 h-5 rounded-full transition-all duration-200 relative"
 						 class:bg-(--primary)={wavesEnabled}
 						 class:bg-(--btn-regular-bg-active)={!wavesEnabled}>
 						<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
@@ -1458,7 +1457,7 @@ $effect(() => {
 				>
 					<Icon icon="material-symbols:bubbles-rounded" class="text-[1.25rem] shrink-0"></Icon>
 					<span class="text-sm flex-1">{i18n(I18nKey.bubbleEffect)}</span>
-					<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+					<div class="settings-toggle-track w-10 h-5 rounded-full transition-all duration-200 relative"
 						 class:bg-(--primary)={bubbleEnabled}
 						 class:bg-(--btn-regular-bg-active)={!bubbleEnabled}>
 						<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
@@ -1476,7 +1475,7 @@ $effect(() => {
 				>
 					<Icon icon="material-symbols:gradient" class="text-[1.25rem] shrink-0"></Icon>
 					<span class="text-sm flex-1">{i18n(I18nKey.gradientTransition)}</span>
-					<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+					<div class="settings-toggle-track w-10 h-5 rounded-full transition-all duration-200 relative"
 						 class:bg-(--primary)={gradientEnabled}
 						 class:bg-(--btn-regular-bg-active)={!gradientEnabled}>
 						<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
@@ -1503,12 +1502,12 @@ $effect(() => {
 					</div>
 				</button>
 			</div>
-			<div class="space-y-2">
+			<div class="space-y-1">
 				{#if isGlassBlurSwitchable}
-				<div class="rounded-md bg-(--btn-regular-bg) p-2">
-					<div class="flex items-center justify-between mb-1">
+				<div class="py-1">
+					<div class="flex items-center justify-between mb-1.5">
 						<span class="text-xs font-medium text-(--btn-content) opacity-80">{i18n(I18nKey.glassBlur)}</span>
-						<span class="text-xs text-(--btn-content)">{Math.round(glassBlur)}px</span>
+						<span class="text-xs font-bold text-(--btn-content) bg-(--btn-regular-bg) rounded-full px-2 py-0.5">{Math.round(glassBlur)}px</span>
 					</div>
 					<input
 						aria-label={i18n(I18nKey.glassBlur)}
@@ -1526,10 +1525,10 @@ $effect(() => {
 				</div>
 				{/if}
 				{#if isGlassDistortionSwitchable}
-				<div class="rounded-md bg-(--btn-regular-bg) p-2">
-					<div class="flex items-center justify-between mb-1">
+				<div class="py-1">
+					<div class="flex items-center justify-between mb-1.5">
 						<span class="text-xs font-medium text-(--btn-content) opacity-80">{i18n(I18nKey.glassDistortion)}</span>
-						<span class="text-xs text-(--btn-content)">{Math.round(glassScale)}</span>
+						<span class="text-xs font-bold text-(--btn-content) bg-(--btn-regular-bg) rounded-full px-2 py-0.5">{Math.round(glassScale)}</span>
 					</div>
 					<input
 						aria-label={i18n(I18nKey.glassDistortion)}
@@ -1547,10 +1546,10 @@ $effect(() => {
 				</div>
 				{/if}
 				{#if isGlassWaveSwitchable}
-				<div class="rounded-md bg-(--btn-regular-bg) p-2">
-					<div class="flex items-center justify-between mb-1">
+				<div class="py-1">
+					<div class="flex items-center justify-between mb-1.5">
 						<span class="text-xs font-medium text-(--btn-content) opacity-80">{i18n(I18nKey.glassWaveDensity)}</span>
-						<span class="text-xs text-(--btn-content)">{glassFrequency.toFixed(3)}</span>
+						<span class="text-xs font-bold text-(--btn-content) bg-(--btn-regular-bg) rounded-full px-2 py-0.5">{glassFrequency.toFixed(3)}</span>
 					</div>
 					<input
 						aria-label={i18n(I18nKey.glassWaveDensity)}
@@ -1595,7 +1594,7 @@ $effect(() => {
 			>
 				<Icon icon="mdi:cursor-default-click-outline" class="text-[1.25rem] shrink-0"></Icon>
 				<span class="text-sm flex-1">{i18n(I18nKey.customCursor)}</span>
-				<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+				<div class="settings-toggle-track w-10 h-5 rounded-full transition-all duration-200 relative"
 					 class:bg-(--primary)={cursorEnabled}
 					 class:bg-(--btn-regular-bg-active)={!cursorEnabled}>
 					<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
@@ -1612,7 +1611,7 @@ $effect(() => {
 			>
 				<Icon icon="mdi:party-popper" class="text-[1.25rem] shrink-0"></Icon>
 				<span class="text-sm flex-1">{i18n(I18nKey.clickParticleEffect)}</span>
-				<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+				<div class="settings-toggle-track w-10 h-5 rounded-full transition-all duration-200 relative"
 					 class:bg-(--primary)={clickParticleEnabled}
 					 class:bg-(--btn-regular-bg-active)={!clickParticleEnabled}>
 					<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
@@ -1629,7 +1628,7 @@ $effect(() => {
 			>
 				<Icon icon="mdi:star-four-points-outline" class="text-[1.25rem] shrink-0"></Icon>
 				<span class="text-sm flex-1">{i18n(I18nKey.fairyDustEffect)}</span>
-				<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+				<div class="settings-toggle-track w-10 h-5 rounded-full transition-all duration-200 relative"
 					 class:bg-(--primary)={fairyDustEnabled}
 					 class:bg-(--btn-regular-bg-active)={!fairyDustEnabled}>
 					<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
@@ -1646,7 +1645,7 @@ $effect(() => {
 			>
 				<Icon icon="mdi:fire" class="text-[1.25rem] shrink-0"></Icon>
 				<span class="text-sm flex-1">{i18n(I18nKey.inputFireEffect)}</span>
-				<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+				<div class="settings-toggle-track w-10 h-5 rounded-full transition-all duration-200 relative"
 					 class:bg-(--primary)={inputFireEnabled}
 					 class:bg-(--btn-regular-bg-active)={!inputFireEnabled}>
 					<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
@@ -1663,7 +1662,7 @@ $effect(() => {
 			>
 				<Icon icon="mdi:flower-poppy" class="text-[1.25rem] shrink-0"></Icon>
 				<span class="text-sm flex-1">{i18n(I18nKey.sakuraEffect)}</span>
-				<div class="w-10 h-5 rounded-full transition-all duration-200 relative"
+				<div class="settings-toggle-track w-10 h-5 rounded-full transition-all duration-200 relative"
 					 class:bg-(--primary)={sakuraEnabled}
 					 class:bg-(--btn-regular-bg-active)={!sakuraEnabled}>
 					<div class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200"

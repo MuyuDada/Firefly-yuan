@@ -30,7 +30,8 @@ html.is-page-transitioning .banner-home-text-overlay {
 
 .banner-subtitle {
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
-    animation: banner-fadeInUp 0.3s ease-out 0.3s both;
+    /* backwards 填充：结束后回归基础态（无 transform 残留，玻璃采样不受影响） */
+    animation: banner-fadeInUp 0.3s ease-out 0.3s backwards;
 }
 
 @keyframes banner-fadeInUp {
@@ -40,7 +41,9 @@ html.is-page-transitioning .banner-home-text-overlay {
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        /* 以 none 结束：both 填充的 transform 残留会让标题图标的玻璃层
+           采样不到壁纸（同 transition.css 的说明） */
+        transform: none;
     }
 }
 
@@ -346,7 +349,8 @@ html.is-page-transitioning .banner-home-text-overlay {
 
 /* 首页横幅标题下方的链接图标行（半透明圆按钮） */
 .banner-links {
-    animation: banner-fadeInUp 0.3s ease-out 0.5s both;
+    /* backwards 填充：结束后回归基础态（无 transform 残留，玻璃采样不受影响） */
+    animation: banner-fadeInUp 0.3s ease-out 0.5s backwards;
 }
 
 .banner-link {

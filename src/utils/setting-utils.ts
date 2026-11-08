@@ -451,6 +451,11 @@ export function updateNavbarTransparency(mode: WALLPAPER_MODE): void {
 	const effectiveBlur =
 		blurAmount > 0 && storedGlassBlur !== null ? storedGlassBlur : blurAmount;
 	navbar.style.setProperty("--navbar-glass-blur", `${effectiveBlur}px`);
+	// 镜像到 :root：卡片等导航栏外的玻璃面读同一个模糊度（全站玻璃统一）
+	document.documentElement.style.setProperty(
+		"--navbar-glass-blur",
+		`${effectiveBlur}px`,
+	);
 	// 同步玻璃面开关与折射总开关（Swup 切页 / 模式切换后保持一致）
 	const glassOn = effectiveBlur > 0;
 	navbar.setAttribute("data-glass", glassOn ? "on" : "off");
@@ -786,6 +791,11 @@ export function applyNavbarGlassBlurToDocument(blur: number): void {
 	const safeBlur = clampNumber(blur, 0, NAVBAR_GLASS_MAX_BLUR);
 	const navbar = document.getElementById("navbar");
 	navbar?.style.setProperty("--navbar-glass-blur", `${safeBlur}px`);
+	// 镜像到 :root：卡片等导航栏外的玻璃面读同一个模糊度（全站玻璃统一）
+	document.documentElement.style.setProperty(
+		"--navbar-glass-blur",
+		`${safeBlur}px`,
+	);
 	// 面板毛玻璃跟随调节，带 2px 最小值（与 Layout.astro 的 SSR 注入规则一致）
 	document.documentElement.style.setProperty(
 		"--navbar-panel-blur",
@@ -809,17 +819,16 @@ export function applyNavbarGlassParamsToDocument(
 		NAVBAR_GLASS_MIN_FREQUENCY,
 		NAVBAR_GLASS_MAX_FREQUENCY,
 	);
-	const turbulence = document.querySelector(
-		"#navbar-glass-distortion feTurbulence",
-	);
-	turbulence?.setAttribute(
-		"baseFrequency",
-		`${safeFrequency} ${safeFrequency.toFixed(4)}`,
-	);
-	const displacement = document.querySelector(
-		"#navbar-glass-distortion feDisplacementMap",
-	);
-	displacement?.setAttribute("scale", String(Math.round(safeScale)));
+	// 同步导航栏滤镜（卡片的液态折射由壁纸层承担，共用这组参数）
+	for (const id of ["navbar-glass-distortion"]) {
+		const turbulence = document.querySelector(`#${id} feTurbulence`);
+		turbulence?.setAttribute(
+			"baseFrequency",
+			`${safeFrequency} ${safeFrequency.toFixed(4)}`,
+		);
+		const displacement = document.querySelector(`#${id} feDisplacementMap`);
+		displacement?.setAttribute("scale", String(Math.round(safeScale)));
+	}
 	const glassOn =
 		document.getElementById("navbar")?.getAttribute("data-glass") === "on";
 	applyNavbarGlassDistortionFlag(glassOn);

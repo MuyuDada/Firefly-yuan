@@ -135,12 +135,19 @@ const logoVariants = await Promise.all(
 <svg aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute">
     <defs>
         <!-- 液态玻璃折射滤镜（参数对齐 lucasromerodb 的 Liquid Glass 参考）：
-             feTurbulence 生成噪声 → feGaussianBlur 平滑成位移图 → feDisplacementMap 扭曲毛玻璃背景。
-             scale 越大扭曲越强，baseFrequency 越小波纹越宽缓；设置面板滑块的默认值与此处保持一致。 -->
+             feTurbulence 生成噪声 → feGaussianBlur 平滑 → feComponentTransfer 拉大噪声对比度
+             （否则位移图集中在 0.5 附近，同等 scale 下折射几乎不可见，
+             尤其全屏模式下滑后壁纸自带模糊）→ feDisplacementMap 扭曲毛玻璃背景。
+             scale 越大扭曲越强，baseFrequency 越小波纹越宽缓；设置面板滑块默认值与此处一致。 -->
+        <!-- 导航栏滤镜（静态，保持稳定；卡片的液态折射由壁纸层统一承担，见 main.css） -->
         <filter id="navbar-glass-distortion" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
             <feTurbulence type="fractalNoise" baseFrequency="0.01 0.01" numOctaves="1" seed="5" result="noise" />
             <feGaussianBlur in="noise" stdDeviation="3" result="soft-noise" />
-            <feDisplacementMap in="SourceGraphic" in2="soft-noise" scale="150" xChannelSelector="R" yChannelSelector="G" />
+            <feComponentTransfer in="soft-noise" result="displacement-map">
+                <feFuncR type="linear" slope="3.5" intercept="-1.25" />
+                <feFuncG type="linear" slope="3.5" intercept="-1.25" />
+            </feComponentTransfer>
+            <feDisplacementMap in="SourceGraphic" in2="displacement-map" scale="150" xChannelSelector="R" yChannelSelector="G" />
         </filter>
     </defs>
 </svg>
@@ -196,6 +203,8 @@ const logoVariants = await Promise.all(
         }
         navbar.setAttribute("data-transparent-mode", mode);
         navbar.style.setProperty("--navbar-glass-blur", `${blur}px`);
+        // 镜像到 :root：卡片等导航栏外的玻璃面读同一个模糊度（全站玻璃统一）
+        document.documentElement.style.setProperty("--navbar-glass-blur", `${blur}px`);
         // 同步玻璃面开关：blur 是否大于 0
         const glassOn = blur > 0;
         navbar.setAttribute("data-glass", glassOn ? "on" : "off");
@@ -203,10 +212,12 @@ const logoVariants = await Promise.all(
         // 默认值与 SVG 标记及 setting-utils 常量保持一致（对齐 Liquid Glass 参考）
         const scale = storedScale !== null ? clamp(storedScale, 0, 200) : 150;
         const freq = storedFreq !== null ? clamp(storedFreq, 0.002, 0.03) : 0.01;
-        const turb = document.querySelector("#navbar-glass-distortion feTurbulence");
-        if (turb) turb.setAttribute("baseFrequency", `${freq} ${freq.toFixed(4)}`);
-        const disp = document.querySelector("#navbar-glass-distortion feDisplacementMap");
-        if (disp) disp.setAttribute("scale", String(Math.round(scale)));
+        for (const id of ["navbar-glass-distortion"]) {
+          const turb = document.querySelector(`#${id} feTurbulence`);
+          if (turb) turb.setAttribute("baseFrequency", `${freq} ${freq.toFixed(4)}`);
+          const disp = document.querySelector(`#${id} feDisplacementMap`);
+          if (disp) disp.setAttribute("scale", String(Math.round(scale)));
+        }
         document.documentElement.setAttribute(
           "data-glass-distortion",
           glassOn && scale > 0 ? "on" : "off",
@@ -221,8 +232,9 @@ const logoVariants = await Promise.all(
         className,
         "overflow-visible! h-18 px-4"
     ]}>
-        <div class="mx-auto h-full w-full max-w-(--page-width) grid grid-cols-[auto_minmax(0,1fr)_auto] items-center">
-            <a href={url('/')} class="btn-plain scale-animation rounded-lg h-13 px-3 md:px-5 font-bold active:scale-95">
+    <div class="mx-auto h-full w-full max-w-(--page-width) grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+        <div class="navbar-island navbar-island--glass flex items-center px-1.5 col-start-1">
+            <a href={url('/')} class="btn-plain scale-animation rounded-full h-10 px-3 font-bold active:scale-95">
                 <div class:list={[
                     "flex flex-row items-center text-md",
                     siteConfig.navbar.followTheme ? "text-(--primary)" : "dark:text-white text-black"
@@ -251,17 +263,18 @@ const logoVariants = await Promise.all(
                     {navbarTitle}
                 </div>
             </a>
-            <div class:list={[
-                "hidden lg:flex items-center space-x-1 col-start-2",
-                isNavbarMenuCentered
-                    ? "justify-center"
-                    : "justify-start pl-2"
-            ]}>
-                {links.map((l) => {
-                    return <DropdownMenu link={l} />;
-                })}
-            </div>
-            <div class="flex col-start-3 justify-self-end">
+        </div>
+        <div class:list={[
+            "navbar-island navbar-island--glass hidden lg:flex items-center space-x-1 col-start-2 px-2",
+            isNavbarMenuCentered
+                ? "justify-center"
+                : "justify-start pl-2"
+        ]}>
+            {links.map((l) => {
+                return <DropdownMenu link={l} />;
+            })}
+        </div>
+        <div class="navbar-island navbar-island--glass flex col-start-3 justify-self-end items-center px-1.5">
                 <!--<SearchPanel client:load>-->
                 <Search
                     client:load

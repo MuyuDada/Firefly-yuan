@@ -73,7 +73,10 @@ html.is-animating .transition-swup-fade {
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        /* 以 none 结束：fill-mode: forwards 会在元素上残留 translateY(0)，
+           带 transform 的祖先会成为 backdrop root，导致卡片内
+           backdrop-filter / 折射滤镜采样不到壁纸（玻璃失效） */
+        transform: none;
     }
 }
 
@@ -82,8 +85,10 @@ html.is-animating .transition-swup-fade {
    -------------------------------------------------------------------------- */
 
 .onload-animation {
-    opacity: 0;
-    animation: fade-in-up 120ms ease-out forwards;
+    /* 基础态即最终态（无 transform 残留）：transformed 祖先会成为 backdrop root，
+       令卡片内 backdrop-filter/折射采样不到壁纸。用 backwards 填充覆盖入场延迟。 */
+    opacity: 1;
+    animation: fade-in-up 120ms ease-out backwards;
 }
 
 /* 渐进式动画延迟 */
