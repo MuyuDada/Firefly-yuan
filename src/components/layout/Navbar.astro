@@ -265,10 +265,10 @@ const logoVariants = await Promise.all(
             </a>
         </div>
         <div class:list={[
-            "navbar-island navbar-island--glass hidden lg:flex items-center space-x-1 col-start-2 px-2",
+            "navbar-island navbar-island--glass hidden lg:flex items-center space-x-1 col-start-2 px-2 w-fit max-w-full",
             isNavbarMenuCentered
-                ? "justify-center"
-                : "justify-start pl-2"
+                ? "justify-self-center"
+                : "justify-self-start pl-2"
         ]}>
             {links.map((l) => {
                 return <DropdownMenu link={l} />;
