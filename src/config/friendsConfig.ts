@@ -272,6 +272,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 8,
 		enabled: true,
 	},
+	{
+		title: "清吾",
+		imgurl: "https://www.qingwu.ink/images/avatar.jpg",
+		desc: "写技术、记生活。一个温馨二次元的小屋,属于自己的小角落。",
+		siteurl: "https://www.qingwu.ink",
+		tags: ["Blog"],
+		weight: 15,
+		enabled: true,
+	},
 	// {
 	// 	title: "Firefly Docs",
 	// 	imgurl: "https://docs-firefly.cuteleaf.cn/logo.png",
