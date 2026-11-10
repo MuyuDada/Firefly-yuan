@@ -281,6 +281,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 15,
 		enabled: true,
 	},
+	{
+		title: "Alex の Blog 或 RAGNote",
+		imgurl: "https://ragnote.top/Avatar.png",
+		desc: "Life is code. I will debug it.",
+		siteurl: "https://www.ragnote.top",
+		tags: ["Blog"],
+		weight: 16,
+		enabled: true,
+	},
 	// {
 	// 	title: "Firefly Docs",
 	// 	imgurl: "https://docs-firefly.cuteleaf.cn/logo.png",
