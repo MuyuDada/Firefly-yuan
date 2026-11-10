@@ -91,6 +91,9 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 			// 音乐可视化
 			LinkPresets.Music,
 
+			// Folia 音乐播放器
+			LinkPresets.FoliaMusic,
+
 			// 哔哩哔哩追番
 			LinkPresets.Bilibili,
 
@@ -155,6 +158,12 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 				url: "https://muyuimg.cc.cd",
 				external: true,
 				icon: "material-symbols:photo-library",
+			},
+			{
+				name: "Folia音乐播放器",
+				url: "https://music.muyudada.dpdns.org",
+				external: true,
+				icon: "material-symbols:music-note-rounded",
 			},
 			{
 				name: "站点检测",
@@ -240,6 +249,12 @@ export const LinkPresets: Record<string, NavBarLink> = {
 		url: "/music/",
 		icon: "material-symbols:music-note-rounded",
 		pageKey: "music",
+	},
+	FoliaMusic: {
+		name: "Folia音乐播放器",
+		url: "https://music.muyudada.dpdns.org",
+		icon: "material-symbols:music-note-rounded",
+		pageKey: "folia-music",
 	},
 	Calendar: {
 		name: "站点日历",
