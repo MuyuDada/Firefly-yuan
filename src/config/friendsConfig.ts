@@ -282,7 +282,7 @@ export const friendsConfig: FriendLink[] = [
 		enabled: true,
 	},
 	{
-		title: "Alex の Blog 或 RAGNote",
+		title: "Alex の Blog",
 		imgurl: "https://ragnote.top/Avatar.png",
 		desc: "Life is code. I will debug it.",
 		siteurl: "https://www.ragnote.top",
