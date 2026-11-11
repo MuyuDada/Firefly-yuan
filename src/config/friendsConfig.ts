@@ -290,6 +290,33 @@ export const friendsConfig: FriendLink[] = [
 		weight: 16,
 		enabled: true,
 	},
+	{
+		title: "二次元宅男录",
+		imgurl: "https://li8.me/avatar.png",
+		desc: "记录技术与生活",
+		siteurl: "https://li8.me",
+		tags: ["Blog"],
+		weight: 17,
+		enabled: true,
+	},
+	{
+		title: "luoluo.BLOG",
+		imgurl: "https://www.ishana.cn/logo/1.webp",
+		desc: "记一些无用的日常，和有光的时刻",
+		siteurl: "https://www.ishana.cn/",
+		tags: ["Blog"],
+		weight: 18,
+		enabled: true,
+	},
+	{
+		title: "alimey. 的个人主页",
+		imgurl: "https://www.alimeylab.com/Head.png",
+		desc: "在天际线的彼方，心绪飘忽轻吟。",
+		siteurl: "https://www.alimeylab.com/",
+		tags: ["Blog"],
+		weight: 19,
+		enabled: true,
+	}
 	// {
 	// 	title: "Firefly Docs",
 	// 	imgurl: "https://docs-firefly.cuteleaf.cn/logo.png",
