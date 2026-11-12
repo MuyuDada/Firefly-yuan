@@ -46,6 +46,11 @@ export const friendsPageConfig: FriendsPageConfig = {
 	// 访客不用再去评论区贴模板。留空则退回「复制模板 → 评论区留言」的老流程。
 	applyApi: "https://friends-hook.muyudada.dpdns.org",
 
+	// 构建时把审核页「通过」的友链从 applyApi 的 /api/links 拉回来，合并到上面的手工列表之后。
+	// 审核页点通过后 Worker 会触发一次 Vercel 重建，重建完就真上线（需要 Worker 那边配 DEPLOY_HOOK_URL）。
+	// 拉取失败只会少几条自动收录，不影响构建；设为 false 就只显示手工维护的列表。
+	autoLinks: true,
+
 	// 弹窗中的「本站信息」，供访客一键复制用于互换友链
 	siteInfo: {
 		name: "Muyu の 小窝",

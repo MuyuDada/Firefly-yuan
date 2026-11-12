@@ -14,6 +14,7 @@ import {
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { fetchApprovedFriends, mergeFriends } from "@/utils/friends-links";
 import "@/styles/pages/common.css";
 import "@/styles/pages/friends.css";
 import "@/styles/components/friend-card.css";
@@ -39,8 +40,12 @@ const isCommentEnabled = Boolean(
 		friendsPageConfig.showComment !== false,
 );
 
-// 使用配置文件中的友链数据，按权重排序
-const items = getEnabledFriends();
+// 手工维护的友链（按权重或随机排好），再合并审核页通过、存在 KV 里的那批。
+// 自动收录依赖 friendsPageConfig.applyApi；拉不到就是空数组，不影响构建。
+const items = mergeFriends(
+	getEnabledFriends(),
+	await fetchApprovedFriends(),
+);
 const allTags = [...new Set(items.flatMap((item) => item.tags || []))].sort();
 
 // 页面标题和描述

@@ -58,4 +58,12 @@ export type FriendsPageConfig = {
 	// "https://friends-hook.example.com"。填了就启用三步向导里的「填写申请表单」，
 	// 访客可直接提交、不用再去评论区贴模板；留空则只保留原来的评论区留言方式。
 	applyApi?: string;
+
+	// ── 审核通过的友链自动收录 ──
+	// 构建时从 applyApi 的 /api/links 拉一次审核通过的友链，和 friendsConfig 合并。
+	// 需要 applyApi 已配置；拉取失败就只用 friendsConfig，构建不会因此失败。
+	// 设为 false 可关掉（只想手工维护列表时）。
+	autoLinks?: boolean;
+	// 自动收录友链的权重。手工精选一般 90 以上，这里给个低位就排在它们后面
+	autoLinksWeight?: number;
 };

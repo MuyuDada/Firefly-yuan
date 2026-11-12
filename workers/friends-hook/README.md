@@ -121,6 +121,23 @@ Worker 绑的是自定义域 `friends-hook.muyudada.dpdns.org`，而不是默认
 >
 > 前提：`muyudada.dpdns.org` 这个域必须已经托管在同一个 Cloudflare 账号下。该域有一条 `*.muyudada.dpdns.org` 通配 DNS 记录，所以任意子域都能解析到 Cloudflare，但**只有显式绑定的那个子域才指向 Worker**，其他子域仍是 404。
 
+### 7. 配 Deploy Hook，让「通过」直接上线
+
+这一步可选，但不配的话审核完还得手工改配置。
+
+1. Vercel 项目 → **Settings → Git → Deploy Hooks**，建一个（Branch 填 `master`），复制生成的 URL；
+2. 存进 Worker：
+
+```bash
+npx wrangler secret put DEPLOY_HOOK_URL
+```
+
+之后审核页点「通过」时，Worker 会顺手 POST 一次这个 hook，Vercel 重新构建站点；`friends.astro` 在构建期会去 `/api/links` 拉已通过的友链（`src/utils/friends-links.ts`），构建完成新友链就真上线了。审核页刷新后它会从「待上线」移到「已上线」。
+
+- 地址拿到就能触发构建，所以它是 `secret`，不进 `vars`。
+- 触发失败不影响审核结果本身：记录已经写进 KV，下次构建照样会带上它。审核页会提示失败，也可以手动点「触发重建」（对应 `POST /admin/deploy`）。
+- 每次通过都会触发一次全站重建（Astro + pagefind + 字体子集，通常 1~3 分钟）。批量审核时可以先都通过，最后点一次「触发重建」。
+
 ---
 
 ## 本站当前部署状态
@@ -229,14 +246,17 @@ https://friends-hook.muyudada.dpdns.org/admin?token=<你的 ADMIN_TOKEN>
 
 ### 上线一条友链
 
+**配了 `DEPLOY_HOOK_URL`（推荐）**：
+
 1. 审核页点「通过」；
-2. 在「待上线」区找到那一条，点它右侧的「复制」（或点标题栏的「复制全部」）；
-3. 打开 `src/config/friendsConfig.ts`，把片段粘进 `friendsConfig` 数组；
-4. 重新部署博客。
+2. Worker 顺手触发一次 Vercel 重建，构建期从 `/api/links` 把已通过的友链拉进列表；
+3. 1~2 分钟后上线，刷新审核页会看到它从「待上线」移到「已上线」。
+
+**没配 hook**：还是老流程 —— 在「待上线」区点「复制」，把片段粘进 `src/config/friendsConfig.ts` 的 `friendsConfig` 数组，再重新部署博客。
 
 > 生成的条目 `tags` 固定给 `"Blog"`：`FriendCard.astro` 的 `TAG_LABELS` 只映射 Blog / Docs / Home / Framework 四个，未命中的 tag 会原样显示英文。
 
-> **为什么还要手工粘**：`friends.astro` 的友链数据是构建时读的静态数组（`getEnabledFriends()`），审核通过只写进了 KV，静态页面并不知道。要做到全自动，需要让前端在浏览器里 fetch `/api/links` 并合并进列表 —— 但卡片是服务端渲染的 HTML，还牵扯分页计数、标签筛选、搜索索引、延时徽章，客户端合并会很脏。手工粘一行是当前代价最小的闭环。
+> **为什么是构建期合并，而不是浏览器 fetch `/api/links`**：卡片是 `FriendCard.astro` 服务端渲染的 HTML，还牵扯分页计数、标签筛选、搜索索引、延时徽章。客户端补一批就得把这套 DOM 与样式复刻一遍，两边迟早走样，首屏还会闪。所以合并放在 `src/utils/friends-links.ts` 的构建期：手工精选（`getEnabledFriends()`，按 weight 排序）在前，自动收录（`/api/links`）在后，同一站点两处都有时以手工配置为准 —— 那份能写 `previewurl`、`recommended` 这些字段。拉取失败只返回空数组，站点照常构建，只是少几条自动收录。
 
 ### 接口一览
 
@@ -253,6 +273,7 @@ https://friends-hook.muyudada.dpdns.org/admin?token=<你的 ADMIN_TOKEN>
 | POST | `/admin/review` | 审核动作，body `{"id":"...","action":"approve"\|"reject","note":"..."}`。响应里带 `reply`，由页面负责发给 Waline |
 | POST | `/admin/backlink` | 重新检测某条申请的反链，body `{"id":"..."}`，结果写回 KV |
 | POST | `/admin/delete` | 彻底删除一条申请及其 `link:` / `dup:` / `pend:` 关联键，并写 `ign:<id>` 墓碑防止轮询再收一次，body `{"id":"..."}` |
+| POST | `/admin/deploy` | 手动触发一次站点重建（等价于审核通过时的自动触发），需已配置 `DEPLOY_HOOK_URL` |
 | POST | `/admin/poll` | 手动触发一次 Waline 轮询，不用等 cron |
 | cron | `*/15 * * * *` | 自动轮询 Waline 友链页，把新评论补进队列 |
 
@@ -510,6 +531,7 @@ Waline 只有两个发信触发点 —— 新评论通知博主、回复通知�
 | `NOTIFY_ON_APPLY` | `"0"` 关闭新申请通知 |
 | `NOTIFY_ON_REVIEW` | `"0"` 关闭审核结果通知 |
 | `RESEND_API_KEY` | Resend 密钥，用 `wrangler secret put` 设置，别写进 `vars` |
+| `DEPLOY_HOOK_URL` | Vercel Deploy Hook，审核通过后触发站点重建。用 `wrangler secret put` 设置；不配就只能手工粘配置 + 部署 |
 
 `vars` 里的值改了要重新 `wrangler deploy`；`secret` 是即时生效的。
 

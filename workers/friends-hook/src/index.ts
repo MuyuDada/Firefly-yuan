@@ -557,6 +557,42 @@ async function handleAdminPage(request: Request, env: Env): Promise<Response> {
 	});
 }
 
+/** 触发一次站点重建的结果，原样回给审核页，方便判断要不要提示用户 */
+interface DeployResult {
+	/** 有没有配 DEPLOY_HOOK_URL */
+	triggered: boolean;
+	ok?: boolean;
+	status?: number;
+	error?: string;
+}
+
+/**
+ * 触发一次站点重建（Vercel Deploy Hook）。
+ *
+ * 友链页是构建时读 friendsConfig 的静态页，审核通过只写进了 KV，站点并不知道。
+ * 现在构建期会去 /api/links 拉一次（src/utils/friends-links.ts），所以只要触发
+ * 一次重建，新友链就真上线了 —— 不必再手动粘配置片段。
+ *
+ * 触发失败不影响审核本身：结果已经写进 KV，下次构建或手动部署照样能带上它。
+ */
+async function triggerDeploy(env: Env): Promise<DeployResult> {
+	const url = (env.DEPLOY_HOOK_URL ?? "").trim();
+	if (!url) return { triggered: false };
+
+	try {
+		const resp = await fetch(url, {
+			method: "POST",
+			signal: AbortSignal.timeout(8000),
+		});
+		console.log(`[friends-hook] 触发站点重建，HTTP ${resp.status}`);
+		return { triggered: true, ok: resp.ok, status: resp.status };
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		console.error(`[friends-hook] 触发站点重建失败：${message}`);
+		return { triggered: true, ok: false, error: message };
+	}
+}
+
 /** POST /admin/review —— 审核动作 */
 async function handleReview(request: Request, env: Env): Promise<Response> {
 	if (!isAdmin(request, env))
@@ -595,11 +631,14 @@ async function handleReview(request: Request, env: Env): Promise<Response> {
 			...approvedApp,
 			sourceCommentId: await getSourceCommentId(env, id),
 		};
+		// 通过之后立刻触发一次重建，友链页下次构建就会把这条带上
+		const deploy = await triggerDeploy(env);
 		return json({
 			ok: true,
 			status: approvedApp.status,
 			id,
 			reply: buildReplyRequest(env, replyApp, true),
+			deploy,
 		});
 	}
 	if (action === "reject") {
@@ -620,6 +659,17 @@ async function handleReview(request: Request, env: Env): Promise<Response> {
 		});
 	}
 	return json({ ok: false, error: `未知动作 ${action}` }, 400);
+}
+
+/** POST /admin/deploy —— 手动触发一次站点重建（自动触发失败时的补救） */
+async function handleDeploy(request: Request, env: Env): Promise<Response> {
+	if (!isAdmin(request, env))
+		return json({ ok: false, error: "口令错误" }, 401);
+	if (!(env.DEPLOY_HOOK_URL ?? "").trim())
+		return json({ ok: false, error: "没有配置 DEPLOY_HOOK_URL" }, 400);
+
+	const deploy = await triggerDeploy(env);
+	return json({ ok: deploy.ok === true, deploy });
 }
 
 /** POST /admin/backlink —— 重新检测反链（对方后来才补上链接时用） */
@@ -755,6 +805,8 @@ export default {
 				return await handleBacklink(request, env);
 			if (pathname === "/admin/delete" && request.method === "POST")
 				return await handleDelete(request, env);
+			if (pathname === "/admin/deploy" && request.method === "POST")
+				return await handleDeploy(request, env);
 			// 诊断：单独跑一次「回复通知」，把失败原因原样返回，便于排查
 			// 生产日志不方便看时（比如 wrangler tail 连不上），用这个接口定位
 			if (pathname === "/admin/notify-test" && request.method === "POST") {
@@ -838,6 +890,8 @@ export default {
 					notifyReview: env.NOTIFY_ON_REVIEW !== "0",
 					// 审核后是否走 Waline 评论回复（评论申请专用）
 					walineReply: env.ENABLE_WALINE_REPLY !== "0",
+					// 配了 Deploy Hook 才能「通过即上线」
+					deployHook: Boolean(env.DEPLOY_HOOK_URL),
 					time: new Date().toISOString(),
 				});
 			}
@@ -1554,10 +1608,19 @@ ${ADMIN_STYLE}
 
 	${
 		approvedWaiting.length
-			? `<div class="section-title">待上线<span class="badge">${approvedWaiting.length}</span><small>已通过，还没写进 friendsConfig</small></div>
-  <div class="pending">
+			? `<div class="section-title">待上线<span class="badge">${approvedWaiting.length}</span><small>已通过，线上还没看到</small></div>
+  <div class="pending" data-section="waiting">
     <div class="pending-head">
-      <p>粘进 <code>friendsConfig.ts</code> 再部署即生效 —— 友链列表是构建时读的静态数组</p>
+      <p>${
+				env.DEPLOY_HOOK_URL
+					? "通过时会自动触发重建，1~2 分钟后上线；没动静就点「触发重建」"
+					: "粘进 <code>friendsConfig.ts</code> 再部署即生效 —— 友链列表是构建时读的静态数组"
+			}</p>
+      ${
+				env.DEPLOY_HOOK_URL
+					? `<button class="btn" id="deploy" type="button">触发重建</button>`
+					: ""
+			}
       <button class="btn" id="copy-all" type="button">复制全部</button>
     </div>
     <div class="pending-list">
@@ -1571,7 +1634,7 @@ ${ADMIN_STYLE}
   ${
 		approvedLive.length
 			? `<div class="section-title">已上线<span class="badge ok">${approvedLive.length}</span><small>线上友链页已经能看到</small></div>
-  <div class="pending">
+  <div class="pending" data-section="live">
     <div class="pending-list">
       ${approvedLive.map(liveItem).join("\n")}
     </div>
@@ -1679,6 +1742,28 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
+  const deployBtn = event.target.closest("#deploy");
+  if (deployBtn) {
+    const label = deployBtn.textContent;
+    deployBtn.disabled = true;
+    deployBtn.textContent = "触发中…";
+    try {
+      const resp = await fetch("/admin/deploy", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-admin-token": TOKEN },
+      });
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || "触发失败");
+      toast("已触发重建，约 1~2 分钟后上线");
+    } catch (error) {
+      toast("触发重建失败：" + ((error && error.message) || "未知错误"));
+    } finally {
+      deployBtn.disabled = false;
+      deployBtn.textContent = label;
+    }
+    return;
+  }
+
   const btn = event.target.closest("button[data-action]");
   if (!btn) return;
   // 卡片和「待上线 / 已上线」里的行都带 data-id，删除按钮两种地方都有
@@ -1756,6 +1841,15 @@ document.addEventListener("click", async (event) => {
       } catch (e) {
         toast("审核已生效，但评论回复失败：" + (e.message || "网络错误"));
       }
+    }
+    // 审核通过后 Worker 会调 Deploy Hook 触发一次站点重建，告诉用户大概多久能真上线
+    if (data.deploy && data.deploy.triggered) {
+      toast(
+        data.deploy.ok === false
+          ? "已通过，但触发重建失败，稍后点「触发重建」重试"
+          : "已通过，正在重建站点，约 1~2 分钟后上线"
+      );
+      await new Promise((resolve) => setTimeout(resolve, 1200));
     }
     card.classList.add("is-leaving");
     try { sessionStorage.setItem(SCROLL_KEY, String(window.scrollY)); } catch {}

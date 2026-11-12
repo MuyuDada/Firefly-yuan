@@ -53,6 +53,12 @@ export interface Env {
 	EMAIL?: EmailBinding;
 	/** 审核页完整地址，邮件里「去审核」跳转用 */
 	ADMIN_URL?: string;
+	/**
+	 * Vercel Deploy Hook 地址。配置后：审核通过会自动触发一次站点重建，
+	 * 友链页在构建时从 /api/links 拉取已通过的友链，重建完新友链就真上线了。
+	 * 用 `wrangler secret put DEPLOY_HOOK_URL` 设置（拿到地址的人都能触发构建，别写进仓库）。
+	 */
+	DEPLOY_HOOK_URL?: string;
 	/** 设为 "0" 关闭新申请通知 */
 	NOTIFY_ON_APPLY?: string;
 	/** 设为 "0" 关闭审核结果通知（通过 / 拒绝都会发） */

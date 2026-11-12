@@ -298,18 +298,24 @@ try {
 	// ── 待上线区 ──
 	check(
 		"已通过时出现待上线区",
-		(await evaluate(`!!document.querySelector('.pending')`)) === true,
+		(await evaluate(`!!document.querySelector('[data-section="waiting"]')`)) === true,
 	);
 	const approvedCount = await evaluate(
 		`document.querySelectorAll('.card[data-status="approved"]').length`,
 	);
 	const pendingRows = await evaluate(
-		`document.querySelectorAll('.pending-item').length`,
+		// 只数「待上线」区：已上线区同样是一排 .pending-item，但它没有复制按钮
+		`document.querySelectorAll('[data-section="waiting"] .pending-item').length`,
 	);
+	const liveRows = await evaluate(
+		`document.querySelectorAll('[data-section="live"] .pending-item').length`,
+	);
+	// 站点的上线状态取决于能不能抓到线上友链页，所以这里不假设每条都在待上线，
+	// 只验证两个区块加起来正好覆盖全部已通过的条目
 	check(
-		"待上线区每条一个独立行",
-		pendingRows === approvedCount,
-		`${pendingRows} 行 / ${approvedCount} 条已通过`,
+		"待上线 + 已上线 覆盖全部已通过",
+		pendingRows + liveRows === approvedCount,
+		`${pendingRows} 待上线 + ${liveRows} 已上线 / ${approvedCount} 条已通过`,
 	);
 	check(
 		"每行有头像、站名、域名",
@@ -325,7 +331,7 @@ try {
 	check(
 		"每行有独立的复制按钮",
 		(await evaluate(
-			`document.querySelectorAll('.pending-item [data-copy-entry]').length`,
+			`document.querySelectorAll('[data-section="waiting"] .pending-item [data-copy-entry]').length`,
 		)) === pendingRows,
 	);
 	check(
