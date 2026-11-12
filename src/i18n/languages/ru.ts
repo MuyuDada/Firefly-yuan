@@ -116,6 +116,8 @@ export const ru: Translation = {
 	[Key.friendsApplyHow]: "Как подать заявку",
 	[Key.friendsApplyTitle]: "Заявка на обмен ссылками",
 	[Key.friendsApplySiteInfo]: "Информация о моём сайте",
+	[Key.friendsApplySiteInfoHint]:
+		"Добавьте это на свою страницу ссылок, затем нажмите «Далее».",
 	[Key.friendsApplySteps]: "Порядок действий",
 	[Key.friendsApplyStep1Title]: "Сначала добавьте мой сайт",
 	[Key.friendsApplyStep1Desc]:
@@ -152,7 +154,12 @@ export const ru: Translation = {
 		"Не удалось загрузить проверку, нажмите кнопку справа",
 	[Key.friendsFormSubmit]: "Отправить заявку",
 	[Key.friendsFormSubmitting]: "Отправка",
-	[Key.friendsFormSuccess]: "Заявка получена. Она появится после проверки.",
+	[Key.friendsFormSuccess]:
+		"Заявка получена — обычно проверяю в течение 1–3 дней.",
+	[Key.friendsFormSuccessNote]:
+		"После одобрения ссылка появится в списке ниже, ничего делать не нужно. Если вы указали почту, я также напишу вам.",
+	[Key.friendsFormConfirmAdded]:
+		"Я уже добавил этот сайт на свою страницу ссылок",
 	[Key.friendsFormFailed]: "Не удалось отправить. Попробуйте позже.",
 	[Key.friendsFormRequired]: "обязательно",
 	[Key.friendsFormOptional]: "необязательно",

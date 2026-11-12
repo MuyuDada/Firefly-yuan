@@ -113,6 +113,8 @@ export const zh_TW: Translation = {
 	[Key.friendsApplyHow]: "如何申請友鏈",
 	[Key.friendsApplyTitle]: "申請友鏈",
 	[Key.friendsApplySiteInfo]: "本站資訊",
+	[Key.friendsApplySiteInfoHint]:
+		"把下面這些填進你自己的友鏈頁，填好再點「下一步」",
 	[Key.friendsApplySteps]: "申請流程",
 	[Key.friendsApplyStep1Title]: "新增本站友鏈",
 	[Key.friendsApplyStep1Desc]:
@@ -146,7 +148,10 @@ export const zh_TW: Translation = {
 	[Key.friendsFormCaptchaFailed]: "驗證碼載入失敗，請點右側按鈕重試",
 	[Key.friendsFormSubmit]: "提交申請",
 	[Key.friendsFormSubmitting]: "正在提交",
-	[Key.friendsFormSuccess]: "申請已送出，審核通過後會顯示在友鏈列表裡。",
+	[Key.friendsFormSuccess]: "申請已送出，我會在 1–3 天內處理。",
+	[Key.friendsFormSuccessNote]:
+		"通過後會自動出現在下方的友鏈列表，不用再操作；有留信箱的話，結果也會寄一封信給你。",
+	[Key.friendsFormConfirmAdded]: "我已經把本站加進自己的友鏈頁了",
 	[Key.friendsFormFailed]: "提交失敗，請稍後重試。",
 	[Key.friendsFormRequired]: "必填",
 	[Key.friendsFormOptional]: "選填",

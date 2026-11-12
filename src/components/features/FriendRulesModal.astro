@@ -177,6 +177,9 @@ const requiredMark = i18n(I18nKey.friendsFormRequired);
 
               {/* 第二步：本站信息（一键复制） */}
               <div class="friend-wizard-step" data-wizard-step="self" hidden>
+                <p class="friend-modal-hint">
+                  {i18n(I18nKey.friendsApplySiteInfoHint)}
+                </p>
                 {infoFields.length > 0 && (
                   <section class="friend-modal-section">
                     <h4>
@@ -340,6 +343,12 @@ const requiredMark = i18n(I18nKey.friendsFormRequired);
                     </div>
                   </div>
 
+                  {/* 确认先加了本站：勾上才让提交（reportValidity 会拦住） */}
+                  <label class="friend-field-check">
+                    <input type="checkbox" name="confirmAdded" required />
+                    <span>{i18n(I18nKey.friendsFormConfirmAdded)}</span>
+                  </label>
+
                   {/* 蜜罐：正常用户看不见也填不到，有值就是脚本 */}
                   <div class="friend-honeypot" aria-hidden="true">
                     <label for="friend-form-company">公司</label>
@@ -364,6 +373,9 @@ const requiredMark = i18n(I18nKey.friendsFormRequired);
                     class="text-3xl friend-done-icon"
                   />
                   <p data-done-message>{i18n(I18nKey.friendsFormSuccess)}</p>
+                  <p class="friend-done-note">
+                    {i18n(I18nKey.friendsFormSuccessNote)}
+                  </p>
                 </div>
               </div>
             </div>

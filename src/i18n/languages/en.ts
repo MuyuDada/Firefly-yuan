@@ -117,6 +117,8 @@ export const en: Translation = {
 	[Key.friendsApplyHow]: "How to apply",
 	[Key.friendsApplyTitle]: "Apply for a link exchange",
 	[Key.friendsApplySiteInfo]: "My site info",
+	[Key.friendsApplySiteInfoHint]:
+		"Add these to your own links page, then hit Next.",
 	[Key.friendsApplySteps]: "Steps",
 	[Key.friendsApplyStep1Title]: "Add my site first",
 	[Key.friendsApplyStep1Desc]:
@@ -154,7 +156,10 @@ export const en: Translation = {
 	[Key.friendsFormSubmit]: "Submit application",
 	[Key.friendsFormSubmitting]: "Submitting",
 	[Key.friendsFormSuccess]:
-		"Application received. It will appear once approved.",
+		"Application received — I usually review within 1–3 days.",
+	[Key.friendsFormSuccessNote]:
+		"Once approved it shows up in the list below, no action needed. If you left an email, I'll send you a note as well.",
+	[Key.friendsFormConfirmAdded]: "I've already added this site to my links page",
 	[Key.friendsFormFailed]: "Submission failed, please try again later.",
 	[Key.friendsFormRequired]: "required",
 	[Key.friendsFormOptional]: "optional",

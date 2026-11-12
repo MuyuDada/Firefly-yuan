@@ -104,6 +104,14 @@ friend-rules-modal {
 	overflow-y: auto;
 }
 
+/* 步骤开头的一句引导（例如「把下面这些填进你自己的友链页」） */
+.friend-modal-hint {
+	margin: 0;
+	font-size: 0.75rem;
+	line-height: 1.7;
+	color: var(--content-meta);
+}
+
 .friend-modal-section h4 {
 	display: flex;
 	align-items: center;
@@ -545,6 +553,42 @@ friend-rules-modal {
 	color: rgb(0 0 0 / 90%);
 }
 
+/* 收尾页的补充说明：结果怎么知道、要不要再回来 */.friend-done p.friend-done-note {
+	max-width: 22rem;
+	font-size: 0.75rem;
+	line-height: 1.7;
+	color: var(--content-meta);
+}
+
+/* 提交前的确认勾选：先加本站再申请 */
+.friend-field-check {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.5rem;
+	padding: 0.55rem 0.65rem;
+	border: 1px solid var(--line-divider);
+	border-radius: 0.5rem;
+	background: color-mix(in srgb, var(--line-divider) 16%, transparent);
+	font-size: 0.75rem;
+	line-height: 1.6;
+	color: rgb(0 0 0 / 78%);
+	cursor: pointer;
+	transition: border-color 0.15s ease;
+}
+
+.friend-field-check:hover {
+	border-color: color-mix(in srgb, var(--primary) 45%, var(--line-divider));
+}
+
+.friend-field-check input {
+	flex: none;
+	width: 0.9rem;
+	height: 0.9rem;
+	margin: 0.18rem 0 0;
+	accent-color: var(--primary);
+	cursor: pointer;
+}
+
 /* ── 底部动作 ─────────────────────────────── */
 
 .friend-modal-footer {
@@ -626,6 +670,15 @@ body.friend-modal-open {
 :root.dark .friend-field input,
 :root.dark .friend-field textarea {
 	background: color-mix(in srgb, var(--line-divider) 30%, transparent);
+}
+
+/* 勾选行与收尾说明在暗色下跟着正文走，但要更弱一档 */
+:root.dark .friend-field-check {
+	color: rgb(255 255 255 / 78%);
+}
+
+:root.dark .friend-done p.friend-done-note {
+	color: rgb(255 255 255 / 55%);
 }
 
 :root.dark .friend-field input:focus,

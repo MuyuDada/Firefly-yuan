@@ -113,16 +113,19 @@ export const zh_CN: Translation = {
 	[Key.friendsApplyHow]: "如何申请友链",
 	[Key.friendsApplyTitle]: "申请友链",
 	[Key.friendsApplySiteInfo]: "本站信息",
+	[Key.friendsApplySiteInfoHint]:
+		"把下面这些填进你自己的友链页，填好再点「下一步」",
 	[Key.friendsApplySteps]: "申请流程",
 	[Key.friendsApplyStep1Title]: "添加本站友链",
 	[Key.friendsApplyStep1Desc]:
-		"请先在您的网站友链页面添加本站信息，可直接复制上方各字段",
+		"请先在您的友链页加上本站 —— 下一步里本站信息可以逐个复制",
 	[Key.friendsApplyStep2Title]: "提交申请",
 	[Key.friendsApplyStep2Desc]: "把下方模板复制修改后，到评论区留言或发送邮件",
 	[Key.friendsApplyStep2DescForm]:
 		"确认上方信息已添加到您的友链页，然后直接填写下面的申请表单",
 	[Key.friendsApplyStep3Title]: "等待审核",
-	[Key.friendsApplyStep3Desc]: "确认信息无误后会尽快添加您的友链",
+	[Key.friendsApplyStep3Desc]:
+		"一般 1–3 天内处理；通过后会自动出现在下方列表，留了邮箱的话结果也会发一封邮件",
 	[Key.friendsApplyTemplate]: "申请模板",
 	[Key.friendsApplyNotes]: "注意事项",
 	[Key.friendsApplySelfLink]: "自助申请友链",
@@ -135,7 +138,7 @@ export const zh_CN: Translation = {
 	[Key.friendsFormUrl]: "站点链接",
 	[Key.friendsFormAvatar]: "头像链接",
 	[Key.friendsFormEmail]: "联系邮箱",
-	[Key.friendsFormEmailHint]: "可选，不会公开",
+	[Key.friendsFormEmailHint]: "可选，填了会收到审核结果",
 	[Key.friendsFormEmailPlaceholder]: "hi@example.com",
 	[Key.friendsFormDesc]: "一句话简介",
 	[Key.friendsFormDescPlaceholder]: "用一句话描述你的网站",
@@ -146,7 +149,10 @@ export const zh_CN: Translation = {
 	[Key.friendsFormCaptchaFailed]: "验证码加载失败，点右侧按钮重试",
 	[Key.friendsFormSubmit]: "提交申请",
 	[Key.friendsFormSubmitting]: "正在提交",
-	[Key.friendsFormSuccess]: "申请已送达，审核通过后会显示在友链列表里。",
+	[Key.friendsFormSuccess]: "申请已送达，我会在 1–3 天内处理",
+	[Key.friendsFormSuccessNote]:
+		"通过后会自动出现在下面的友链列表里，不用再操作；留了邮箱的话，结果也会发一封邮件给你",
+	[Key.friendsFormConfirmAdded]: "我已经把本站加进自己的友链页了",
 	[Key.friendsFormFailed]: "提交失败，请稍后重试。",
 	[Key.friendsFormRequired]: "必填",
 	[Key.friendsFormOptional]: "可选",

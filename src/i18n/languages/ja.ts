@@ -115,6 +115,8 @@ export const ja: Translation = {
 	[Key.friendsApplyHow]: "申請方法",
 	[Key.friendsApplyTitle]: "友達リンクの申請",
 	[Key.friendsApplySiteInfo]: "当サイトの情報",
+	[Key.friendsApplySiteInfoHint]:
+		"以下をあなたのリンクページに追加してから「次へ」を押してください。",
 	[Key.friendsApplySteps]: "申請の流れ",
 	[Key.friendsApplyStep1Title]: "当サイトをリンクに追加",
 	[Key.friendsApplyStep1Desc]:
@@ -151,7 +153,11 @@ export const ja: Translation = {
 		"認証の取得に失敗しました。右のボタンで再試行してください",
 	[Key.friendsFormSubmit]: "申請を送信",
 	[Key.friendsFormSubmitting]: "送信中",
-	[Key.friendsFormSuccess]: "申請を受け付けました。承認後に表示されます。",
+	[Key.friendsFormSuccess]: "申請を受け付けました。1〜3 日以内に確認します。",
+	[Key.friendsFormSuccessNote]:
+		"承認されると下のリンク一覧に自動で表示されます。メールアドレスを記入した場合は結果もメールでお知らせします。",
+	[Key.friendsFormConfirmAdded]:
+		"このサイトはすでに自分のリンクページに追加しました",
 	[Key.friendsFormFailed]: "送信に失敗しました。後でもう一度お試しください。",
 	[Key.friendsFormRequired]: "必須",
 	[Key.friendsFormOptional]: "任意",

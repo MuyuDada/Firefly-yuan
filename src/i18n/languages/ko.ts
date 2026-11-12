@@ -115,6 +115,8 @@ export const ko: Translation = {
 	[Key.friendsApplyHow]: "신청 방법",
 	[Key.friendsApplyTitle]: "친구 링크 신청",
 	[Key.friendsApplySiteInfo]: "사이트 정보",
+	[Key.friendsApplySiteInfoHint]:
+		"아래 정보를 본인 링크 페이지에 추가한 뒤 '다음'을 눌러 주세요.",
 	[Key.friendsApplySteps]: "신청 절차",
 	[Key.friendsApplyStep1Title]: "먼저 이 사이트를 추가",
 	[Key.friendsApplyStep1Desc]:
@@ -151,7 +153,11 @@ export const ko: Translation = {
 		"인증을 불러오지 못했습니다. 오른쪽 버튼으로 다시 시도해 주세요",
 	[Key.friendsFormSubmit]: "신청 제출",
 	[Key.friendsFormSubmitting]: "제출 중",
-	[Key.friendsFormSuccess]: "신청이 접수되었습니다. 승인 후 표시됩니다.",
+	[Key.friendsFormSuccess]: "신청이 접수되었습니다. 보통 1~3일 안에 확인합니다.",
+	[Key.friendsFormSuccessNote]:
+		"승인되면 아래 링크 목록에 자동으로 표시됩니다. 이메일을 남기셨다면 결과도 메일로 알려드립니다.",
+	[Key.friendsFormConfirmAdded]:
+		"이 사이트를 이미 제 링크 페이지에 추가했습니다",
 	[Key.friendsFormFailed]: "제출에 실패했습니다. 나중에 다시 시도해 주세요.",
 	[Key.friendsFormRequired]: "필수",
 	[Key.friendsFormOptional]: "선택",
