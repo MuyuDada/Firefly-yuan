@@ -1831,15 +1831,27 @@ document.addEventListener("click", async (event) => {
     // Cloudflare 拦（400 / error code 1053），浏览器走 CF 代理则没问题。
     if (data.reply && data.reply.url) {
       btn.textContent = "通知申请人…";
-      try {
-        const r = await fetch(data.reply.url, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(data.reply.body),
-        });
-        if (!r.ok) toast("审核已生效，但评论回复失败（HTTP " + r.status + "）");
-      } catch (e) {
-        toast("审核已生效，但评论回复失败：" + (e.message || "网络错误"));
+      // 这是唯一的通知渠道，而它跑在浏览器里：网络抖一下就会静默丢掉，
+      // 申请人永远收不到「已通过」。所以重试两次再报失败。
+      let replyOk = false;
+      let replyError = "";
+      for (let attempt = 0; attempt < 3 && !replyOk; attempt++) {
+        try {
+          const r = await fetch(data.reply.url, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(data.reply.body),
+          });
+          if (r.ok) replyOk = true;
+          else replyError = "HTTP " + r.status;
+        } catch (e) {
+          replyError = (e && e.message) || "网络错误";
+        }
+        if (!replyOk) await new Promise((ok) => setTimeout(ok, 600 + attempt * 900));
+      }
+      if (!replyOk) {
+        toast("已通过，但通知没发出去（" + replyError + "）：可到评论区手动回复一条");
+        await new Promise((ok) => setTimeout(ok, 1800));
       }
     }
     // 审核通过后 Worker 会调 Deploy Hook 触发一次站点重建，告诉用户大概多久能真上线

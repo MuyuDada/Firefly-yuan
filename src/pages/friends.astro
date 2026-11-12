@@ -43,9 +43,9 @@ const isCommentEnabled = Boolean(
 
 // 手工维护的友链 + 审核页通过、存在 KV 里的那批，合起来再统一排序：
 // 本站条目和推荐位固定在前，其余每次构建随机。
-const items = sortFriends(
-	mergeFriends(getEnabledFriends(), await fetchApprovedFriends()),
-);
+const manualFriends = getEnabledFriends();
+const autoFriends = await fetchApprovedFriends();
+const items = sortFriends(mergeFriends(manualFriends, autoFriends));
 const allTags = [...new Set(items.flatMap((item) => item.tags || []))].sort();
 
 // 页面标题和描述
@@ -113,7 +113,9 @@ const hasApplyModal = Boolean(
       }
 
       <!-- 友链卡片网格 -->
-      <div class="friends-grid" data-friends-grid>
+      {/* data-auto-links 是构建期从 /api/links 收纳的条数，纯诊断用：
+          拉取失败时它是 0，直接 curl 页面就能判断「新通过的友链为什么没出现」 */}
+      <div class="friends-grid" data-friends-grid data-auto-links={autoFriends.length}>
         {items.length === 0 && (
           <div class="col-span-full flex flex-col items-center justify-center py-12 text-neutral-400 dark:text-neutral-500">
             <Icon name="material-symbols:group-off-outline" class="text-4xl mb-3" />

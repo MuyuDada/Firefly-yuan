@@ -13,7 +13,10 @@ import type { FriendLink } from "@/types/friendsConfig";
  */
 
 /** 拉取超时。构建期宁可少几条，也不要在这一步卡住整个站点 */
-const TIMEOUT_MS = 5000;
+const TIMEOUT_MS = 15000;
+
+/** 失败重试次数。构建机到 Worker 偶发超时，一次重试基本能救回来 */
+const RETRIES = 1;
 
 /** /api/links 返回的单条结构（见 workers/friends-hook 的 PublicLink） */
 interface ApiLink {
@@ -55,32 +58,41 @@ export async function fetchApprovedFriends(): Promise<FriendLink[]> {
 	const base = (friendsPageConfig.applyApi || "").trim().replace(/\/+$/, "");
 	if (!base) return [];
 
-	try {
-		const resp = await fetch(`${base}/api/links`, {
-			signal: AbortSignal.timeout(TIMEOUT_MS),
-			headers: { accept: "application/json" },
-		});
-		if (!resp.ok) {
-			console.warn(
-				`[friends] /api/links 返回 ${resp.status}，本次构建只用 friendsConfig`,
+	const url = `${base}/api/links`;
+	let lastError = "";
+
+	// 构建机到 Worker 偶尔会超时（实测过一次 5s 不够、返回空数组，友链页就少一条），
+	// 所以这里重试一次，并把失败原因打出来 —— 构建日志里能直接看到
+	for (let attempt = 0; attempt <= RETRIES; attempt++) {
+		try {
+			const resp = await fetch(url, {
+				signal: AbortSignal.timeout(TIMEOUT_MS),
+				headers: { accept: "application/json" },
+			});
+			if (!resp.ok) {
+				lastError = `HTTP ${resp.status}`;
+				continue;
+			}
+
+			const payload = (await resp.json()) as { data?: ApiLink[] };
+			const rows = Array.isArray(payload?.data) ? payload.data : [];
+			const friends = rows
+				.map(toFriendLink)
+				.filter((friend): friend is FriendLink => friend !== null);
+
+			console.log(
+				`[friends] 从 /api/links 收录 ${friends.length} 条已通过的友链（第 ${attempt + 1} 次请求）`,
 			);
-			return [];
+			return friends;
+		} catch (error) {
+			lastError = error instanceof Error ? error.message : String(error);
 		}
-
-		const payload = (await resp.json()) as { data?: ApiLink[] };
-		const rows = Array.isArray(payload?.data) ? payload.data : [];
-		const friends = rows
-			.map(toFriendLink)
-			.filter((friend): friend is FriendLink => friend !== null);
-
-		console.log(`[friends] 从 /api/links 收录 ${friends.length} 条已通过的友链`);
-		return friends;
-	} catch (error) {
-		console.warn(
-			`[friends] 拉取 /api/links 失败：${error instanceof Error ? error.message : String(error)}`,
-		);
-		return [];
 	}
+
+	console.warn(
+		`[friends] 拉取 /api/links 失败（已重试 ${RETRIES} 次）：${lastError}。本次只用 friendsConfig`,
+	);
+	return [];
 }
 
 /**
