@@ -35,7 +35,7 @@ export type FriendsPageConfig = {
 	description?: string; // 页面描述，留空则使用 i18n 中的翻译
 	showCustomContent?: boolean; // 是否显示自定义内容（friends.mdx）
 	showComment?: boolean; // 是否显示评论区，默认 true
-	randomizeSort?: boolean; // 是否打乱排序，如果为 true，将忽略 weight，随机排序
+	randomizeSort?: boolean; // 未置顶条目是否打乱：true 每次构建随机，false 按 weight（置顶区始终在前）
 
 	pageSize?: number; // 每页展示的卡片数量，默认 9
 

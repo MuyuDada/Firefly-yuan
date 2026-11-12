@@ -16,8 +16,9 @@ export const friendsPageConfig: FriendsPageConfig = {
 	// 是否显示评论区，需要先在commentConfig.ts启用评论系统
 	showComment: true,
 
-	// 是否开启随机排序配置，如果开启，就会忽略权重，构建时进行一次随机排序
-	randomizeSort: false,
+	// 置顶区（本站条目 + 标了 recommended 的）始终在前；这个开关只管剩下的条目：
+	// true = 每次构建随机一次顺序，false = 按 weight 从大到小
+	randomizeSort: true,
 
 	// 每页展示的卡片数量
 	pageSize: 12,
@@ -352,12 +353,50 @@ export const friendsConfig: FriendLink[] = [
 ];
 
 // 获取启用的友链并进行排序
-export const getEnabledFriends = (): FriendLink[] => {
-	const friends = friendsConfig.filter((friend) => friend.enabled);
+//
+// 排在前面的是「置顶区」：本站自己的条目（tags 里带「本站」）永远第一，
+// 其余 marked recommended 的按权重排；剩下的一律进随机池。
+// 随机只发生在构建期（每次部署换一次顺序），客户端不会跳动。
+export const getEnabledFriends = (): FriendLink[] =>
+	sortFriends(friendsConfig.filter((friend) => friend.enabled));
 
-	if (friendsPageConfig.randomizeSort) {
-		return friends.sort(() => Math.random() - 0.5);
+/** 是否置顶：本站自己的条目，或标了 recommended 的 */
+const isPinned = (friend: FriendLink): boolean =>
+	friend.recommended === true || (friend.tags ?? []).includes("本站");
+
+/** 本站条目的优先级：0 = 普通置顶，1 = 本站 */
+const selfRank = (friend: FriendLink): number =>
+	(friend.tags ?? []).includes("本站") ? 1 : 0;
+
+/** 洗牌（Fisher–Yates），不修改入参 */
+function shuffle<T>(items: T[]): T[] {
+	const list = [...items];
+	for (let i = list.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[list[i], list[j]] = [list[j], list[i]];
 	}
+	return list;
+}
 
-	return friends.sort((a, b) => b.weight - a.weight);
+/**
+ * 排序整份友链列表（手工配置 + 审核自动收录一起排）。
+ *
+ * 1. 置顶区：本站条目在最先，其余推荐位按 weight 从大到小；
+ * 2. 其余：randomizeSort 为 true 时随机，为 false 时按 weight。
+ *
+ * 之所以单独导出：friends.astro 要先把 KV 里自动收录的条目合进来再排序，
+ * 否则自动收录的那几条永远排在最后，享受不到「其余随机」。
+ */
+export const sortFriends = (friends: FriendLink[]): FriendLink[] => {
+	const pinned = friends
+		.filter(isPinned)
+		.sort((a, b) => selfRank(b) - selfRank(a) || b.weight - a.weight);
+
+	const rest = friends.filter((friend) => !isPinned(friend));
+	const sortedRest =
+		friendsPageConfig.randomizeSort === false
+			? [...rest].sort((a, b) => b.weight - a.weight)
+			: shuffle(rest);
+
+	return [...pinned, ...sortedRest];
 };

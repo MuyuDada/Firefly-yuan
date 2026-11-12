@@ -91,6 +91,7 @@ export {
 	friendsConfig,
 	friendsPageConfig,
 	getEnabledFriends,
+	sortFriends,
 } from "./friendsConfig"; // 友链配置
 export { galleryConfig } from "./galleryConfig"; // 相册配置
 export { licenseConfig } from "./licenseConfig"; // 许可证配置

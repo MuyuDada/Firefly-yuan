@@ -10,6 +10,7 @@ import {
 	friendsPageConfig,
 	getEnabledFriends,
 	siteConfig,
+	sortFriends,
 } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
@@ -40,11 +41,10 @@ const isCommentEnabled = Boolean(
 		friendsPageConfig.showComment !== false,
 );
 
-// 手工维护的友链（按权重或随机排好），再合并审核页通过、存在 KV 里的那批。
-// 自动收录依赖 friendsPageConfig.applyApi；拉不到就是空数组，不影响构建。
-const items = mergeFriends(
-	getEnabledFriends(),
-	await fetchApprovedFriends(),
+// 手工维护的友链 + 审核页通过、存在 KV 里的那批，合起来再统一排序：
+// 本站条目和推荐位固定在前，其余每次构建随机。
+const items = sortFriends(
+	mergeFriends(getEnabledFriends(), await fetchApprovedFriends()),
 );
 const allTags = [...new Set(items.flatMap((item) => item.tags || []))].sort();
 
