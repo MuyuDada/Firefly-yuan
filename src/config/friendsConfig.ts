@@ -316,7 +316,7 @@ export const friendsConfig: FriendLink[] = [
 		tags: ["Blog"],
 		weight: 19,
 		enabled: true,
-	}
+	},
 	{
 		title: "Shiyan",
 		imgurl: "https://blog.zlion.top/favicon/favicon-192.png",
