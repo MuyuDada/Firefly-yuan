@@ -1668,6 +1668,75 @@ function toast(message) {
   toastEl._timer = setTimeout(() => toastEl.classList.remove("is-show"), 2200);
 }
 
+/**
+ * 通知申请人的待发队列（localStorage）。
+ *
+ * 「已通过」的回复只能由浏览器发到 Waline（Worker 出站会被 Cloudflare 拦），
+ * 而这台机器的网络会成段地抽风：实测有一次三次重试全失败，申请人就永远收不到通知。
+ * 所以发送失败时把请求存下来，下次打开审核页自动补发，成功一条删一条。
+ */
+const REPLY_QUEUE_KEY = "friends:pendingReply";
+const REPLY_QUEUE_TTL = 3 * 24 * 3600 * 1000;
+
+function readReplyQueue() {
+  try {
+    const raw = localStorage.getItem(REPLY_QUEUE_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeReplyQueue(list) {
+  try {
+    localStorage.setItem(REPLY_QUEUE_KEY, JSON.stringify(list.slice(-20)));
+  } catch {}
+}
+
+/** 发一条回复。Waline 用 HTTP 200 + errno 表示业务错误，所以不能只看 r.ok */
+async function sendReply(item) {
+  const r = await fetch(item.url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(item.body),
+  });
+  if (!r.ok) return false;
+  const data = await r.json().catch(() => null);
+  // errno 1000 = 重复内容，说明之前其实已经发成功了，算成功
+  if (!data || data.errno === undefined) return true;
+  return data.errno === 0 || data.errno === 1000;
+}
+
+async function sendReplyWithRetry(item) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (await sendReply(item)) return true;
+    } catch {}
+    await new Promise((ok) => setTimeout(ok, 600 + attempt * 900));
+  }
+  return false;
+}
+
+/** 打开审核页时补发之前没发出去的通知 */
+async function drainReplyQueue() {
+  const queue = readReplyQueue();
+  if (!queue.length) return;
+  const left = [];
+  let sent = 0;
+  for (const item of queue) {
+    if (!item || !item.url || Date.now() - (item.ts || 0) > REPLY_QUEUE_TTL) continue;
+    let ok = false;
+    try {
+      ok = await sendReply(item);
+    } catch {}
+    if (ok) sent++;
+    else left.push(item);
+  }
+  writeReplyQueue(left);
+  if (sent > 0) toast("已补发 " + sent + " 条之前没发出去的通知");
+}
+
 /** 按当前 tab + 搜索词过滤卡片，并把计数刷进 tab 上的小徽章 */
 function applyFilter() {
   const term = (search.value || "").trim().toLowerCase();
@@ -1701,6 +1770,9 @@ for (const tab of tabs) {
 }
 search.addEventListener("input", applyFilter);
 applyFilter();
+
+// 上次没发出去的通知（网络抽风时）在这里补；成功一条删一条
+void drainReplyQueue();
 
 // 审核后要整页刷新（片段和计数都要重算），但记住滚动位置，
 // 免得审完一条就被弹回页面顶部，还得重新滚下去。
@@ -1831,27 +1903,18 @@ document.addEventListener("click", async (event) => {
     // Cloudflare 拦（400 / error code 1053），浏览器走 CF 代理则没问题。
     if (data.reply && data.reply.url) {
       btn.textContent = "通知申请人…";
-      // 这是唯一的通知渠道，而它跑在浏览器里：网络抖一下就会静默丢掉，
-      // 申请人永远收不到「已通过」。所以重试两次再报失败。
-      let replyOk = false;
-      let replyError = "";
-      for (let attempt = 0; attempt < 3 && !replyOk; attempt++) {
-        try {
-          const r = await fetch(data.reply.url, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(data.reply.body),
-          });
-          if (r.ok) replyOk = true;
-          else replyError = "HTTP " + r.status;
-        } catch (e) {
-          replyError = (e && e.message) || "网络错误";
-        }
-        if (!replyOk) await new Promise((ok) => setTimeout(ok, 600 + attempt * 900));
-      }
-      if (!replyOk) {
-        toast("已通过，但通知没发出去（" + replyError + "）：可到评论区手动回复一条");
-        await new Promise((ok) => setTimeout(ok, 1800));
+      // 先入队再发：中途失败或页面被刷新，下次打开审核页还能补上
+      const item = { id, url: data.reply.url, body: data.reply.body, ts: Date.now() };
+      const pending = readReplyQueue();
+      pending.push(item);
+      writeReplyQueue(pending);
+
+      const replyOk = await sendReplyWithRetry(item);
+      if (replyOk) {
+        writeReplyQueue(readReplyQueue().filter((x) => x && x.ts !== item.ts));
+      } else {
+        toast("已通过，但通知没发出去：下次打开这个页面会自动补发");
+        await new Promise((ok) => setTimeout(ok, 1600));
       }
     }
     // 审核通过后 Worker 会调 Deploy Hook 触发一次站点重建，告诉用户大概多久能真上线
