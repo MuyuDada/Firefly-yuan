@@ -2,9 +2,15 @@
  * 解析器自测：拿线上真实的 6 条申请评论跑一遍，检查字段是否被正确抽出。
  * 用法：npx tsx workers/friends-hook/test-parse.ts
  */
+import type { ParsedApplication } from "./src/types";
 import { findMissing, parseApplication } from "./src/parse";
 
-const samples: { label: string; html: string }[] = [
+const samples: {
+	label: string;
+	html: string;
+	/** 只校验列出来的字段（用于「本来就不该完整」的样本） */
+	expect?: Partial<ParsedApplication>;
+}[] = [
 	{
 		label: "真实 #1 名称/URL/头像/简介（无冒号，Waline 自动加 a 标签）",
 		html: `<p>申请友链<br>\n名称 Zhong Website<br>\nURL <a href="https://zhongweb.cn" target="_blank" rel="ugc nofollow noreferrer noopener">https://zhongweb.cn</a><br>\n头像 <a href="https://zhongweb.cn/icons/icon-512.png" target="_blank" rel="ugc nofollow noreferrer noopener">https://zhongweb.cn/icons/icon-512.png</a><br>\n简介 医学生×互联网折腾爱好者</p>\n`,
@@ -29,10 +35,24 @@ const samples: { label: string; html: string }[] = [
 		label: "脏数据：只有链接，没有字段名",
 		html: "<p>https://only-link.example.com</p><p>随便写点东西</p>",
 	},
+	{
+		// 线上 app:56。人家只是来换头像，没有名称/描述/站点链接；
+		// 修之前：.webp 头像被当成站点链接，吐槽被当成站名
+		label: "换头像请求（不是完整申请，只该抽出头像）",
+		html: `<p>俺来换个头像，头像换成这个：<br>
+站点头像：<a href="https://r2tc.20030327.xyz/file/博客/主题/xGAV3car.webp" target="_blank" rel="ugc nofollow noreferrer noopener">https://r2tc.20030327.xyz/file/博客/主题/xGAV3car.webp</a><br>
+话说，那个站点截图能加载图片啵，拉取的一直是灰的ohmo</p>`,
+		expect: {
+			avatar: "https://r2tc.20030327.xyz/file/博客/主题/xGAV3car.webp",
+			siteurl: "",
+			name: "",
+			desc: "",
+		},
+	},
 ];
 
 let failed = 0;
-for (const { label, html } of samples) {
+for (const { label, html, expect } of samples) {
 	const { parsed, unparsed } = parseApplication(html);
 	const missing = findMissing(parsed);
 	console.log(`\n=== ${label}`);
@@ -44,6 +64,14 @@ for (const { label, html } of samples) {
 	if (label.startsWith("真实") && missing.length > 0) {
 		console.error("!! 真实样本应完整解析，却缺字段");
 		failed++;
+	}
+
+	for (const [key, value] of Object.entries(expect ?? {})) {
+		const actual = parsed[key as keyof ParsedApplication];
+		if (actual !== value) {
+			console.error(`!! ${key} 期望 ${JSON.stringify(value)}，实际 ${JSON.stringify(actual)}`);
+			failed++;
+		}
 	}
 }
 

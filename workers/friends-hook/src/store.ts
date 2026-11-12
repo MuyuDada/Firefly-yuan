@@ -6,6 +6,9 @@
  *   dup:<host>      已通过的站点 host → 记录 id，用于查重
  *   pend:<host>     待审的站点 host → 记录 id，用于「同一站点重复投递」提醒
  *   link:<host>     已通过的友链（用于 /api/links 输出）
+ *   ign:<id>        已删除申请的墓碑。删了 app:<id> 之后评论还留在 Waline，
+ *                   轮询会把它当新申请重新入库，所以要留个记号拦住
+ *   src:<id>        表单申请对应的影子评论 id
  *
  * KV 免费额度：读 10 万/天、写 1 千/天、总量 1 GB。本站量级远远用不完。
  * 注意同一 key 的写入频率上限是 1 次/秒 —— 友链申请不可能到这个量级。
@@ -18,6 +21,7 @@ const APP_PREFIX = "app:";
 const DUP_PREFIX = "dup:";
 const PEND_PREFIX = "pend:";
 const LINK_PREFIX = "link:";
+const IGNORE_PREFIX = "ign:";
 
 /** 已通过审核、对外公开的友链 */
 export interface PublicLink extends ParsedApplication {
@@ -149,6 +153,32 @@ export async function rejectApplication(
 	};
 	await saveApplication(kv, updated);
 	return updated;
+}
+
+/**
+ * 删除一条申请后的墓碑。
+ *
+ * 为什么需要：评论型申请是「从 Waline 评论推导出来的」，`app:<id>` 只是推导结果，
+ * 源评论还在。删掉 `app:<id>` 之后，下一轮 cron 轮询（或评论被编辑触发的 webhook）
+ * 会看到一条「不在库里」的旧评论，把它当成新申请重新入库，还会再发一次通知邮件。
+ * 这就是「删了又自己回来」的原因。留一个 ign:<id> 把入库路径堵住。
+ *
+ * 不用 TTL：评论本身没被删，墓碑就该和评论同寿。误删要恢复时，手动删掉这个键即可
+ * （`wrangler kv key delete ign:<id> --binding FRIENDS_KV`），下一轮轮询会重新收进来。
+ */
+export async function ignoreApplication(
+	kv: KVNamespace,
+	id: string,
+): Promise<void> {
+	await kv.put(IGNORE_PREFIX + id, new Date().toISOString());
+}
+
+/** 这条申请是否已被站长删除过 */
+export async function isIgnored(
+	kv: KVNamespace,
+	id: string,
+): Promise<boolean> {
+	return (await kv.get(IGNORE_PREFIX + id)) !== null;
 }
 
 /** 读取全部已通过的友链，按通过时间倒序 */

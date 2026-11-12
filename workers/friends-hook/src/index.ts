@@ -29,6 +29,8 @@ import {
 	approveApplication,
 	findDuplicate,
 	getApplication,
+	ignoreApplication,
+	isIgnored,
 	listApplications,
 	listPublicLinks,
 	rejectApplication,
@@ -194,6 +196,12 @@ async function ingest(
 	options: { skipVerify?: boolean } = {},
 ): Promise<void> {
 	try {
+		// 站长删过的申请：评论还留在 Waline，但不能再被捡回来
+		if (await isIgnored(env.FRIENDS_KV, id)) {
+			console.log(`[friends-hook] ${id} 已被删除过，跳过`);
+			return;
+		}
+
 		// 定时轮询拿到的评论，来源本身就是 Waline 接口，不需要再核验一次
 		if (!options.skipVerify) {
 			const verify = await verifyCommentExists(env, id);
@@ -317,6 +325,8 @@ async function handleScheduled(env: Env, ctx: ExecutionContext): Promise<void> {
 		if (rejectReason(comment)) continue;
 		// 已在库里（无论 pending / approved / rejected）就不再重复处理
 		if (await getApplication(env.FRIENDS_KV, id)) continue;
+		// 被站长删掉的：评论还在 Waline，但别再收一遍
+		if (await isIgnored(env.FRIENDS_KV, id)) continue;
 		fresh.push({ comment, id });
 	}
 
@@ -692,6 +702,8 @@ async function handleDelete(request: Request, env: Env): Promise<Response> {
 	if (!app) return json({ ok: false, error: `找不到申请 ${id}` }, 404);
 
 	const host = normalizeSiteUrl(app.parsed.siteurl);
+	// 先写墓碑再删记录：万一下一步失败，也只会「删不掉」而不是「删了又回来」
+	await ignoreApplication(env.FRIENDS_KV, id);
 	await env.FRIENDS_KV.delete(`app:${id}`);
 	await env.FRIENDS_KV.delete(`src:${id}`);
 	if (host) {
@@ -699,8 +711,8 @@ async function handleDelete(request: Request, env: Env): Promise<Response> {
 		await env.FRIENDS_KV.delete(`dup:${host}`);
 		await env.FRIENDS_KV.delete(`pend:${host}`);
 	}
-	console.log(`[friends-hook] 已删除申请 ${id}（${app.status}）`);
-	return json({ ok: true, id });
+	console.log(`[friends-hook] 已删除申请 ${id}（${app.status}），已记入忽略名单`);
+	return json({ ok: true, id, ignored: true });
 }
 
 export default {
@@ -1688,7 +1700,7 @@ document.addEventListener("click", async (event) => {
   try {
     if (action === "delete") {
       const sure = confirm(
-        "删除后不可恢复：KV 里的这条申请、以及它对应的已上线/查重记录都会清掉。\\n（对方在评论区的留言不会被删除）\\n\\n确定删除？"
+        "删除后不可恢复：这条申请和它的上线/查重记录都会清掉。\\n对方的评论留言不会被删除，但会记进忽略名单，轮询不会再把它捡回来。\\n\\n确定删除？"
       );
       if (!sure) throw new Error("__cancel__");
       const resp = await fetch("/admin/delete", {

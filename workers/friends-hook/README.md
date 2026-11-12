@@ -215,7 +215,7 @@ https://friends-hook.muyudada.dpdns.org/admin?token=<你的 ADMIN_TOKEN>
 - **卡片**：头像（抓不到就显示站名首字）、站名、域名、状态徽章、简介、元信息行（记录 id、来源、时间、邮箱）、快捷链接（访问站点 / 查看头像 / 写邮件 / 检测地址）、反链检测结论、折叠的「原始内容」。
   - 待审卡片：`通过` / `拒绝` + 备注输入框，以及反链徽章（已找到 / 检测中 / 未确认）
   - 已处理卡片：徽章只保留上线状态（已上线 / 待上线 / 状态未知），不再挂反链徽章 —— 都审完了还提示「反链未确认」纯属噪音
-  - 每张卡片都有 `重新检测反链`（对方后来才补上链接时用）和 `删除`（连同 `link:` / `dup:` / `pend:` 关联键一起清掉，需二次确认）
+  - 每张卡片都有 `重新检测反链`（对方后来才补上链接时用）和 `删除`（连同 `link:` / `dup:` / `pend:` 关联键一起清掉，并写一条 `ign:<id>` 墓碑，需二次确认）
 - **待上线**：已通过但**还没写进 `friendsConfig`** 的记录，一条一行，每行显示头像、站名、域名、通过时间和审核备注，右侧有独立的「复制」按钮；标题栏还有「复制全部」一次性复制整段配置。
 - **已上线**：已通过**且线上友链页已经能看到**的记录，只做展示。
 
@@ -252,7 +252,7 @@ https://friends-hook.muyudada.dpdns.org/admin?token=<你的 ADMIN_TOKEN>
 | GET | `/admin?token=...` | 审核页 |
 | POST | `/admin/review` | 审核动作，body `{"id":"...","action":"approve"\|"reject","note":"..."}`。响应里带 `reply`，由页面负责发给 Waline |
 | POST | `/admin/backlink` | 重新检测某条申请的反链，body `{"id":"..."}`，结果写回 KV |
-| POST | `/admin/delete` | 彻底删除一条申请及其 `link:` / `dup:` / `pend:` 关联键，body `{"id":"..."}` |
+| POST | `/admin/delete` | 彻底删除一条申请及其 `link:` / `dup:` / `pend:` 关联键，并写 `ign:<id>` 墓碑防止轮询再收一次，body `{"id":"..."}` |
 | POST | `/admin/poll` | 手动触发一次 Waline 轮询，不用等 cron |
 | cron | `*/15 * * * *` | 自动轮询 Waline 友链页，把新评论补进队列 |
 
@@ -415,7 +415,7 @@ workers/friends-hook/
     ├── form.ts          表单载荷校验（必填、长度、http(s) 协议、蜜罐）
     ├── captcha.ts       算术验证码：出题 / 存 KV / 一次性校验
     ├── rate.ts          按 IP 的每日限额（验证码 30 次、申请 5 次）
-    ├── store.ts         KV 读写（app: / dup: / pend: / link: 四种前缀）
+    ├── store.ts         KV 读写（app: / dup: / pend: / link: / ign: 五种前缀）
     ├── backlink.ts      反链检测 + SSRF 防护
     ├── mail.ts          邮件通知（新申请 / 审核结果），双通道
     ├── waline.ts        审核后替博主回复评论，借 Waline 的发信能力

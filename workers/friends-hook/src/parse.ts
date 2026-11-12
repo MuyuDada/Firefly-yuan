@@ -55,7 +55,19 @@ const FIELD_ALIASES: Record<keyof ParsedApplication, string[]> = {
 		"link",
 		"website",
 	],
-	avatar: ["头像链接", "头像", "logo", "图标", "avatar", "icon", "headimg"],
+	avatar: [
+		"头像链接",
+		"站点头像",
+		"网站头像",
+		"头像地址",
+		"头像url",
+		"头像",
+		"logo",
+		"图标",
+		"avatar",
+		"icon",
+		"headimg",
+	],
 	email: ["邮箱", "电子邮箱", "邮件", "email", "mail", "e-mail"],
 };
 
@@ -170,6 +182,16 @@ export function extractEmail(line: string): string {
 	return match ? match[0] : "";
 }
 
+/** 以图片扩展名结尾的链接 —— 这种是头像，不是站点首页 */
+function looksLikeImage(url: string): boolean {
+	return /\.(png|jpe?g|webp|gif|svg|avif|ico|bmp)(\?|#|$)/i.test(url);
+}
+
+/** 一句话的味道：有中文句读的短句是正文，不是站名 */
+function looksLikeProse(line: string): boolean {
+	return /[，。！？；、…~～]/.test(line);
+}
+
 export interface ParseResult {
 	parsed: ParsedApplication;
 	/** 完全无法归类的行 */
@@ -231,19 +253,36 @@ export function parseApplication(html: string): ParseResult {
 	// 兜底：把剩下的行按内容特征塞进空字段
 	const unparsed: string[] = [];
 	for (const line of leftoverLines) {
-		if (!parsed.siteurl && /https?:\/\//i.test(line)) {
-			parsed.siteurl = extractUrl(line);
-			continue;
+		if (/https?:\/\//i.test(line)) {
+			const url = extractUrl(line);
+			// 图片链接先给头像。老逻辑是「有链接就当站点首页」，
+			// 结果一条「站点头像：xxx.webp」的留言会把头像 URL 记成站点链接，
+			// 顺带按这个 host 建出一条假的 pend: 查重键
+			if (!parsed.avatar && looksLikeImage(url)) {
+				parsed.avatar = url;
+				continue;
+			}
+			if (!parsed.siteurl) {
+				parsed.siteurl = url;
+				continue;
+			}
+			if (!parsed.avatar) {
+				parsed.avatar = url;
+				continue;
+			}
 		}
 		if (!parsed.email && /[\w.+-]+@[\w-]+\.[\w.-]+/.test(line)) {
 			parsed.email = extractEmail(line);
 			continue;
 		}
-		if (!parsed.avatar && /https?:\/\//i.test(line)) {
-			parsed.avatar = extractUrl(line);
-			continue;
-		}
-		if (!parsed.name && line.length <= 40 && !/[:=]/.test(line)) {
+		// 没有字段名的短句可以是站名，但带中文句读的是正文（比如「话说……」），
+		// 猜成站名只会让审核页顶着一个假标题
+		if (
+			!parsed.name &&
+			line.length <= 40 &&
+			!looksLikeProse(line) &&
+			!/[:=]/.test(line)
+		) {
 			parsed.name = line;
 			continue;
 		}
