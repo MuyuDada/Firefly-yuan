@@ -317,6 +317,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 19,
 		enabled: true,
 	}
+	{
+		title: "Shiyan",
+		imgurl: "https://blog.zlion.top/favicon/favicon-192.png",
+		desc: "Stay Free !",
+		siteurl: "https://blog.zlion.top",
+		tags: ["Blog"],
+		weight: 20,
+		enabled: true,
+	},
 	// {
 	// 	title: "Firefly Docs",
 	// 	imgurl: "https://docs-firefly.cuteleaf.cn/logo.png",
