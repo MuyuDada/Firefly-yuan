@@ -155,8 +155,15 @@ try {
 		await evaluate("document.title"),
 	);
 	check(
-		"顶栏统计渲染出四个数字",
-		(await evaluate("document.querySelectorAll('.stats .stat').length")) === 4,
+		"顶栏只留一个要紧的数字（待审），其余计数交给 tab",
+		(await evaluate(
+			`(() => {
+        const stats = document.querySelectorAll('.stats .stat');
+        return stats.length === 1
+          && stats[0].classList.contains('is-pending')
+          && Number(stats[0].querySelector('b')?.textContent) >= 0;
+      })()`,
+		)) === true,
 	);
 	check(
 		"存在待审/已通过/已拒绝/全部 四个 tab",
@@ -207,11 +214,14 @@ try {
 		)) === true,
 	);
 	check(
-		"已处理卡片不再显示操作按钮",
+		"已处理卡片不再显示通过/拒绝按钮（只留重检与删除）",
 		(await evaluate(
 			`(() => {
         const c = document.querySelector('.card[data-status="rejected"]');
-        return !c || !c.querySelector('[data-action]');
+        return !c
+          || (!c.querySelector('[data-action="approve"]')
+            && !c.querySelector('[data-action="reject"]')
+            && !c.querySelector('[data-note]'));
       })()`,
 		)) === true,
 	);
@@ -341,6 +351,10 @@ try {
 	);
 
 	// ── 深色模式 ──
+	// 拿浅色的实际底色做基准，别写死某个 rgb —— 换配色时这条断言不该跟着失效
+	const lightBg = await evaluate(
+		"getComputedStyle(document.body).backgroundColor",
+	);
 	await send("Emulation.setEmulatedMedia", {
 		features: [{ name: "prefers-color-scheme", value: "dark" }],
 	});
@@ -348,7 +362,7 @@ try {
 	const darkBg = await evaluate(
 		"getComputedStyle(document.body).backgroundColor",
 	);
-	check("深色模式生效", darkBg !== "rgb(245, 246, 248)", darkBg);
+	check("深色模式生效", darkBg !== lightBg, `${lightBg} → ${darkBg}`);
 
 	// 截图（先滚到顶，保证截到顶栏）
 	await evaluate("window.scrollTo(0, 0); true");
