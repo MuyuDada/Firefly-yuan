@@ -125,18 +125,27 @@ Worker 绑的是自定义域 `friends-hook.muyudada.dpdns.org`，而不是默认
 
 这一步可选，但不配的话审核完还得手工改配置。
 
-1. Vercel 项目 → **Settings → Git → Deploy Hooks**，建一个（Branch 填 `master`），复制生成的 URL；
-2. 存进 Worker：
+**先搞清楚站点是谁在构建。** 本站的主站是 **GitHub → Cloudflare Workers Builds**（Worker 名 `firefly-yuan`，自定义域挂 `muyudada.dpdns.org`），Vercel 只作备用。触发哪一边，取决于域名指向谁 —— 拿错一边会得到「hook 返回 200/201，线上却毫无变化」的假象（本地踩过）。
+
+**主站走 Workers Builds 时**：
+
+1. Workers & Pages → 你的 Worker → **Settings → Builds → Deploy Hooks** → Create，Branch 选生产分支（`master`）；
+2. 复制生成的 URL，形如 `https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/<uuid>`；
+3. 存进 Worker：
 
 ```bash
 npx wrangler secret put DEPLOY_HOOK_URL
 ```
 
-之后审核页点「通过」时，Worker 会顺手 POST 一次这个 hook，Vercel 重新构建站点；`friends.astro` 在构建期会去 `/api/links` 拉已通过的友链（`src/utils/friends-links.ts`），构建完成新友链就真上线了。审核页刷新后它会从「待上线」移到「已上线」。
+**备用站走 Vercel 时**：Vercel 项目 → Settings → Git → Deploy Hooks 建一个，URL 存进同一个 secret。
 
-- 地址拿到就能触发构建，所以它是 `secret`，不进 `vars`。
+之后审核页点「通过」时，Worker 会顺手 POST 一次这个 hook 触发重建；`friends.astro` 在构建期会去 `/api/links` 拉已通过的友链（`src/utils/friends-links.ts`），构建完成新友链就真上线了。审核页刷新后它会从「待上线」移到「已上线」。
+
+- 两种 hook 都是「拿到 URL 就能触发」，所以它是 `secret`，不进 `vars`。
+- CF 的 hook 响应带 `build_uuid` / `already_exists`，重复触发会被自动去重；Vercel 的只回 job id。
 - 触发失败不影响审核结果本身：记录已经写进 KV，下次构建照样会带上它。审核页会提示失败，也可以手动点「触发重建」（对应 `POST /admin/deploy`）。
-- 每次通过都会触发一次全站重建（Astro + pagefind + 字体子集，通常 1~3 分钟）。批量审核时可以先都通过，最后点一次「触发重建」。
+- 每次通过都会触发一次全站重建（Astro + pagefind + 字体子集，通常 2~5 分钟）。批量审核时可以先都通过，最后点一次「触发重建」。
+- 判断「hook 到底有没有生效」不要只看状态码：对比线上页面里友链卡片的顺序（每次构建都会重新洗牌），顺序变了才是真的重建过。
 
 ---
 
@@ -531,7 +540,7 @@ Waline 只有两个发信触发点 —— 新评论通知博主、回复通知�
 | `NOTIFY_ON_APPLY` | `"0"` 关闭新申请通知 |
 | `NOTIFY_ON_REVIEW` | `"0"` 关闭审核结果通知 |
 | `RESEND_API_KEY` | Resend 密钥，用 `wrangler secret put` 设置，别写进 `vars` |
-| `DEPLOY_HOOK_URL` | Vercel Deploy Hook，审核通过后触发站点重建。用 `wrangler secret put` 设置；不配就只能手工粘配置 + 部署 |
+| `DEPLOY_HOOK_URL` | 审核通过后触发一次站点重建。主站走 Workers Builds 就填 CF 的 Deploy Hook，备用站走 Vercel 就填 Vercel 的 —— 填给域名真正指向的那一边，否则线上不会有任何变化。用 `wrangler secret put` 设置 |
 
 `vars` 里的值改了要重新 `wrangler deploy`；`secret` 是即时生效的。
 
