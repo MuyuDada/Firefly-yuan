@@ -1613,7 +1613,7 @@ ${ADMIN_STYLE}
     <div class="pending-head">
       <p>${
 				env.DEPLOY_HOOK_URL
-					? "通过时会自动触发重建，1~2 分钟后上线；没动静就点「触发重建」"
+					? "通过时会自动触发重建，2~3 分钟后上线；没动静就点「触发重建」"
 					: "粘进 <code>friendsConfig.ts</code> 再部署即生效 —— 友链列表是构建时读的静态数组"
 			}</p>
       ${
@@ -1922,7 +1922,7 @@ document.addEventListener("click", async (event) => {
       toast(
         data.deploy.ok === false
           ? "已通过，但触发重建失败，稍后点「触发重建」重试"
-          : "已通过，正在重建站点，约 1~2 分钟后上线"
+          : "已通过，正在重建站点，约 2~3 分钟后上线"
       );
       await new Promise((resolve) => setTimeout(resolve, 1200));
     }
