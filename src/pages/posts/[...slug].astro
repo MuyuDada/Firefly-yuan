@@ -4,11 +4,13 @@ import Comment from "@components/comment/index.astro";
 import Markdown from "@components/common/Markdown.astro";
 import EncryptedPost from "@components/features/EncryptedPost.astro";
 import KatexManager from "@components/features/KatexManager.astro";
+import AISummaryCard from "@components/misc/AISummaryCard.astro";
 import License from "@components/misc/License.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import "@/styles/banner-post.css";
+import { aiSummaryModel, getAISummary } from "@utils/ai-summary";
 import {
 	getRelatedPosts,
 	getSeriesPosts,
@@ -28,6 +30,7 @@ import PostMetadata from "@/components/layout/PostMeta.astro";
 import RecommendedPost from "@/components/misc/RecommendedPost.astro";
 import SeriesNav from "@/components/misc/SeriesNav.astro";
 import SharePoster from "@/components/misc/SharePoster.svelte";
+import { aiSummaryConfig } from "@/config/aiSummaryConfig";
 import { coverImageConfig } from "@/config/coverImageConfig";
 import { licenseConfig } from "@/config/licenseConfig";
 import { profileConfig } from "@/config/profileConfig";
@@ -66,6 +69,12 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
+
+// AI 摘要：frontmatter 手写优先，其次读构建时生成的 ai-summary.json
+const aiSummary = getAISummary(
+	removeFileExtension(entry.id),
+	entry.data.aiSummary,
+);
 
 const { remarkPluginFrontmatter } = await render(entry);
 
@@ -407,6 +416,14 @@ const seriesData = await getSeriesPosts(entry);
             posts={seriesData.posts}
             currentPostId={entry.id}
           />
+        )
+      }
+
+      {
+        aiSummaryConfig.enable && aiSummary && !entry.data.password && (
+          <div class="mb-6 onload-animation">
+            <AISummaryCard entry={aiSummary} model={aiSummaryModel} />
+          </div>
         )
       }
 

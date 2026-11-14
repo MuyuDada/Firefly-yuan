@@ -1,0 +1,225 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import type { AISummaryEntry } from "@utils/ai-summary";
+import { Icon } from "astro-icon/components";
+/**
+ * 文章 AI 摘要卡片
+ *
+ * 内容来自 src/data/ai-summary.json（构建时脚本生成）或文章 frontmatter 的 aiSummary。
+ * 展示行为（是否显示、是否默认展开、是否打字机）由 src/config/aiSummaryConfig.ts 控制。
+ */
+import { aiSummaryConfig } from "@/config/aiSummaryConfig";
+
+interface Props {
+	entry: AISummaryEntry;
+	/** 生成摘要的模型名，显示在卡片底部，可留空 */
+	model?: string;
+	class?: string;
+}
+
+const { entry, model = "", class: className = "" } = Astro.props;
+const { defaultOpen, typewriter } = aiSummaryConfig;
+
+const notice = model
+	? `${i18n(I18nKey.aiSummaryNotice)} · ${model}`
+	: i18n(I18nKey.aiSummaryNotice);
+
+// 开启打字机时才挂标记，脚本按这个属性找卡片
+const typingAttrs = typewriter.enable
+	? {
+			"data-ai-summary-typing": "",
+			"data-typing-duration": String(typewriter.duration),
+		}
+	: {};
+---
+
+<details
+	class:list={[
+		"ai-summary rounded-xl border border-dashed border-(--line-divider) bg-(--license-block-bg)",
+		className,
+	]}
+	open={defaultOpen}
+	{...typingAttrs}
+>
+	<summary
+		class="flex cursor-pointer list-none items-center gap-2 px-4 py-3 select-none"
+	>
+		<span
+			class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-(--btn-regular-bg) text-(--primary)"
+		>
+			<Icon
+				name="material-symbols:auto-awesome-outline"
+				class="text-base"
+			/>
+		</span>
+		<span
+			class="text-sm font-semibold text-black/80 dark:text-white/85"
+		>
+			{i18n(I18nKey.aiSummary)}
+		</span>
+		<span
+			class="ai-summary-chevron ml-auto text-black/25 transition-transform duration-300 dark:text-white/25"
+		>
+			<Icon name="material-symbols:expand-more" class="text-lg" />
+		</span>
+	</summary>
+	<div class="px-4 pb-3 -mt-0.5 sm:pl-14">
+		<p
+			class="text-sm leading-7 whitespace-pre-line text-black/70 dark:text-white/70"
+			data-ai-summary-text
+		>
+			{entry.summary}
+		</p>
+		<div
+			class="mt-2 flex items-center gap-1 text-xs text-black/30 dark:text-white/30"
+		>
+			<Icon name="material-symbols:info-outline" class="text-[13px]" />
+			<span>{notice}</span>
+		</div>
+	</div>
+</details>
+
+<script>
+	type SummaryDetails = HTMLDetailsElement & { __aiTyped?: boolean };
+
+	/** 逐帧步长（约 60fps），后面按总时长换算每帧打几个字 */
+	const FRAME_MS = 16;
+	const DEFAULT_DURATION = 1400;
+
+	function typeSummary(details: SummaryDetails): void {
+		if (details.__aiTyped) return;
+		const target = details.querySelector<HTMLElement>(
+			"[data-ai-summary-text]",
+		);
+		if (!target) return;
+
+		const fullText = target.textContent ?? "";
+		if (!fullText.trim()) return;
+		details.__aiTyped = true;
+
+		// 系统开了「减弱动态效果」就保留完整文本，不打字
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+			return;
+		}
+
+		// 按字形切分：中文逐字，emoji 不会被劈成两半
+		const segmenter = new Intl.Segmenter(undefined, {
+			granularity: "grapheme",
+		});
+		const units = Array.from(
+			segmenter.segment(fullText),
+			(item) => item.segment,
+		);
+		if (units.length === 0) return;
+
+		const duration =
+			Number(details.dataset.typingDuration) || DEFAULT_DURATION;
+		const ticks = Math.max(1, Math.round(duration / FRAME_MS));
+		const perTick = Math.max(1, Math.ceil(units.length / ticks));
+
+		// 清空文本会让卡片高度塌陷、页面往上跳，先把当前高度钉住
+		const height = target.offsetHeight;
+		if (height > 0) target.style.minHeight = `${height}px`;
+
+		target.textContent = "";
+		details.classList.add("is-typing");
+
+		let cursor = 0;
+		const step = (): void => {
+			cursor = Math.min(units.length, cursor + perTick);
+			target.textContent = units.slice(0, cursor).join("");
+			if (cursor < units.length) {
+				requestAnimationFrame(step);
+				return;
+			}
+			details.classList.remove("is-typing");
+			target.style.minHeight = "";
+		};
+		requestAnimationFrame(step);
+	}
+
+	function initAiSummaryTyping(): void {
+		const blocks = document.querySelectorAll<SummaryDetails>(
+			"details[data-ai-summary-typing]",
+		);
+		blocks.forEach((details) => {
+			if (details.open) {
+				typeSummary(details);
+				return;
+			}
+			// 默认收起的卡片先不动，等读者点开再打
+			details.addEventListener(
+				"toggle",
+				() => {
+					if (details.open) typeSummary(details);
+				},
+				{ once: true },
+			);
+		});
+	}
+
+	// Swup 切页会让脚本重跑，监听器只注册一次
+	if (!window.__aiSummaryTypingInit) {
+		window.__aiSummaryTypingInit = true;
+		const run = (): void => initAiSummaryTyping();
+		if (document.readyState === "loading") {
+			document.addEventListener("DOMContentLoaded", run);
+		} else {
+			run();
+		}
+		document.addEventListener("swup:contentReplaced", run);
+		document.addEventListener("swup:content:replace", run);
+		document.addEventListener("swup:page:view", run);
+		if (window.swup?.hooks) {
+			window.swup.hooks.on("content:replace", run);
+			window.swup.hooks.on("page:view", run);
+		}
+	}
+</script>
+
+<style>
+	/* 收起的三角标记在部分浏览器里会露出来，统一去掉 */
+	.ai-summary summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.ai-summary[open] .ai-summary-chevron {
+		transform: rotate(180deg);
+	}
+
+	.ai-summary summary:focus-visible {
+		outline: 2px solid var(--primary);
+		outline-offset: 2px;
+		border-radius: 0.75rem;
+	}
+
+	/* 打字光标：贴在最后一行末尾，打完自动消失 */
+	.ai-summary.is-typing [data-ai-summary-text]::after {
+		content: "";
+		display: inline-block;
+		width: 2px;
+		height: 1em;
+		margin-left: 3px;
+		vertical-align: -0.12em;
+		background-color: var(--primary);
+		animation: ai-summary-caret 0.9s steps(2, start) infinite;
+	}
+
+	@keyframes ai-summary-caret {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0;
+		}
+	}
+
+	/* 减弱动态效果时不要光标闪烁 */
+	@media (prefers-reduced-motion: reduce) {
+		.ai-summary.is-typing [data-ai-summary-text]::after {
+			display: none;
+		}
+	}
+</style>

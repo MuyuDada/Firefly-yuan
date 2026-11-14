@@ -1,3 +1,4 @@
+export type { AISummaryConfig } from "./aiSummaryConfig";
 export type { AnalyticsConfig } from "./analyticsConfig";
 export type { AnnouncementConfig } from "./announcementConfig";
 export type {

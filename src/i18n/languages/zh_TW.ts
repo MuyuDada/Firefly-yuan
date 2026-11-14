@@ -528,6 +528,10 @@ export const zh_TW: Translation = {
 	[Key.seriesThisArticle]: "本文",
 	[Key.noSeries]: "暫無系列",
 
+	// 文章 AI 摘要
+	[Key.aiSummary]: "AI 摘要",
+	[Key.aiSummaryNotice]: "由 AI 生成，僅供參考",
+
 	// 加密
 	[Key.postEncrypted]: "本文已加密",
 

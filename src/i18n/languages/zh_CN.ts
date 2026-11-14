@@ -527,6 +527,10 @@ export const zh_CN: Translation = {
 	[Key.seriesThisArticle]: "本文",
 	[Key.noSeries]: "暂无系列",
 
+	// 文章 AI 摘要
+	[Key.aiSummary]: "AI 摘要",
+	[Key.aiSummaryNotice]: "由 AI 生成，仅供参考",
+
 	// 加密
 	[Key.postEncrypted]: "本文已加密",
 

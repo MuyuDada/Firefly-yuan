@@ -551,6 +551,10 @@ export const ru: Translation = {
 	[Key.seriesThisArticle]: "Эта статья",
 	[Key.noSeries]: "Пока нет серий",
 
+	// AI-аннотация
+	[Key.aiSummary]: "AI-аннотация",
+	[Key.aiSummaryNotice]: "Сгенерировано ИИ, только для справки",
+
 	// Зашифровано
 	[Key.postEncrypted]: "Эта статья зашифрована",
 

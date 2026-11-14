@@ -517,6 +517,10 @@ enum I18nKey {
 	seriesThisArticle = "seriesThisArticle",
 	noSeries = "noSeries",
 
+	// 文章 AI 摘要
+	aiSummary = "aiSummary",
+	aiSummaryNotice = "aiSummaryNotice",
+
 	// 加密
 	postEncrypted = "postEncrypted",
 

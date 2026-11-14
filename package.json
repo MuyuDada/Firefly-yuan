@@ -21,6 +21,7 @@
     "lint": "biome check --write ./src ./scripts",
     "preinstall": "npx only-allow pnpm",
     "lqips": "npx tsx scripts/generate-lqips.ts",
+    "ai-summary": "npx tsx scripts/generate-ai-summary.ts",
     "holidays": "node scripts/fetch-holidays.mjs",
     "solar-terms": "node scripts/prepare-solar-terms.mjs",
     "github-cards": "npx tsx scripts/generate-github-card-data.ts"

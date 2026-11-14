@@ -544,6 +544,10 @@ export const ko: Translation = {
 	[Key.seriesThisArticle]: "이 글",
 	[Key.noSeries]: "시리즈가 없습니다",
 
+	// AI 요약
+	[Key.aiSummary]: "AI 요약",
+	[Key.aiSummaryNotice]: "AI가 생성했으며 참고용입니다",
+
 	// Encrypted
 	[Key.postEncrypted]: "이 게시글은 암호화되어 있습니다",
 

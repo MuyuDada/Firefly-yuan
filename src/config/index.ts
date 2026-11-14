@@ -19,6 +19,7 @@ export const navbarMode: NavbarMode = resolveNavbarMode(siteConfig.navbar);
 // 类型导出
 export type {
 	AdConfig,
+	AISummaryConfig,
 	AnalyticsConfig,
 	AnnouncementConfig,
 	BackgroundWallpaperConfig,
@@ -64,6 +65,7 @@ export type {
 	FontDefinition,
 	FontSelectionConfig,
 } from "../types/fontConfig"; // 字体类型定义
+export { aiSummaryConfig } from "./aiSummaryConfig"; // 文章 AI 摘要展示配置
 export { analyticsConfig } from "./analyticsConfig"; // 统计分析配置
 export { announcementConfig } from "./announcementConfig"; // 公告配置
 // 样式配置

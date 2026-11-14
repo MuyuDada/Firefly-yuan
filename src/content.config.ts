@@ -23,6 +23,7 @@ type PostData = {
 	passwordHint: string;
 	series: string;
 	seriesOrder?: number;
+	aiSummary: string;
 	prevTitle: string;
 	prevSlug: string;
 	nextTitle: string;
@@ -105,6 +106,8 @@ const postsCollection: ContentCollection<PostData> = defineCollection({
 		passwordHint: z.string().optional().default(""),
 		series: z.string().optional().default(""),
 		seriesOrder: z.number().optional(),
+		/** 手写的 AI 摘要，留空则用脚本生成的那份（src/data/ai-summary.json） */
+		aiSummary: z.string().optional().default(""),
 
 		/* For internal use */
 		prevTitle: z.string().default(""),

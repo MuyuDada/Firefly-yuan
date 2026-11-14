@@ -543,6 +543,10 @@ export const ja: Translation = {
 	[Key.seriesThisArticle]: "この記事",
 	[Key.noSeries]: "シリーズはありません",
 
+	// AI 要約
+	[Key.aiSummary]: "AI 要約",
+	[Key.aiSummaryNotice]: "AI による生成、参考用",
+
 	// 暗号化
 	[Key.postEncrypted]: "この記事は暗号化されています",
 
