@@ -30,12 +30,6 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 
 			// 系列
 			LinkPresets.Series,
-
-			// 站点日历（按日期浏览文章与事件）
-			LinkPresets.Calendar,
-
-			// 站点统计（基于 Umami 公开分享数据的访问分析）
-			LinkPresets.Analytics,
 		],
 	});
 
@@ -119,6 +113,12 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 
 			// 关于页面
 			LinkPresets.About,
+			
+			// 站点日历（按日期浏览文章与事件）
+			LinkPresets.Calendar,
+
+			// 站点统计（基于 Umami 公开分享数据的访问分析）
+			LinkPresets.Analytics,
 		],
 	});
 
