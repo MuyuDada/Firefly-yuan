@@ -241,6 +241,10 @@ const chartData = {
                 ? "rgba(0,0,0,0.35)"
                 : "rgba(0,0,0,0.12)",
             },
+            // SVG 高亮态显式保留节点颜色，避免填充消失。
+            emphasis: {
+              itemStyle: { color: color },
+            },
             label: {
               show: true,
               position: "right",
@@ -266,7 +270,8 @@ const chartData = {
           };
         });
 
-        var chart = echarts.init(chartDom);
+        // 同玫瑰图：改用 SVG 渲染器，hover 不再触发整块 canvas 重绘
+        var chart = echarts.init(chartDom, null, { renderer: "svg" });
 
         chart.setOption({
           tooltip: {
@@ -360,14 +365,19 @@ const chartData = {
                   // 注意：节点自带 label，其优先级高于 series 级 label，
                   // 所以必须逐个节点重写 label.color，只改 series.label 不生效。
                   data: nodes.map(function (n, i) {
+                    var color = nextPalette[i % nextPalette.length];
                     return {
                       ...n,
                       itemStyle: {
                         ...n.itemStyle,
-                        color: nextPalette[i % nextPalette.length],
+                        color: color,
                         borderColor: nc.isDark
                           ? "rgba(255,255,255,0.45)"
                           : "rgba(255,255,255,0.92)",
+                      },
+                      emphasis: {
+                        ...n.emphasis,
+                        itemStyle: { ...n.emphasis.itemStyle, color: color },
                       },
                       label: { ...n.label, color: nc.text },
                     };

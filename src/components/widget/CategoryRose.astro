@@ -201,7 +201,10 @@ const categoryRoseAriaLabel = `文章分类玫瑰图，共 ${categories.length} 
 
         var colors = getThemeColors();
         var reduced = prefersReducedMotion();
-        var chart = echarts.init(chartDom);
+        // 用 SVG 渲染器：canvas 渲染器每次 hover 都要清屏重画整块，
+        // 鼠标划过扇区时会抓到"画到一半"的中间帧（表现为色块闪烁）。
+        // SVG 渲染器只改几个 DOM 属性，不存在整块重绘，其它逻辑与外观完全不变。
+        var chart = echarts.init(chartDom, null, { renderer: "svg" });
 
         chart.setOption({
           tooltip: {
@@ -246,8 +249,6 @@ const categoryRoseAriaLabel = `文章分类玫瑰图，共 ${categories.length} 
               },
               labelLine: { lineStyle: { color: colors.subtextColor } },
               emphasis: {
-                // 关闭 hover 放大：扇区被放大后可能从光标下方"长出去"，
-                // 触发 mouseout → 缩小 → 又进入 → 放大 的无限抖动。
                 scale: false,
                 itemStyle: {
                   shadowBlur: reduced ? 0 : 12,
@@ -259,10 +260,24 @@ const categoryRoseAriaLabel = `文章分类玫瑰图，共 ${categories.length} 
               animationType: "scale",
               animationEasing: "cubicOut",
               animationDuration: reduced ? 0 : 800,
-              animationDelay: function (idx) {
-                return reduced ? 0 : idx * 70;
+              animationDelay: function (idxOrParams) {
+                // hover 高亮走「更新」路径时，ECharts 传进来的是参数对象而不是索引，
+                // 直接 idx * 70 会算出 NaN → 扇区半径也变 NaN → 扇区被画成零面积
+                // （看起来就是色块凭空消失）。两种入参都要兼容。
+                if (reduced) return 0;
+                var i =
+                  typeof idxOrParams === "number"
+                    ? idxOrParams
+                    : (idxOrParams && idxOrParams.dataIndex) || 0;
+                return i * 70;
               },
-              data: chartData,
+              data: chartData.map(function (item, index) {
+                return {
+                  ...item,
+                  // SVG 高亮态显式保留原色，否则会清空扇区填充。
+                  emphasis: { itemStyle: { color: palette[index] } },
+                };
+              }),
               color: palette,
             },
           ],
@@ -299,8 +314,17 @@ const categoryRoseAriaLabel = `文章分类玫瑰图，共 ${categories.length} 
               series: [
                 {
                   color: nextPalette,
+                  itemStyle: { borderColor: nc.tooltipBg },
                   label: { color: nc.textColor },
                   labelLine: { lineStyle: { color: nc.subtextColor } },
+                  data: chartData.map(function (item, index) {
+                    return {
+                      ...item,
+                      emphasis: {
+                        itemStyle: { color: nextPalette[index] },
+                      },
+                    };
+                  }),
                 },
               ],
             });
