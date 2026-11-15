@@ -37,7 +37,8 @@ const hasChildren = processedLink.children && processedLink.children.length > 0;
 			<Icon name="material-symbols:keyboard-arrow-down-rounded" class="text-[1.2rem] transition-transform duration-200 dropdown-arrow absolute right-2.5 top-1/2 -translate-y-1/2" />
 		</button>
 		<div class="dropdown-menu" data-dropdown-menu>
-			<DropdownPanel class="dropdown-content">
+			<DropdownPanel class="dropdown-content navbar-dropdown-content">
+				<span class="navbar-dropdown-highlight" aria-hidden="true"></span>
 				{processedLink.children?.map((child, index) => (
 					<DropdownItem
 						href={child.external ? child.url : url(child.url)}
@@ -45,11 +46,13 @@ const hasChildren = processedLink.children && processedLink.children.length > 0;
 						isLast={index === (processedLink.children?.length || 0) - 1}
 						class="dropdown-item focus-ring-inset h-10"
 					>
-						{child.icon && <Icon name={child.icon} class="text-[1.25rem] mr-3 navbar-icon" />}
-						<span>{child.name}</span>
-						{child.external && (
-							<Icon name="fa7-solid:arrow-up-right-from-square" class="text-[0.75rem] text-black/25 dark:text-white/25 ml-auto" />
-						)}
+						<span class="navbar-dropdown-item-content">
+							{child.icon && <Icon name={child.icon} class="text-[1.25rem] mr-3 navbar-icon" />}
+							<span>{child.name}</span>
+							{child.external && (
+								<Icon name="fa7-solid:arrow-up-right-from-square" class="text-[0.75rem] text-black/25 dark:text-white/25 ml-2" />
+							)}
+						</span>
 					</DropdownItem>
 				))}
 			</DropdownPanel>
@@ -59,6 +62,7 @@ const hasChildren = processedLink.children && processedLink.children.length > 0;
 			aria-label={processedLink.name} 
 			href={processedLink.external ? processedLink.url : url(processedLink.url)} 
 			target={processedLink.external ? "_blank" : null}
+			data-nav-href={processedLink.external ? undefined : url(processedLink.url)}
 			class="btn-plain scale-animation rounded-lg h-10 font-bold px-4 active:scale-95"
 		>
 			<div class="flex items-center gap-1.5">
@@ -176,4 +180,111 @@ const hasChildren = processedLink.children && processedLink.children.length > 0;
 	function closeDropdown(_dropdown: Element, trigger: Element, _menu: Element) {
 		trigger.setAttribute('aria-expanded', 'false');
 	}
+
+	function initDropdownHighlights() {
+		document.querySelectorAll<HTMLElement>(".navbar-dropdown-content").forEach((panel) => {
+			if (panel.dataset.highlightInitialized === "true") return;
+			const highlightElement = panel.querySelector<HTMLElement>(".navbar-dropdown-highlight");
+			if (!highlightElement) return;
+			const highlight: HTMLElement = highlightElement;
+
+			let activeTarget: HTMLElement | null = null;
+			let hoveredTarget: HTMLElement | null = null;
+			let initialized = false;
+
+			function normalizePath(path: string) {
+				return path.replace(/\/+$/, "") || "/";
+			}
+
+			function matchesCurrentPath(link: HTMLAnchorElement, path: string) {
+				if (link.target === "_blank") return false;
+				const href = new URL(link.href, location.href);
+				return href.origin === location.origin && normalizePath(href.pathname) === path;
+			}
+
+			function moveHighlight(target: HTMLElement | null) {
+				if (!target?.isConnected) {
+					highlight.style.opacity = "0";
+					return;
+				}
+
+				const panelRect = panel.getBoundingClientRect();
+				const targetRect = target.getBoundingClientRect();
+				const content = target.querySelector<HTMLElement>(".navbar-dropdown-item-content");
+				const contentRect = content?.getBoundingClientRect();
+				const targetStyle = getComputedStyle(target);
+				const paddingLeft = Number.parseFloat(targetStyle.paddingLeft) || 0;
+				const paddingRight = Number.parseFloat(targetStyle.paddingRight) || 0;
+				const left = contentRect ? contentRect.left - paddingLeft : targetRect.left;
+				const width = contentRect
+					? contentRect.width + paddingLeft + paddingRight
+					: targetRect.width;
+				highlight.style.transform = `translate3d(${left - panelRect.left - panel.clientLeft}px, ${targetRect.top - panelRect.top - panel.clientTop}px, 0)`;
+				highlight.style.width = `${width}px`;
+				highlight.style.height = `${targetRect.height}px`;
+				highlight.style.opacity = "1";
+
+				if (!initialized) {
+					initialized = true;
+					requestAnimationFrame(() => highlight.dataset.ready = "true");
+				}
+			}
+
+			function refreshActiveTarget() {
+				const path = normalizePath(location.pathname);
+				activeTarget = Array.from(panel.querySelectorAll<HTMLAnchorElement>(".dropdown-item[href]"))
+					.find((link) => matchesCurrentPath(link, path)) ?? null;
+
+				panel.querySelectorAll<HTMLElement>(".dropdown-item").forEach((item) => {
+					const isActive = item === activeTarget;
+					item.toggleAttribute("data-nav-active", isActive);
+					if (isActive) item.setAttribute("aria-current", "page");
+					else item.removeAttribute("aria-current");
+				});
+
+				moveHighlight(hoveredTarget ?? activeTarget);
+			}
+
+			function getMenuTarget(element: EventTarget | null) {
+				if (!(element instanceof Element)) return null;
+				const target = element.closest<HTMLElement>(".dropdown-item");
+				return target && panel.contains(target) ? target : null;
+			}
+
+			panel.addEventListener("pointerover", (event) => {
+				const target = getMenuTarget(event.target);
+				if (target && target !== hoveredTarget) {
+					hoveredTarget = target;
+					moveHighlight(target);
+				}
+			});
+			panel.addEventListener("pointerleave", () => {
+				hoveredTarget = null;
+				moveHighlight(activeTarget);
+			});
+			panel.addEventListener("focusin", (event) => {
+				const target = getMenuTarget(event.target);
+				if (target) {
+					hoveredTarget = target;
+					moveHighlight(target);
+				}
+			});
+			panel.addEventListener("focusout", (event) => {
+				if (event.relatedTarget instanceof Node && panel.contains(event.relatedTarget)) return;
+				hoveredTarget = null;
+				moveHighlight(activeTarget);
+			});
+			window.addEventListener("resize", () => moveHighlight(hoveredTarget ?? activeTarget));
+			document.addEventListener("astro:page-load", refreshActiveTarget);
+			document.addEventListener("swup:contentReplaced", refreshActiveTarget);
+
+			panel.dataset.highlightInitialized = "true";
+			refreshActiveTarget();
+			document.fonts?.ready.then(() => moveHighlight(hoveredTarget ?? activeTarget));
+		});
+	}
+
+	initDropdownHighlights();
+	document.addEventListener("astro:page-load", initDropdownHighlights);
+	document.addEventListener("swup:contentReplaced", initDropdownHighlights);
 </script>

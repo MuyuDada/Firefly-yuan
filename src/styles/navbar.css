@@ -77,11 +77,7 @@ html[data-glass-distortion="on"] #navbar[data-glass="on"] .navbar-island::before
     filter: url(#navbar-glass-distortion);
 }
 
-/* ============================================
- * 菜单项玻璃选中态
- * 悬停/按下时浮起一块磨砂药丸：底色加深 + 白圈，与岛的玻璃语言一致
- * （btn-plain 自带的悬停底色与 active:scale-95 保留）
- * ============================================ */
+/* 导航岛的 hover 底色由各岛处理，避免与按钮自身的伪元素底色叠加。 */
 .navbar-island .btn-plain {
     border-radius: 9999px;
 }
@@ -93,6 +89,128 @@ html[data-glass-distortion="on"] #navbar[data-glass="on"] .navbar-island::before
 
 .navbar-island .btn-plain:active {
     background: color-mix(in oklch, var(--card-bg) 52%, transparent);
+}
+
+.navbar-menu-island {
+    isolation: isolate;
+}
+
+.navbar-menu-highlight,
+.navbar-side-highlight {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    border-radius: 9999px;
+    background: color-mix(in oklch, var(--card-bg) 42%, transparent);
+    box-shadow: inset 0 0 0 1px var(--navbar-island-ring, rgba(255, 255, 255, 0.4));
+    opacity: 0;
+    pointer-events: none;
+    transform: translate3d(0, 0, 0);
+    transition: none;
+}
+
+.navbar-menu-highlight[data-ready="true"],
+.navbar-side-highlight[data-ready="true"] {
+    transition:
+        transform 560ms cubic-bezier(0.2, 1.45, 0.45, 1),
+        width 420ms cubic-bezier(0.2, 1.45, 0.45, 1),
+        height 420ms cubic-bezier(0.2, 1.45, 0.45, 1),
+        opacity 140ms ease;
+}
+
+.navbar-menu-island > .dropdown-container {
+    z-index: 1;
+}
+
+.navbar-menu-island .btn-plain:hover,
+.navbar-menu-island .btn-plain:active {
+    background: transparent;
+    box-shadow: none;
+}
+
+.navbar-menu-island .btn-plain[data-nav-active] {
+    color: var(--primary);
+}
+
+.navbar-menu-island .navbar-dropdown-content,
+#theme-mode-panel {
+    isolation: isolate;
+}
+
+.navbar-menu-island .navbar-dropdown-highlight,
+#theme-mode-panel .navbar-dropdown-highlight {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    border-radius: 9999px;
+    background: color-mix(in oklch, var(--card-bg) 42%, transparent);
+    box-shadow: inset 0 0 0 1px var(--navbar-island-ring, rgba(255, 255, 255, 0.4));
+    opacity: 0;
+    pointer-events: none;
+    transform: translate3d(0, 0, 0);
+    transition: none;
+}
+
+.navbar-menu-island .navbar-dropdown-highlight[data-ready="true"],
+#theme-mode-panel .navbar-dropdown-highlight[data-ready="true"] {
+    transition:
+        transform 560ms cubic-bezier(0.2, 1.45, 0.45, 1),
+        width 420ms cubic-bezier(0.2, 1.45, 0.45, 1),
+        height 420ms cubic-bezier(0.2, 1.45, 0.45, 1),
+        opacity 140ms ease;
+}
+
+.navbar-menu-island .navbar-dropdown-content .dropdown-item,
+#theme-mode-panel .navbar-theme-mode-item {
+    position: relative;
+    z-index: 1;
+}
+
+.navbar-menu-island .navbar-dropdown-item-content,
+#theme-mode-panel .navbar-dropdown-item-content {
+    display: inline-flex;
+    align-items: center;
+    width: max-content;
+}
+
+.navbar-island:not(.navbar-menu-island) .navbar-side-highlight-target {
+    position: relative;
+    z-index: 1;
+}
+
+.navbar-island:not(.navbar-menu-island) .navbar-side-highlight-target.btn-plain:hover,
+.navbar-island:not(.navbar-menu-island) .navbar-side-highlight-target.btn-plain:active,
+.navbar-island:not(.navbar-menu-island) #search-bar:hover,
+.navbar-island:not(.navbar-menu-island) #search-bar:focus-within {
+    background: transparent;
+    box-shadow: none;
+}
+
+.navbar-menu-island .navbar-dropdown-content .btn-plain:hover,
+.navbar-menu-island .navbar-dropdown-content .btn-plain:active,
+.navbar-island #theme-mode-panel .navbar-theme-mode-item:hover,
+.navbar-island #theme-mode-panel .navbar-theme-mode-item:active,
+.navbar-island #theme-mode-panel .navbar-theme-mode-item.current-theme-btn {
+    background: transparent;
+    box-shadow: none;
+}
+
+.navbar-island .btn-plain.scale-animation::before {
+    content: none;
+}
+
+.navbar-menu-island .navbar-dropdown-content .dropdown-item[data-nav-active] {
+    color: var(--primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .navbar-menu-highlight[data-ready="true"],
+    .navbar-side-highlight[data-ready="true"],
+    .navbar-dropdown-highlight[data-ready="true"] {
+        transition: none;
+    }
 }
 
 /* ============================================

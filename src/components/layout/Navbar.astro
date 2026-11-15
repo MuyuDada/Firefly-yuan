@@ -234,6 +234,7 @@ const logoVariants = await Promise.all(
     ]}>
     <div class="mx-auto h-full w-full max-w-(--page-width) grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
         <div class="navbar-island navbar-island--glass flex items-center px-1.5 col-start-1">
+            <span class="navbar-side-highlight" aria-hidden="true"></span>
             <a href={url('/')} class="btn-plain scale-animation rounded-full h-10 px-3 font-bold active:scale-95">
                 <div class:list={[
                     "flex flex-row items-center text-md",
@@ -265,16 +266,18 @@ const logoVariants = await Promise.all(
             </a>
         </div>
         <div class:list={[
-            "navbar-island navbar-island--glass hidden lg:flex items-center space-x-1 col-start-2 px-2 w-fit max-w-full",
+            "navbar-island navbar-island--glass navbar-menu-island hidden lg:flex items-center space-x-1 col-start-2 px-2 w-fit max-w-full",
             isNavbarMenuCentered
                 ? "justify-self-center"
                 : "justify-self-start pl-2"
         ]}>
+            <span class="navbar-menu-highlight" aria-hidden="true"></span>
             {links.map((l) => {
                 return <DropdownMenu link={l} />;
             })}
         </div>
         <div class="navbar-island navbar-island--glass flex col-start-3 justify-self-end items-center px-1.5">
+                <span class="navbar-side-highlight" aria-hidden="true"></span>
                 <!--<SearchPanel client:load>-->
                 <Search
                     client:load
@@ -422,6 +425,186 @@ function loadButtonScript() {
 }
 
 loadButtonScript();
+
+function initNavbarMenuHighlight() {
+    const menuElement = document.querySelector<HTMLElement>(".navbar-menu-island");
+    if (!menuElement) return;
+    const highlightElement = menuElement.querySelector<HTMLElement>(".navbar-menu-highlight");
+    if (!highlightElement) return;
+    const menu: HTMLElement = menuElement;
+    const highlight: HTMLElement = highlightElement;
+
+    let activeTarget: HTMLElement | null = null;
+    let hoveredTarget: HTMLElement | null = null;
+    let initialized = false;
+
+    function normalizePath(path: string) {
+        return path.replace(/\/+$/, "") || "/";
+    }
+
+    function matchesCurrentPath(link: HTMLAnchorElement, path: string) {
+        if (link.target === "_blank") return false;
+        const href = new URL(link.href, location.href);
+        return href.origin === location.origin && normalizePath(href.pathname) === path;
+    }
+
+    function moveHighlight(target: HTMLElement | null) {
+        if (!target?.isConnected) {
+            highlight.style.opacity = "0";
+            return;
+        }
+
+        const menuRect = menu.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        highlight.style.transform = `translate3d(${targetRect.left - menuRect.left}px, ${targetRect.top - menuRect.top}px, 0)`;
+        highlight.style.width = `${targetRect.width}px`;
+        highlight.style.height = `${targetRect.height}px`;
+        highlight.style.opacity = "1";
+
+        if (!initialized) {
+            initialized = true;
+            requestAnimationFrame(() => highlight.dataset.ready = "true");
+        }
+    }
+
+    function refreshActiveTarget() {
+        const path = normalizePath(location.pathname);
+        activeTarget = null;
+
+        menu.querySelectorAll<HTMLElement>(".dropdown-container").forEach((container) => {
+            const directLink = container.querySelector<HTMLAnchorElement>(":scope > a[data-nav-href]");
+            const childLink = Array.from(container.querySelectorAll<HTMLAnchorElement>(".dropdown-item[href]"))
+                .find((link) => matchesCurrentPath(link, path));
+            const directIsActive = directLink ? matchesCurrentPath(directLink, path) : false;
+            const isActive = directIsActive || !!childLink;
+            const target = directIsActive
+                ? directLink
+                : childLink
+                    ? container.querySelector<HTMLElement>(".dropdown-trigger")
+                    : null;
+
+            container.querySelectorAll<HTMLElement>(":scope > a[data-nav-href], :scope > .dropdown-trigger").forEach((item) => {
+                item.toggleAttribute("data-nav-active", isActive && item === target);
+                if (item instanceof HTMLAnchorElement) {
+                    if (item === target) item.setAttribute("aria-current", "page");
+                    else item.removeAttribute("aria-current");
+                }
+            });
+
+            if (target) activeTarget = target;
+        });
+
+        moveHighlight(hoveredTarget ?? activeTarget);
+    }
+
+    function getMenuTarget(element: EventTarget | null) {
+        if (!(element instanceof Element)) return null;
+        const target = element.closest<HTMLElement>(".dropdown-container > a[data-nav-href], .dropdown-container > .dropdown-trigger");
+        return target && menu.contains(target) ? target : null;
+    }
+
+    menu.addEventListener("pointerover", (event) => {
+        const target = getMenuTarget(event.target);
+        if (target && target !== hoveredTarget) {
+            hoveredTarget = target;
+            moveHighlight(target);
+        }
+    });
+    menu.addEventListener("pointerleave", () => {
+        hoveredTarget = null;
+        moveHighlight(activeTarget);
+    });
+    menu.addEventListener("focusin", (event) => {
+        const target = getMenuTarget(event.target);
+        if (target) {
+            hoveredTarget = target;
+            moveHighlight(target);
+        }
+    });
+    menu.addEventListener("focusout", (event) => {
+        if (event.relatedTarget instanceof Node && menu.contains(event.relatedTarget)) return;
+        hoveredTarget = null;
+        moveHighlight(activeTarget);
+    });
+    window.addEventListener("resize", () => moveHighlight(hoveredTarget ?? activeTarget));
+    document.addEventListener("astro:page-load", refreshActiveTarget);
+    document.addEventListener("swup:contentReplaced", refreshActiveTarget);
+
+    refreshActiveTarget();
+    document.fonts?.ready.then(() => moveHighlight(hoveredTarget ?? activeTarget));
+}
+
+initNavbarMenuHighlight();
+
+function initNavbarSideHighlights() {
+    document.querySelectorAll<HTMLElement>(".navbar-island:not(.navbar-menu-island)").forEach((island) => {
+        if (island.dataset.highlightInitialized === "true") return;
+        const highlightElement = island.querySelector<HTMLElement>(".navbar-side-highlight");
+        if (!highlightElement) return;
+        const highlight: HTMLElement = highlightElement;
+        const targets = island.querySelectorAll<HTMLElement>(
+            ":scope > a.btn-plain, :scope > button.btn-plain, :scope > #search-bar, :scope > astro-island #search-bar, :scope > astro-island #search-switch, :scope > div > #scheme-switch, :scope > astro-island #scheme-switch",
+        );
+        targets.forEach((target) => target.classList.add("navbar-side-highlight-target"));
+
+        let hoveredTarget: HTMLElement | null = null;
+        let initialized = false;
+
+        function moveHighlight(target: HTMLElement | null) {
+            if (!target?.isConnected || target.getClientRects().length === 0) {
+                highlight.style.opacity = "0";
+                return;
+            }
+
+            const islandRect = island.getBoundingClientRect();
+            const targetRect = target.getBoundingClientRect();
+            highlight.style.transform = `translate3d(${targetRect.left - islandRect.left}px, ${targetRect.top - islandRect.top}px, 0)`;
+            highlight.style.width = `${targetRect.width}px`;
+            highlight.style.height = `${targetRect.height}px`;
+            highlight.style.opacity = "1";
+
+            if (!initialized) {
+                initialized = true;
+                requestAnimationFrame(() => highlight.dataset.ready = "true");
+            }
+        }
+
+        function getTarget(element: EventTarget | null) {
+            if (!(element instanceof Element)) return null;
+            const target = element.closest<HTMLElement>(".navbar-side-highlight-target");
+            return target && island.contains(target) ? target : null;
+        }
+
+        island.addEventListener("pointerover", (event) => {
+            const target = getTarget(event.target);
+            if (target && target !== hoveredTarget) {
+                hoveredTarget = target;
+                moveHighlight(target);
+            }
+        });
+        island.addEventListener("pointerleave", () => {
+            hoveredTarget = null;
+            moveHighlight(null);
+        });
+        island.addEventListener("focusin", (event) => {
+            const target = getTarget(event.target);
+            if (target) {
+                hoveredTarget = target;
+                moveHighlight(target);
+            }
+        });
+        island.addEventListener("focusout", (event) => {
+            if (event.relatedTarget instanceof Node && island.contains(event.relatedTarget)) return;
+            hoveredTarget = null;
+            moveHighlight(null);
+        });
+        window.addEventListener("resize", () => moveHighlight(hoveredTarget));
+
+        island.dataset.highlightInitialized = "true";
+    });
+}
+
+initNavbarSideHighlights();
 
 // 为semifull模式添加滚动检测逻辑
 function initSemifullScrollDetection() {

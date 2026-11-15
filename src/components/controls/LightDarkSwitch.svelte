@@ -25,11 +25,13 @@ type WindowWithSwup = Window & { swup?: SwupInstance };
 
 let mode: LIGHT_DARK_MODE = $state(LIGHT_MODE);
 let displayedMode: LIGHT_DARK_MODE = $state(LIGHT_MODE); // 显示的实际主题（在system模式下会随系统变化）
+let refreshThemeModeHighlight: (() => void) | undefined;
 
 function switchScheme(newMode: LIGHT_DARK_MODE) {
 	mode = newMode;
 	setTheme(newMode);
 	updateDisplayedMode();
+	requestAnimationFrame(() => refreshThemeModeHighlight?.());
 }
 
 // 更新显示的主题（用于显示当前实际主题）
@@ -76,6 +78,7 @@ onMount(() => {
 		const newTheme = getStoredTheme();
 		mode = newTheme;
 		updateDisplayedMode();
+		requestAnimationFrame(() => refreshThemeModeHighlight?.());
 	};
 
 	// 检查Swup是否已经加载
@@ -103,13 +106,126 @@ onMount(() => {
 			// system模式下只需要更新displayedMode
 			updateDisplayedMode();
 		}
+		requestAnimationFrame(() => refreshThemeModeHighlight?.());
 	};
 
 	window.addEventListener("theme-change", handleThemeChange);
 
+	const panel = document.getElementById("theme-mode-panel");
+	let removeHighlightListeners = () => {};
+	if (panel) {
+		const highlight = panel.querySelector<HTMLElement>(
+			".navbar-dropdown-highlight",
+		);
+		if (highlight) {
+			let activeTarget: HTMLElement | null = null;
+			let hoveredTarget: HTMLElement | null = null;
+			let initialized = false;
+
+			const moveHighlight = (target: HTMLElement | null) => {
+				if (!target?.isConnected) {
+					highlight.style.opacity = "0";
+					return;
+				}
+
+				const panelRect = panel.getBoundingClientRect();
+				const targetRect = target.getBoundingClientRect();
+				const contentRect = target
+					.querySelector<HTMLElement>(".navbar-dropdown-item-content")
+					?.getBoundingClientRect();
+				const targetStyle = getComputedStyle(target);
+				const paddingLeft = Number.parseFloat(targetStyle.paddingLeft) || 0;
+				const paddingRight = Number.parseFloat(targetStyle.paddingRight) || 0;
+				const left = contentRect
+					? contentRect.left - paddingLeft
+					: targetRect.left;
+				const width = contentRect
+					? contentRect.width + paddingLeft + paddingRight
+					: targetRect.width;
+
+				highlight.style.transform = `translate3d(${left - panelRect.left - panel.clientLeft}px, ${targetRect.top - panelRect.top - panel.clientTop}px, 0)`;
+				highlight.style.width = `${width}px`;
+				highlight.style.height = `${targetRect.height}px`;
+				highlight.style.opacity = "1";
+
+				if (!initialized) {
+					initialized = true;
+					requestAnimationFrame(() => (highlight.dataset.ready = "true"));
+				}
+			};
+
+			const refreshActiveTarget = () => {
+				activeTarget = panel.querySelector<HTMLElement>(
+					".navbar-theme-mode-item.current-theme-btn",
+				);
+				panel
+					.querySelectorAll<HTMLElement>(".navbar-theme-mode-item")
+					.forEach((item) => {
+						item.toggleAttribute("data-nav-active", item === activeTarget);
+					});
+				moveHighlight(hoveredTarget ?? activeTarget);
+			};
+
+			const getTarget = (element: EventTarget | null) => {
+				if (!(element instanceof Element)) return null;
+				const target = element.closest<HTMLElement>(".navbar-theme-mode-item");
+				return target && panel.contains(target) ? target : null;
+			};
+
+			const onPointerOver = (event: PointerEvent) => {
+				const target = getTarget(event.target);
+				if (target && target !== hoveredTarget) {
+					hoveredTarget = target;
+					moveHighlight(target);
+				}
+			};
+			const onPointerLeave = () => {
+				hoveredTarget = null;
+				moveHighlight(activeTarget);
+			};
+			const onFocusIn = (event: FocusEvent) => {
+				const target = getTarget(event.target);
+				if (target) {
+					hoveredTarget = target;
+					moveHighlight(target);
+				}
+			};
+			const onFocusOut = (event: FocusEvent) => {
+				if (
+					event.relatedTarget instanceof Node &&
+					panel.contains(event.relatedTarget)
+				)
+					return;
+				hoveredTarget = null;
+				moveHighlight(activeTarget);
+			};
+			const onResize = () => moveHighlight(hoveredTarget ?? activeTarget);
+
+			panel.addEventListener("pointerover", onPointerOver);
+			panel.addEventListener("pointerleave", onPointerLeave);
+			panel.addEventListener("focusin", onFocusIn);
+			panel.addEventListener("focusout", onFocusOut);
+			window.addEventListener("resize", onResize);
+			refreshThemeModeHighlight = refreshActiveTarget;
+			requestAnimationFrame(refreshActiveTarget);
+
+			removeHighlightListeners = () => {
+				panel.removeEventListener("pointerover", onPointerOver);
+				panel.removeEventListener("pointerleave", onPointerLeave);
+				panel.removeEventListener("focusin", onFocusIn);
+				panel.removeEventListener("focusout", onFocusOut);
+				window.removeEventListener("resize", onResize);
+				if (refreshThemeModeHighlight === refreshActiveTarget) {
+					refreshThemeModeHighlight = undefined;
+				}
+			};
+		}
+	}
+
 	// 清理函数
 	return () => {
 		window.removeEventListener("theme-change", handleThemeChange);
+		removeHighlightListeners();
 	};
 });
 </script>
@@ -124,32 +240,42 @@ onMount(() => {
         </div>
     </button>
     <div id="theme-mode-panel" class="float-panel float-panel-closed absolute transition-all top-21 right-4 p-2 z-50" role="menu" aria-labelledby="scheme-switch" data-floating-panel data-floating-panel-trigger="scheme-switch" inert aria-hidden="true">
+		<span class="navbar-dropdown-highlight" aria-hidden="true"></span>
         <DropdownItem
             role="menuitem"
             isActive={mode === LIGHT_MODE}
             isLast={false}
+			class="navbar-theme-mode-item"
             onclick={() => switchScheme(LIGHT_MODE)}
         >
-            <Icon icon="material-symbols:wb-sunny-outline-rounded" class="text-[1.25rem] mr-3"></Icon>
-            {i18n(I18nKey.lightMode)}
+			<span class="navbar-dropdown-item-content">
+				<Icon icon="material-symbols:wb-sunny-outline-rounded" class="text-[1.25rem] mr-3"></Icon>
+				<span>{i18n(I18nKey.lightMode)}</span>
+			</span>
         </DropdownItem>
         <DropdownItem
             role="menuitem"
             isActive={mode === DARK_MODE}
             isLast={false}
+			class="navbar-theme-mode-item"
             onclick={() => switchScheme(DARK_MODE)}
         >
-            <Icon icon="material-symbols:dark-mode-outline-rounded" class="text-[1.25rem] mr-3"></Icon>
-            {i18n(I18nKey.darkMode)}
+			<span class="navbar-dropdown-item-content">
+				<Icon icon="material-symbols:dark-mode-outline-rounded" class="text-[1.25rem] mr-3"></Icon>
+				<span>{i18n(I18nKey.darkMode)}</span>
+			</span>
         </DropdownItem>
         <DropdownItem
             role="menuitem"
             isActive={mode === SYSTEM_MODE}
             isLast={true}
+			class="navbar-theme-mode-item"
             onclick={() => switchScheme(SYSTEM_MODE)}
         >
-            <Icon icon="material-symbols:brightness-auto-outline-rounded" class="text-[1.25rem] mr-3"></Icon>
-            {i18n(I18nKey.systemMode)}
+			<span class="navbar-dropdown-item-content">
+				<Icon icon="material-symbols:brightness-auto-outline-rounded" class="text-[1.25rem] mr-3"></Icon>
+				<span>{i18n(I18nKey.systemMode)}</span>
+			</span>
         </DropdownItem>
     </div>
 </div>
