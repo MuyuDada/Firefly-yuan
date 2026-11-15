@@ -38,7 +38,7 @@ const { class: className, style } = Astro.props;
 <script is:inline>
   (() => {
   const weekDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  if (!window.timeGreetingImage) { window.timeGreetingImage = `https://random-api.czl.net/pic/fj?t=${new Date().getTime()}`; }
+  if (!window.timeGreetingImage) { window.timeGreetingImage = `https://random-api.czl.net/pic/ecy?t=${new Date().getTime()}`; }
   function updateTimeGreeting() {
     const now = new Date(); const hours = now.getHours(); const minutes = now.getMinutes();
     const month = (now.getMonth()+1).toString().padStart(2,'0');
