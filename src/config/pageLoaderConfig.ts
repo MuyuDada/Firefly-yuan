@@ -6,7 +6,7 @@ export const pageLoaderConfig: PageLoaderConfig = {
 	enable: true, // 是否启用全屏加载动画
 	showOnInitial: true, // 首次进入站点时显示
 	showOnNavigate: false, // Swup 切页时显示
-	showOnMobile: true, // 移动端（<768px）显示
+	showOnMobile: false, // 移动端（<768px）显示
 	style: "cat", // 猫咪主题：图片 + 像素气泡 + 汉堡进度条
 	image: "/assets/images/loading-cat.gif", // 像素小猫（本地资源，避免 CDN 往返）
 	text: "", // 留空则使用 i18n 文案
