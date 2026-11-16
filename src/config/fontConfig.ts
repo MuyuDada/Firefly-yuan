@@ -94,6 +94,24 @@ export const fontsList: FontDefinition[] = [
 		},
 		fallbacks: ["sans-serif"],
 	},
+	// 荆南波波黑：仅一个粗字重（700），适合标题/强调
+	// 源文件已由 TTF 压成 WOFF2（5.1 MB → 2.2 MB），构建期再由
+	// scripts/subset-fonts.ts 按页面实际字符子集化（约 226 KB）
+	{
+		name: "荆南波波黑",
+		cssVariable: "--font-jingnan-bobohei",
+		provider: "local",
+		options: {
+			variants: [
+				{
+					src: ["./public/assets/fonts/荆南波波黑-Bold.woff2"],
+					weight: "700",
+					style: "normal",
+				},
+			],
+		},
+		fallbacks: ["sans-serif"],
+	},
 ];
 
 // ─── 字体选择与区域覆盖 ─────────────────────────────────────
@@ -102,16 +120,16 @@ export const fontConfig: FontSelectionConfig = {
 	enable: true,
 	// 当前选择的字体 CSS 变量名（对应上方 fonts 中的 cssVariable）
 	// 使用 "system" 表示系统字体（不加载任何自定义字体）
-	selected: ["--font-lxgw-wenkai"],
+	selected: ["--font-jingnan-bobohei"],
 
 	// 各区域独立字体设置（填写上方 fonts 中的 cssVariable，留空则使用全局 selected 字体）
 	// 例如：bannerTitleFont: "--font-inter", 表示主页横幅主标题使用 Inter 字体
 	// 主页横幅主标题字体
-	bannerTitleFont: "--font-zen-maru-gothic",
+	bannerTitleFont: "--font-jingnan-bobohei",
 	// 主页横幅副标题字体
-	bannerSubtitleFont: "--font-inter",
+	bannerSubtitleFont: "--font-jingnan-bobohei",
 	// 导航栏标题字体
-	navbarTitleFont: "",
+	navbarTitleFont: "--font-jingnan-bobohei",
 	// 代码块字体（用于代码高亮和等宽字体场景）
 	codeFont: "--font-jetbrains-mono",
 
@@ -120,6 +138,10 @@ export const fontConfig: FontSelectionConfig = {
 	subsetFonts: {
 		"--font-greatvibes": {
 			// 额外包含的字符
+			extraChars: "",
+		},
+		"--font-jingnan-bobohei": {
+			// 额外包含的字符：评论昵称、追番标题等动态内容里的生僻字可补在这里
 			extraChars: "",
 		},
 	},
