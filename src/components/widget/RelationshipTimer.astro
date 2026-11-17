@@ -11,6 +11,9 @@ interface Props {
 }
 const className = Astro.props.class;
 const style = Astro.props.style;
+
+// 「始于 2026.07.03」这类安静的注脚
+const startedAt = config.startDate.replaceAll("-", ".");
 ---
 
 <WidgetLayout
@@ -19,48 +22,335 @@ const style = Astro.props.style;
   class={className}
   style={style}
 >
-  <div class="flex flex-col items-center p-2">
-    <!-- 顶部名称栏 -->
-    <div class="flex items-center justify-center gap-2 mb-4 text-sm font-medium text-neutral-600 dark:text-neutral-400">
-      <span>{config.name1}</span>
-      <span class="text-red-500 animate-pulse">❤️</span>
-      <span>{config.name2}</span>
+  <div class="rel-card">
+    <!-- 双人头像 + 心跳 -->
+    <div class="rel-couple">
+      <div class="rel-avatars">
+        <span class="rel-avatar">
+          <img
+            src={config.avatar1}
+            alt={config.name1}
+            width="60"
+            height="60"
+            loading="lazy"
+            decoding="async"
+          />
+        </span>
+
+        <span class="rel-heart" aria-hidden="true">❤️</span>
+
+        <span class="rel-avatar">
+          <img
+            src={config.avatar2}
+            alt={config.name2}
+            width="60"
+            height="60"
+            loading="lazy"
+            decoding="async"
+          />
+        </span>
+      </div>
+
+      <!-- 名字缩写 + 中间一颗小爱心 -->
+      <div class="rel-names">
+        <span class="rel-name" title={config.name1}>{config.name1}</span>
+        <span class="rel-name-heart" aria-hidden="true">❤️</span>
+        <span class="rel-name" title={config.name2}>{config.name2}</span>
+      </div>
     </div>
 
-    <!-- 头像和爱心 -->
-    <div class="flex items-center justify-center gap-4 mb-6">
-      <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-white dark:border-neutral-800 shadow-md transition-transform hover:scale-110">
-        <img src={config.avatar1} alt={config.name1} class="w-full h-full object-cover" />
-      </div>
-      <div class="text-2xl text-red-500 transform transition-all hover:scale-125 hover:rotate-12 cursor-pointer">
-        ❤️
-      </div>
-      <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-white dark:border-neutral-800 shadow-md transition-transform hover:scale-110">
-        <img src={config.avatar2} alt={config.name2} class="w-full h-full object-cover" />
-      </div>
+    <!-- 总天数：承接标题「…在一起已经」 -->
+    <div class="rel-total">
+      <span class="rel-total-num" data-timer-total>0</span>
+      <span class="rel-total-unit">天</span>
     </div>
 
-    <!-- 计时器 -->
-    <div class="relationship-timer flex items-center justify-center gap-x-1 text-sm whitespace-nowrap overflow-x-auto">
-      <span class="timer-num" data-timer-years>0</span><span class="timer-unit bg-red-400">年</span>
-      <span class="timer-num" data-timer-months>0</span><span class="timer-unit bg-red-300">月</span>
-      <span class="timer-num" data-timer-days>0</span><span class="timer-unit bg-blue-400">天</span>
-      <span class="timer-num" data-timer-hours>0</span><span class="timer-unit bg-orange-400">时</span>
-      <span class="timer-num" data-timer-minutes>0</span><span class="timer-unit bg-blue-500">分</span>
-      <span class="timer-num" data-timer-seconds>00</span><span class="timer-unit bg-purple-400">秒</span>
+    <div class="rel-divider" aria-hidden="true"></div>
+
+    <!-- 年月日 · 时分秒 拆解（单行，不占高度） -->
+    <div class="rel-timer relationship-timer">
+      <span class="rel-item">
+        <span class="rel-num" data-timer-years>0</span>
+        <span class="rel-unit u-year">年</span>
+      </span>
+      <span class="rel-item">
+        <span class="rel-num" data-timer-months>0</span>
+        <span class="rel-unit u-month">月</span>
+      </span>
+      <span class="rel-item">
+        <span class="rel-num" data-timer-days>0</span>
+        <span class="rel-unit u-day">天</span>
+      </span>
+      <span class="rel-item">
+        <span class="rel-num" data-timer-hours>0</span>
+        <span class="rel-unit u-hour">时</span>
+      </span>
+      <span class="rel-item">
+        <span class="rel-num" data-timer-minutes>0</span>
+        <span class="rel-unit u-minute">分</span>
+      </span>
+      <span class="rel-item">
+        <span class="rel-num" data-timer-seconds>00</span>
+        <span class="rel-unit u-second">秒</span>
+      </span>
     </div>
+
+    <div class="rel-since">始于 {startedAt}</div>
   </div>
 </WidgetLayout>
 
 <style>
   @reference "tailwindcss";
 
-  .timer-num {
-    @apply font-bold text-neutral-700 dark:text-neutral-200 min-w-[0rem] text-center;
-    color: var(--primary);
+  /* 玫瑰色系：浅色模式偏深保证对比度，深色模式提亮 */
+  .rel-card {
+    --rel-accent: oklch(0.66 0.19 8);
+    --rel-accent-2: oklch(0.74 0.16 350);
+
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.35rem 0.15rem 0.15rem;
   }
-  .timer-unit {
-    @apply px-1 py-0.5 rounded text-[10px] text-white font-medium shrink-0;
+  :global(html.dark) .rel-card {
+    --rel-accent: oklch(0.78 0.16 8);
+    --rel-accent-2: oklch(0.84 0.13 350);
+  }
+
+  /* ── 双人头像 ───────────────────────────────────────────── */
+  .rel-couple {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.42rem;
+    width: 100%;
+  }
+  .rel-avatars {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+  }
+  .rel-avatar {
+    position: relative;
+    display: block;
+    flex: none;
+    width: 3.75rem;
+    height: 3.75rem;
+    padding: 2px;
+    border-radius: 999px;
+    background: conic-gradient(
+      from 220deg,
+      var(--rel-accent-2),
+      var(--rel-accent),
+      var(--rel-accent-2)
+    );
+    box-shadow: 0 6px 16px -8px color-mix(in oklab, var(--rel-accent) 70%, transparent);
+    transition:
+      transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.45s ease;
+  }
+  .rel-avatar img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+    background: var(--card-bg);
+  }
+  .rel-avatar:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 10px 22px -8px color-mix(in oklab, var(--rel-accent) 85%, transparent);
+  }
+
+  /* 名字行：左右各占一半，名字居中 → 自动与上方头像对齐；
+     中间夹一颗小爱心（原版「名字 ❤️ 名字」的位置） */
+  .rel-names {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 0.15rem;
+  }
+  .rel-name {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    text-align: center;
+    color: color-mix(in oklab, var(--deep-text) 62%, transparent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* 名字中间这颗保持静态：只有头像间那颗大爱心呼吸，避免两处同时闪 */
+  .rel-name-heart {
+    display: grid;
+    flex: none;
+    place-items: center;
+    font-size: 0.75rem;
+    line-height: 1;
+  }
+
+  /* ── 心跳：直接沿用原来的 ❤️ emoji（立体高光是 emoji 自带的，
+     CSS 画不出这种质感），只保留轻微的呼吸动画与悬停手反馈 */
+  .rel-heart {
+    display: grid;
+    flex: none;
+    place-items: center;
+    font-size: 1.45rem;
+    line-height: 1;
+    filter: drop-shadow(0 3px 6px rgb(244 114 182 / 0.32));
+    transform-origin: center;
+    animation: rel-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .rel-heart:hover {
+    transform: scale(1.22) rotate(10deg);
+  }
+
+  /* ── 总天数 ─────────────────────────────────────────────── */
+  .rel-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.2rem;
+    margin-top: 0.85rem;
+    line-height: 1;
+  }
+  .rel-total-num {
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(120deg, var(--rel-accent-2), var(--rel-accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .rel-total-unit {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: color-mix(in oklab, var(--rel-accent) 85%, var(--deep-text));
+  }
+
+  .rel-divider {
+    width: 100%;
+    height: 1px;
+    margin: 0.75rem 0 0.7rem;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--deep-text) 13%, transparent) 18%,
+      color-mix(in oklab, var(--deep-text) 13%, transparent) 82%,
+      transparent
+    );
+  }
+  :global(html.dark) .rel-divider {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--deep-text) 16%, transparent) 18%,
+      color-mix(in oklab, var(--deep-text) 16%, transparent) 82%,
+      transparent
+    );
+  }
+
+  /* ── 年月日 / 时分秒（单行紧凑条）───────────────────────────
+     用 6 等分网格而不是 flex：每格宽度固定 = 容器 / 6，
+     数字位数变化（0 → 15、9 → 30）都不会把整行挤出去或换行。 */
+  .rel-timer {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, max-content));
+    justify-content: center;
+    align-items: center;
+    column-gap: 0.38rem;
+    width: 100%;
+    min-width: 0;
+  }
+  .rel-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.14rem;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .rel-num {
+    font-size: 0.875rem;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--deep-text);
+  }
+  /* 单位：回到原来的六色小药丸，只是把纯色换成同色系渐变，白字更透亮 */
+  .rel-unit {
+    flex: none;
+    padding: 2px 4.5px;
+    border-radius: 4px;
+    font-size: 0.5625rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: #fff;
+    background: linear-gradient(135deg, var(--u1), var(--u2));
+    box-shadow: 0 1px 3px -1px color-mix(in oklab, var(--u1) 65%, transparent);
+  }
+  .u-year {
+    --u1: #fb7185;
+    --u2: #ef4444;
+  }
+  .u-month {
+    --u1: #f9a8d4;
+    --u2: #f472b6;
+  }
+  .u-day {
+    --u1: #60a5fa;
+    --u2: #38bdf8;
+  }
+  .u-hour {
+    --u1: #fbbf24;
+    --u2: #fb923c;
+  }
+  .u-minute {
+    --u1: #818cf8;
+    --u2: #6366f1;
+  }
+  .u-second {
+    --u1: #c084fc;
+    --u2: #a855f7;
+  }
+
+  /* 底部注脚：安静的一行小字，压住整块的重量 */
+  .rel-since {
+    margin-top: 0.55rem;
+    font-size: 0.625rem;
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
+    color: color-mix(in oklab, var(--deep-text) 40%, transparent);
+  }
+
+  /* 与原版 Tailwind animate-pulse 同节奏：只淡不缩，爱心大小保持稳定 */
+  @keyframes rel-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rel-heart {
+      animation: none !important;
+    }
+    .rel-avatar {
+      transition: none !important;
+    }
   }
 </style>
 
@@ -112,6 +402,10 @@ const style = Astro.props.style;
       });
     };
 
+    // 总天数（含今天），带千分位
+    const totalDays = Math.floor(diff / 86400000);
+
+    update('total', totalDays.toLocaleString('zh-CN'));
     update('years', years);
     update('months', months);
     update('days', days);
