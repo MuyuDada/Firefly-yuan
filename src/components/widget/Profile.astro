@@ -13,52 +13,56 @@ const { style } = Astro.props;
 const className = Astro.props.class;
 ---
 
-<div class:list={["card-base", "p-3", className]} style={style}>
-  <a
-    aria-label="Go to About Page"
-    href={url("/about/")}
-    class="group block relative mx-auto mt-1 lg:mx-0 lg:mt-0 mb-3
-       max-w-48 lg:max-w-none overflow-hidden rounded-xl active:scale-95"
-  >
-    <div
-      class="absolute transition pointer-events-none group-hover:bg-black/30 group-active:bg-black/50
-        w-full h-full z-50 flex items-center justify-center"
+<div class:list={["profile-glow", className]} style={style}>
+  <span class="gc-glow" aria-hidden="true"></span>
+  <div class="profile-glow-border" aria-hidden="true"></div>
+
+  <div class="card-base profile-glow-face p-3">
+    <a
+      aria-label="Go to About Page"
+      href={url("/about/")}
+      class="group block relative mx-auto mt-1 lg:mx-0 lg:mt-0 mb-3
+         max-w-48 lg:max-w-none overflow-hidden rounded-xl active:scale-95"
     >
-      <Icon
-        name="fa7-regular:address-card"
-        class="transition opacity-0 scale-90 group-hover:scale-100 group-hover:opacity-100 text-white text-5xl"
+      <div
+        class="absolute transition pointer-events-none group-hover:bg-black/30 group-active:bg-black/50
+          w-full h-full z-50 flex items-center justify-center"
+      >
+        <Icon
+          name="fa7-regular:address-card"
+          class="transition opacity-0 scale-90 group-hover:scale-100 group-hover:opacity-100 text-white text-5xl"
+        />
+      </div>
+      <ImageWrapper
+        src={profileConfig.avatar || ""}
+        alt="Profile Image of the Author"
+        class="profile-avatar-image mx-auto lg:w-full h-full lg:mt-0"
+        loading="eager"
+        fetchpriority="high"
+        widths={[350]}
+        sizes="350px"
       />
-    </div>
-    <ImageWrapper
-      src={profileConfig.avatar || ""}
-      alt="Profile Image of the Author"
-      class="profile-avatar-image mx-auto lg:w-full h-full lg:mt-0"
-      loading="eager"
-      fetchpriority="high"
-      widths={[350]}
-      sizes="350px"
-    />
-  </a>
-  <div class="px-2">
-    <div
-      class="font-bold text-xl text-center mb-1 dark:text-neutral-50 transition"
-    >
-      {profileConfig.name}
-    </div>
-    <div
-      class="h-1 w-5 bg-(--primary) mx-auto rounded-full mb-2 transition"
-    >
-    </div>
-    <div class="text-center text-neutral-400 mb-2.5 transition">
-      {profileConfig.bio}
-    </div>
+    </a>
+    <div class="px-2">
+      <div
+        class="gc-name font-bold text-xl text-center mb-1 transition"
+      >
+        {profileConfig.name}
+      </div>
+      <div
+        class="h-1 w-5 bg-(--primary) mx-auto rounded-full mb-2 transition"
+      >
+      </div>
+      <div class="gc-bio text-center text-neutral-400 mb-2.5 transition">
+        {profileConfig.bio}
+      </div>
         <div class="flex flex-wrap gap-2 justify-center mb-1">
             {profileConfig.links.length > 1 && profileConfig.links.map(item =>
                     {
                     const showName = item.showName;
-                    const className = showName 
-                        ? "btn-regular rounded-lg h-10 gap-2 px-3 font-bold active:scale-95" 
-                        : "btn-regular rounded-lg h-10 w-10 active:scale-90";
+                    const className = showName
+                        ? "gc-link btn-regular rounded-lg h-10 gap-2 px-3 font-bold active:scale-95"
+                        : "gc-link btn-regular rounded-lg h-10 w-10 active:scale-90";
 
                     if (item.url.startsWith("mailto:")) {
                         const encodedEmail = encodeMailto(item.url);
@@ -79,18 +83,347 @@ const className = Astro.props.class;
                 if (item.url.startsWith("mailto:")) {
                         const encodedEmail = encodeMailto(item.url);
                         return <a rel="me" aria-label={item.name} href="#" data-encoded-email={encodedEmail} onclick={MAILTO_ONCLICK_SCRIPT},
-                                    class="btn-regular rounded-lg h-10 gap-2 px-3 font-bold active:scale-95">
+                                    class="gc-link btn-regular rounded-lg h-10 gap-2 px-3 font-bold active:scale-95">
                             <Icon name={item.icon} class="text-[1.5rem]"></Icon>
                             {item.name}
                         </a>
                     } else {
                         return <a rel="me" aria-label={item.name} href={item.url} target="_blank"
-                                            class="btn-regular rounded-lg h-10 gap-2 px-3 font-bold active:scale-95">
-                                <Icon name={item.icon} class="text-[1.5rem]"></Icon>
-                                {item.name}
-                            </a>
+                                            class="gc-link btn-regular rounded-lg h-10 gap-2 px-3 font-bold active:scale-95">
+                            <Icon name={item.icon} class="text-[1.5rem]"></Icon>
+                            {item.name}
+                        </a>
                     }
             })(profileConfig.links[0])}
         </div>
   </div>
 </div>
+</div>
+
+<style>
+  /* ==========================================================================
+     个人资料卡片 · 深色霓虹发光特效
+     移植自 CodePen @LukyVj《Sharp & Glowing dark card》(YzOXepM)。
+     - 所有自定义属性与 keyframes 加 gc- 前缀，避免与站点 --hue 等变量冲突；
+     - 用本组件 scoped style 封装，只作用于 Profile，不污染全局、不影响其它 widget；
+     - 只在深色模式（html.dark）生效，白天/浅色模式完全关闭，卡片沿用站点默认外观；
+     - 尊重 prefers-reduced-motion。
+     ========================================================================== */
+  @property --gc-hue {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+  @property --gc-rotate {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+  @property --gc-bg-y {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+  @property --gc-bg-x {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+  @property --gc-glow-translate-y {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+  @property --gc-bg-size {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+  @property --gc-glow-opacity {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+  @property --gc-glow-blur {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+  @property --gc-glow-scale {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 2;
+  }
+  @property --gc-glow-radius {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 2;
+  }
+  /* ── 默认（白天 / 浅色模式）：不启用霓虹特效 ──────────────────────────────
+     站点深色模式由 <html class="dark"> 标识。所有霓虹规则都写在 html.dark 下，
+     浅色模式下装饰层保持隐藏、卡面与文字沿用站点 card-base 的默认浅色外观。 */
+  .gc-glow,
+  .profile-glow-border {
+    display: none;
+  }
+
+  /* ── 深色模式：完整霓虹特效 ─────────────────────────────────────────── */
+  :global(html.dark) .profile-glow {
+    --gc-card-color: hsl(260deg 100% 3%);
+    --gc-text-color: hsl(260deg 10% 78%);
+    --gc-glow-rotate-unit: 1deg;
+    --gc-border-width: 3px;
+    --gc-bg-size: 1;
+    --gc-hue: 0;
+    --gc-hue-speed: 1;
+    --gc-bg-x: 50;
+    --gc-bg-y: 0;
+    --gc-rotate: 0;
+    --gc-animation-speed: 4s;
+    --gc-interaction-speed: 0.55s;
+    --gc-glow-blur: 6;
+    --gc-glow-opacity: 1;
+    --gc-glow-scale: 1.5;
+    --gc-glow-radius: 100;
+    --gc-glow-translate-y: -65;
+    --gc-scale-factor: 1;
+
+    position: relative;
+    isolation: isolate;
+    border-radius: var(--radius-large);
+
+    /* 色相统一由父级驱动：边框、光晕、hover 文字共用同一个 --gc-hue，
+       这样文字能被"染"成与光晕完全一致的色相（原版靠 darken 混合实现）。
+       hover 时在下面暂停，色相与文字颜色一起冻结。 */
+    animation: gc-hue-animation var(--gc-animation-speed) linear infinite;
+  }
+  :global(html.dark) .profile-glow:hover {
+    animation-play-state: paused;
+  }
+
+  /* 卡片面：深色模式下固定深色，覆盖 card-base 的主题背景；overflow 保留以裁剪头像 */
+  .profile-glow-face {
+    position: relative;
+    z-index: 2;
+    border-radius: var(--radius-large) !important;
+  }
+  :global(html.dark) .profile-glow-face {
+    background: var(--gc-card-color) !important;
+  }
+
+  /* 文字走 --gc-text-color（默认灰白）。
+     悬停：还原原版「文字被光晕染色」的效果——原版用 mix-blend-mode: darken，
+     白色文字与下方光晕做 min() 混合后等于光晕的纯色 hsl(hue,100%,60%)，
+     所以文字不是变白，而是变成当前色相的彩色并随光晕冻结。
+     这里直接用同一套 --gc-hue 算出同样的颜色，避免 darken 把头像压黑。 */
+  :global(html.dark) .gc-name,
+  :global(html.dark) .gc-bio {
+    color: var(--gc-text-color) !important;
+  }
+  :global(html.dark) .profile-glow:hover .gc-name,
+  :global(html.dark) .profile-glow:hover .gc-bio {
+    color: hsl(
+      calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg),
+      100%,
+      65%
+    ) !important;
+  }
+
+  /* 社交按钮：深色模式下改为深色半透明底 + 亮色图标，融入霓虹卡片 */
+  :global(html.dark) .gc-link {
+    background: hsl(260deg 20% 16%) !important;
+    color: hsl(260deg 10% 88%) !important;
+  }
+  /* 卡片悬停时，图标与按钮底色一起被"染色"，跟随当前色相（与文字同步冻结） */
+  :global(html.dark) .profile-glow:hover .gc-link {
+    background: hsl(
+      calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg),
+      30%,
+      15%
+    ) !important;
+    color: hsl(
+      calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg),
+      100%,
+      72%
+    ) !important;
+  }
+  :global(html.dark) .profile-glow:hover .gc-link:hover {
+    background: hsl(
+      calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg),
+      55%,
+      24%
+    ) !important;
+    color: hsl(
+      calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg),
+      100%,
+      90%
+    ) !important;
+  }
+  :global(html.dark) .profile-glow:hover .gc-link:active {
+    background: hsl(
+      calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg),
+      60%,
+      18%
+    ) !important;
+  }
+
+  /* 彩色流动边框：绝对定位在卡片外围，只露出 --gc-border-width 的一圈 */
+  :global(html.dark) .profile-glow-border {
+    display: block;
+    position: absolute;
+    z-index: 1;
+    inset: calc(var(--gc-border-width) * -1);
+    border-radius: calc(var(--radius-large) + var(--gc-border-width));
+    background: #292929
+      radial-gradient(
+        30% 30% at calc(var(--gc-bg-x) * 1%) calc(var(--gc-bg-y) * 1%),
+        hsl(calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg), 100%, 90%)
+          calc(0% * var(--gc-bg-size)),
+        hsl(calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg), 100%, 80%)
+          calc(20% * var(--gc-bg-size)),
+        hsl(calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg), 100%, 60%)
+          calc(40% * var(--gc-bg-size)),
+        transparent 100%
+      );
+    mix-blend-mode: color-burn;
+    pointer-events: none;
+    animation: gc-rotate-bg var(--gc-animation-speed) linear infinite;
+    transition: --gc-bg-size var(--gc-interaction-speed) ease;
+  }
+
+  /* 绕行光晕：居中容器旋转 + 子球偏移。
+     关键：必须位于卡片面「之下」，被不透明的深色卡面遮住，
+     只有放大后溢出卡片轮廓的那部分才可见——这才是原版 "glowing shadow" 的来源。
+     放在卡面之上会变成盖住内容的大亮球（错误效果）。 */
+  :global(html.dark) .gc-glow {
+    display: block;
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    width: 4.5rem;
+    height: 4.5rem;
+    margin: auto;
+    pointer-events: none;
+    border-radius: 50%;
+    animation: gc-rotate var(--gc-animation-speed) linear infinite;
+    transform: rotateZ(calc(var(--gc-rotate) * var(--gc-glow-rotate-unit)));
+    transform-origin: center;
+  }
+  /* 光晕球体：忠实还原原版——无 mix-blend-mode（原版没有 screen），
+     z-index:-2 + position:relative，与卡面 :before 的层级关系一致 */
+  .gc-glow::after {
+    content: "";
+    display: block;
+    position: relative;
+    z-index: -2;
+    width: 130%;
+    height: 130%;
+    left: -15%;
+    top: -15%;
+    filter: blur(calc(var(--gc-glow-blur) * 10px));
+    background: hsl(
+      calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg),
+      100%,
+      60%
+    );
+    border-radius: calc(var(--gc-glow-radius) * 10vw);
+    transform: scaleY(calc((var(--gc-glow-scale) * var(--gc-scale-factor)) / 1.1))
+      scaleX(calc(var(--gc-glow-scale) * var(--gc-scale-factor) * 1.2))
+      translateY(calc(var(--gc-glow-translate-y) * 1%));
+    opacity: var(--gc-glow-opacity);
+    transition:
+      --gc-glow-translate-y 0s ease,
+      --gc-glow-blur 0.05s ease,
+      --gc-glow-opacity 0.05s ease,
+      --gc-glow-scale 0.05s ease,
+      --gc-glow-radius 0.05s ease;
+  }
+
+  /* 悬停：渐变扩散 + 光晕增强停转 + 色相冻结（文字染色）。
+     原版此处还对卡面加了 mix-blend-mode: darken 与白色 box-shadow，
+     但 darken 会把卡内头像一并压成近黑（原版卡片没有图片），故只取它的
+     文字染色结果，用 --gc-hue 直接算色，卡面保持不透明深色。 */
+  :global(html.dark) .profile-glow:hover .profile-glow-border {
+    --gc-bg-size: 15;
+    animation-play-state: paused;
+  }
+  :global(html.dark) .profile-glow:hover .gc-glow {
+    --gc-glow-blur: 1.5;
+    --gc-glow-opacity: 0.6;
+    --gc-glow-scale: 2.5;
+    --gc-glow-radius: 0;
+    --gc-rotate: 900;
+    /* 归零旋转单位，让光晕停在顶部而不是转到 900°(=180°) 的底部 */
+    --gc-glow-rotate-unit: 0;
+    --gc-scale-factor: 1.25;
+    animation-play-state: paused;
+  }
+  :global(html.dark) .profile-glow:hover .gc-glow::after {
+    --gc-glow-translate-y: 0;
+    animation-play-state: paused;
+  }
+
+  @keyframes gc-rotate-bg {
+    0% {
+      --gc-bg-x: 0;
+      --gc-bg-y: 0;
+    }
+    25% {
+      --gc-bg-x: 100;
+      --gc-bg-y: 0;
+    }
+    50% {
+      --gc-bg-x: 100;
+      --gc-bg-y: 100;
+    }
+    75% {
+      --gc-bg-x: 0;
+      --gc-bg-y: 100;
+    }
+    100% {
+      --gc-bg-x: 0;
+      --gc-bg-y: 0;
+    }
+  }
+  @keyframes gc-rotate {
+    from {
+      --gc-rotate: -70;
+      --gc-glow-translate-y: -65;
+    }
+    25% {
+      --gc-glow-translate-y: -65;
+    }
+    50% {
+      --gc-glow-translate-y: -65;
+    }
+    60%,
+    75% {
+      --gc-glow-translate-y: -65;
+    }
+    85% {
+      --gc-glow-translate-y: -65;
+    }
+    to {
+      --gc-rotate: calc(360 - 70);
+      --gc-glow-translate-y: -65;
+    }
+  }
+  @keyframes gc-hue-animation {
+    0% {
+      --gc-hue: 0;
+    }
+    100% {
+      --gc-hue: 360;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .profile-glow,
+    .profile-glow *,
+    .profile-glow::before,
+    .profile-glow::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+</style>
