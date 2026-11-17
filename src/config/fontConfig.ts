@@ -94,18 +94,18 @@ export const fontsList: FontDefinition[] = [
 		},
 		fallbacks: ["sans-serif"],
 	},
-	// 荆南波波黑：仅一个粗字重（700），适合标题/强调
-	// 源文件已由 TTF 压成 WOFF2（5.1 MB → 2.2 MB），构建期再由
-	// scripts/subset-fonts.ts 按页面实际字符子集化（约 226 KB）
+	// Noto Sans SC Medium：只有一个字重 500
+	// 原 OTF 22.4 MB（51452 字形），已裁成 GB2312 + 站点字符的 WOFF2（1.72 MB）作为源文件，
+	// 构建期再由 scripts/subset-fonts.ts 按页面实际字符二次子集化
 	{
-		name: "荆南波波黑",
-		cssVariable: "--font-jingnan-bobohei",
+		name: "Noto Sans SC",
+		cssVariable: "--font-noto-sans-sc",
 		provider: "local",
 		options: {
 			variants: [
 				{
-					src: ["./public/assets/fonts/荆南波波黑-Bold.woff2"],
-					weight: "700",
+					src: ["./public/assets/fonts/NotoSansSC-Medium.woff2"],
+					weight: "500",
 					style: "normal",
 				},
 			],
@@ -120,16 +120,16 @@ export const fontConfig: FontSelectionConfig = {
 	enable: true,
 	// 当前选择的字体 CSS 变量名（对应上方 fonts 中的 cssVariable）
 	// 使用 "system" 表示系统字体（不加载任何自定义字体）
-	selected: ["--font-jingnan-bobohei"],
+	selected: ["--font-noto-sans-sc"],
 
 	// 各区域独立字体设置（填写上方 fonts 中的 cssVariable，留空则使用全局 selected 字体）
 	// 例如：bannerTitleFont: "--font-inter", 表示主页横幅主标题使用 Inter 字体
 	// 主页横幅主标题字体
-	bannerTitleFont: "--font-jingnan-bobohei",
+	bannerTitleFont: "--font-noto-sans-sc",
 	// 主页横幅副标题字体
-	bannerSubtitleFont: "--font-jingnan-bobohei",
+	bannerSubtitleFont: "--font-noto-sans-sc",
 	// 导航栏标题字体
-	navbarTitleFont: "--font-jingnan-bobohei",
+	navbarTitleFont: "--font-noto-sans-sc",
 	// 代码块字体（用于代码高亮和等宽字体场景）
 	codeFont: "--font-jetbrains-mono",
 
@@ -140,7 +140,7 @@ export const fontConfig: FontSelectionConfig = {
 			// 额外包含的字符
 			extraChars: "",
 		},
-		"--font-jingnan-bobohei": {
+		"--font-noto-sans-sc": {
 			// 额外包含的字符：评论昵称、追番标题等动态内容里的生僻字可补在这里
 			extraChars: "",
 		},
