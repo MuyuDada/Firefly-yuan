@@ -5,6 +5,9 @@
 	position: relative; /* 推荐角标的定位基准 */
 	display: flex;
 	min-width: 0;
+	/* 网格默认 stretch：卡片展开时不给同行其他卡片"陪跑"拉高，
+	   只让被悬停的那一张自己长高 */
+	align-self: start;
 }
 
 .friend-card-link {
@@ -96,7 +99,7 @@
 .friend-star-flow {
 	position: absolute;
 	inset: 0;
-	/* 必须高于预览图（z-index: 2），否则星星会被盖住 */
+	/* 星尘要压在信息层之上闪烁，否则会被卡片背景压暗、看起来像没生效 */
 	z-index: 3;
 	display: block;
 	overflow: hidden;
@@ -364,9 +367,10 @@
 	box-shadow: none;
 }
 
-/* 推荐角标占了左上角，tag 标签下移让位 */
+/* 推荐角标已经占住左上角那一行，Tag 角标再挤进来就会压在头像上，
+   所以推荐卡不再显示 Tag —— 分类信息由顶部筛选栏和 ★推荐 角标承担 */
 .friend-card--recommended .friend-card-chip {
-	top: 2.35rem;
+	display: none;
 }
 
 /* 文字跟随主题色，和描边/星尘统一 */
@@ -523,8 +527,78 @@
 		inset 0 1px 0 rgb(255 255 255 / 0.6);
 }
 
+/* ── 悬停动效：两层叠放，以卡片中线为轴上浮／下沉 ───
+   结构参考 CodePen @lincohn《Card Outer GLow Effect》(JjPZgXw)：
+   两块 face 默认重合，悬停时沿相反方向错开。这里把「预览区 / 信息区」
+   压成上下两层叠放：
+
+   - 信息区在正常流里、层级更高（z-index: 2）、背景不透明，
+     它决定卡片的默认高度 —— 平时这就是一张只含信息的票卡；
+   - 预览区绝对定位在卡片顶部、层级更低（z-index: 1），
+     默认停在卡片下沿之外（top: 100%），完全不可见；
+   - 悬停时卡片 padding-top 长到 56.25%（= 16:9，与预览区高度严格等价），
+     信息区随之整体下移；预览区同时 top → 0 升入卡片顶部。
+
+   关键在「以卡片上下中间为中心」：展开多出来的高度用等量的负外边距
+   （各 -56.25% / 2）抵消掉，卡片在网格里占的位子完全不变 —— 行高不动、
+   其他卡片纹丝不动，视觉上卡片则是从垂直中心向上下各浮出一半，
+   压住相邻内容的边缘。 */
+
+.friend-card-link--preview {
+	/* 预览区按 16:9 计算高度，正好等于卡片宽度的 56.25%，
+	   与 padding-top 的百分比同源，展开后留白与预览高度严丝合缝 */
+	--fc-preview-ratio: 56.25%;
+
+	padding-top: 0;
+	margin-block: 0;
+	transition:
+		transform 0.42s cubic-bezier(0.175, 0.885, 0.32, 1.2),
+		box-shadow 0.42s ease,
+		border-color 0.28s ease,
+		background 0.28s ease,
+		padding-top 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+		margin 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.friend-card-link--preview .friend-card-preview {
+	position: absolute;
+	top: 100%; /* 默认停在卡片下沿之外，与卡片自身高度无关，任何高度都不会漏边 */
+	left: 0;
+	right: 0;
+	z-index: 1;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	transition: top 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 信息区压在上层：背景不透明才能挡住上升中的预览区，形成"从背后抽出"的层次；
+   再补一道向上的投影，让它读起来是浮在预览图上的一片。
+   padding-top 让出卡片顶部那一行 —— chip 角标和延时徽章都是绝对定位，
+   让信息从它们下方开始，站名就能完整铺开、不会被徽章压住截断；
+   这一行留 2.3rem（徽章高约 1.9rem + 0.4rem 呼吸），角标和头像之间不贴边。 */
+.friend-card-link--preview .friend-card-content {
+	z-index: 2;
+	padding-top: 2.3rem;
+	background: var(--fc-surface);
+}
+
+.friend-card-link--preview:hover .friend-card-content {
+	box-shadow: 0 -14px 22px -14px rgb(0 0 0 / 0.85);
+}
+
 .friend-card-link--preview:hover {
-	transform: translateY(-0.45rem) scale(1.015);
+	padding-top: var(--fc-preview-ratio);
+	/* 上下各抵消一半：展开量被负外边距吃掉，网格占位不变（其他卡片不动），
+	   视觉上则以卡片垂直中心为轴，向上、向下各浮出一半 */
+	margin-block: calc(var(--fc-preview-ratio) / -2);
+	/* 已有浮出展开，不再叠加位移缩放，保持中线对称 */
+	transform: none;
+	/* 展开的卡片浮到同行之上，投影和展开部分不会和邻卡打架 */
+	z-index: 3;
+}
+
+.friend-card-link--preview:hover .friend-card-preview {
+	top: 0;
 }
 
 .friend-card-link:active {
@@ -690,8 +764,8 @@
 	display: flex;
 	flex: 1;
 	flex-direction: column;
-	gap: 0.65rem;
-	padding: 0.85rem 1rem 1rem;
+	gap: 0.8rem;
+	padding: 0.85rem 1rem 1.05rem;
 }
 
 .friend-card-meta {
@@ -827,8 +901,10 @@
 	align-items: center;
 	justify-content: center;
 	width: 100%;
-	min-height: 2.35rem;
-	padding: 0.5rem 0.75rem;
+	/* 固定成"两行简介"的高度：一行简介和两行简介的卡片高度从此一致，
+	   整行卡片的底边才对得齐（2 × 1.45 行高 × 0.75rem + 上下 padding + 边框） */
+	min-height: calc(2 * 1.45 * 0.75rem + 1.1rem + 2px);
+	padding: 0.55rem 0.85rem;
 	overflow: hidden;
 	border: 1px solid color-mix(in oklch, var(--primary) 28%, var(--line-divider));
 	border-radius: 0.85rem;
@@ -1026,6 +1102,22 @@
 
 	.friend-card-link:hover {
 		transform: none;
+	}
+
+	/* 叠放浮出属于位移 + 布局动效，偏好降低时退回原始的上下排列（预览常显、不展开） */
+	.friend-card-link--preview {
+		padding-top: 0;
+		margin-block: 0;
+	}
+
+	.friend-card-link--preview .friend-card-preview {
+		position: relative;
+		inset: auto;
+		transform: none;
+	}
+
+	.friend-card-link--preview .friend-card-content {
+		background: transparent;
 	}
 
 	.friend-card-link:hover .friend-card-avatar,
