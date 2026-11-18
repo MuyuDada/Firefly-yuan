@@ -21,7 +21,7 @@ export const friendsPageConfig: FriendsPageConfig = {
 	randomizeSort: true,
 
 	// 每页展示的卡片数量
-	pageSize: 12,
+	pageSize: 16,
 
 	// ── 访问延时徽章 ──────────────────────────────────
 	// 在卡片右上角显示探测到的访问延时：绿=良好，橙=偏慢，红=超时
