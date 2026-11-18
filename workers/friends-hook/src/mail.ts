@@ -220,7 +220,7 @@ export async function notifyReviewResult(
 	const body = approved
 		? `
 <tr><td style="padding:20px 28px 0;">
-<div style="font-size:14px;line-height:1.9;color:#2f3646;">你好 ${esc(app.nick)}，你在 ${esc(siteName)} 提交的友链已经通过审核，<strong>${esc(app.parsed.name || app.parsed.siteurl)}</strong> 现在已出现在友链页上。</div>
+<div style="font-size:14px;line-height:1.9;color:#2f3646;">你好 ${esc(app.nick)}，你在 ${esc(siteName)} 提交的友链已经通过审核，<strong>${esc(app.parsed.name || app.parsed.siteurl)}</strong> 会在站点重建后上线（约 2~3 分钟），届时可到友链页查看。</div>
 </td></tr>
 ${note ? `<tr><td style="padding:16px 28px 0;">${quote(esc(note), true)}</td></tr>` : ""}
 <tr><td style="padding:22px 28px 0;">
@@ -250,11 +250,11 @@ ${button(friendsUrl, "去看看")}
 	await sendMail(env, {
 		to,
 		subject: approved
-			? `友链已收录 · ${siteName}`
+			? `友链审核通过 · ${siteName}`
 			: `友链申请结果 · ${siteName}`,
 		html,
 		text: approved
-			? `你好 ${app.nick}，你的友链 ${app.parsed.name} 已通过审核，现在可以在 ${friendsUrl} 看到。${note ? `\n备注：${note}` : ""}`
+			? `你好 ${app.nick}，你的友链 ${app.parsed.name} 已通过审核，站点正在重建，约 2~3 分钟后可在 ${friendsUrl} 看到。${note ? `\n备注：${note}` : ""}`
 			: `你好 ${app.nick}，你的友链申请未通过。${note ? `\n原因：${note}` : ""}\n修改后可以重新提交：${friendsUrl}`,
 	});
 }

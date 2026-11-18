@@ -9,7 +9,7 @@
  * 站内表单提交的申请 id 形如 `form-xxxxxxxx`，没有可回复的父评论，这里直接跳过。
  *
  * 副作用（用之前要想清楚）：
- *   1. 这条回复会公开显示在友链页 —— 好处是访客能看到「已收录」的结果
+ *   1. 这条回复会公开显示在友链页 —— 好处是访客能看到审核结果
  *   2. Akismet 默认开启，带链接的自动回复可能被判 spam 吞掉，需要把 Waline 的
  *      `AKISMET_KEY` 设为 `false`（个人博客的友链页本来也没什么垃圾评论压力）
  *   3. 邮件样式由 Waline 的 `MAIL_TEMPLATE` 决定，这里改不了
@@ -34,9 +34,11 @@ function buildReplyText(app: FriendApplication, approved: boolean): string {
 
 	if (approved) {
 		const lines = [
-			"**友链已收录** ✅",
+			"**友链审核通过** ✅",
 			"",
-			`感谢申请，\`${name}\` 已经出现在友链页上了。`,
+			// 审核通过只写进了 KV，静态站还要等一次重建才会真的显示出来。
+			// 这里不能说「已经出现在友链页上」——回复是立刻发出的，那时还没上线。
+			`感谢申请，\`${name}\` 已通过审核，站点正在重建，约 2~3 分钟后就能在友链页看到。`,
 		];
 		if (note && note !== "审核通过") lines.push("", `备注：${note}`);
 		return lines.join("\n");

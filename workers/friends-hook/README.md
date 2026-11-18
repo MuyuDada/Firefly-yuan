@@ -497,7 +497,7 @@ Waline 只有两个发信触发点 —— 新评论通知博主、回复通知�
 1. **只对评论留言方式的申请有效**。站内表单提交的申请 id 形如 `form-xxxxxxxx`，没有可回复的父评论，会直接跳过。
 2. **申请人必须留了邮箱**，否则 Waline 没有收件人可发。为此站点的评论框已经要求昵称和邮箱都必填
    （`src/config/commentConfig.ts` 的 `waline.requiredMeta`）。
-3. **回复是公开的**，会出现在友链页评论区。好处是访客能直接看到「已收录」。
+3. **回复是公开的**，会出现在友链页评论区。好处是访客能直接看到审核结果。
 
 如果 Waline 服务端设了 `LOGIN=force`（强制登录才能评论），匿名 POST 会失败，此时会自动退化到下面的邮件通道。
 
@@ -583,4 +583,4 @@ curl -s https://friends-hook.muyudada.dpdns.org/health | jq
 
 可用变量：`{{site.name}}` `{{site.url}}` `{{site.postUrl}}` `{{parent.nick}}` `{{parent.comment}}` `{{self.nick}}` `{{self.comment}}`，后两个 `comment` 已经是渲染好的 HTML，要加 `| safe`。
 
-友链审核的回复通知就走这个模板 —— 申请人收到的就是「友链已收录」那张卡片。
+友链审核的回复通知就走这个模板 —— 申请人收到的就是「友链审核通过」那张卡片。

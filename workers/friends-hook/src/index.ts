@@ -757,8 +757,23 @@ async function handleDelete(request: Request, env: Env): Promise<Response> {
 	await env.FRIENDS_KV.delete(`app:${id}`);
 	await env.FRIENDS_KV.delete(`src:${id}`);
 	if (host) {
-		await env.FRIENDS_KV.delete(`link:${host}`);
-		await env.FRIENDS_KV.delete(`dup:${host}`);
+		// 同一个站点可能有多条申请（重复投递 / 换了域名又投一次）。
+		// 只有公开记录确实属于这条申请时才删 —— 否则删掉一条重复申请，
+		// 会把另一条「已通过」的 link:/dup: 一起抹掉，友链就从 /api/links 消失了。
+		const linkRaw = await env.FRIENDS_KV.get(`link:${host}`);
+		let ownsLink = false;
+		if (linkRaw) {
+			try {
+				ownsLink = (JSON.parse(linkRaw) as { id?: string }).id === id;
+			} catch {
+				ownsLink = false;
+			}
+		}
+		if (ownsLink) await env.FRIENDS_KV.delete(`link:${host}`);
+
+		const dupOwner = await env.FRIENDS_KV.get(`dup:${host}`);
+		if (dupOwner === id) await env.FRIENDS_KV.delete(`dup:${host}`);
+
 		await env.FRIENDS_KV.delete(`pend:${host}`);
 	}
 	console.log(`[friends-hook] 已删除申请 ${id}（${app.status}），已记入忽略名单`);
