@@ -37,9 +37,9 @@ export function registerDynamicGallery(): void {
 		private buildGrid() {
 			const grid = this.querySelector<HTMLElement>("[data-gallery-grid]");
 			if (!grid) return;
-			grid.dataset.count = String(Math.min(this.images.length, 6));
+			grid.dataset.count = String(Math.min(this.images.length, 9));
 			grid.dataset.layout = this.images.length === 1 ? "single" : "grid";
-			this.images.slice(0, 6).forEach(({ element, alt }, index) => {
+			this.images.slice(0, 9).forEach(({ element, alt }, index) => {
 				const button = document.createElement("button");
 				button.type = "button";
 				button.className = "page-gallery-grid-item";
@@ -62,16 +62,16 @@ export function registerDynamicGallery(): void {
 					element;
 				element.alt = alt;
 				button.append(element);
-				if (index === 5 && this.images.length > 6) {
+				if (index === 8 && this.images.length > 9) {
 					const more = document.createElement("span");
 					more.className = "page-gallery-more";
-					more.textContent = `+${this.images.length - 6}`;
+					more.textContent = `+${this.images.length - 9}`;
 					button.append(more);
 				}
 				grid.append(button);
 				if (container !== element) container.remove();
 			});
-			for (const { element } of this.images.slice(6)) {
+			for (const { element } of this.images.slice(9)) {
 				(
 					element.closest<HTMLElement>("center") ??
 					element.closest<HTMLElement>("figure") ??

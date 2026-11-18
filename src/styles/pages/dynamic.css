@@ -312,32 +312,16 @@ dynamic-feed {
 	min-width: 0;
 	width: min(100%, 42rem);
 	max-width: 100%;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	/* 九宫格：默认 3 列 */
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: 0.25rem;
 }
 
+/* 2 张 / 4 张用两列（4 张自然成 2×2） */
 .page-gallery-grid[data-count="2"],
 .page-gallery-grid[data-count="4"] {
 	width: min(100%, 28rem);
-}
-
-.page-gallery-grid[data-count="5"],
-.page-gallery-grid[data-count="6"] {
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.page-gallery-grid[data-count="3"] {
-	grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-}
-
-.page-gallery-grid[data-count="5"] {
-	grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
-}
-
-.page-gallery-grid[data-count="3"] .page-gallery-grid-item:first-child,
-.page-gallery-grid[data-count="5"] .page-gallery-grid-item:first-child {
-	grid-row: span 2;
-	aspect-ratio: auto;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .page-gallery-grid-item {
