@@ -8,6 +8,10 @@ export const profileConfig: ProfileConfig = {
 	// 3. 远程 URL："https://example.com/avatar.jpg"
 	avatar: "https://i.imgs.ovh/2026/08/16/d9361d6e012c3125dc8bebbd1a913a92.gif",
 
+	// 头像后方渐隐的背景图（可选）
+	// 不填时自动拿头像本身放大模糊后当背景；想换成别的图就填路径或 URL
+	// banner: "/assets/images/profile-banner.webp",
+
 	// 名字
 	name: "MuyuDada",
 

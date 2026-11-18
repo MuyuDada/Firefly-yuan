@@ -3,6 +3,11 @@ import { Icon } from "astro-icon/components";
 import ImageWrapper from "@/components/common/ImageWrapper.astro";
 import { profileConfig } from "@/config/profileConfig";
 import { encodeMailto, MAILTO_ONCLICK_SCRIPT } from "@/utils/email-utils";
+import {
+	getCategoryList,
+	getSortedPosts,
+	getTagList,
+} from "@/utils/content-utils";
 import { url } from "@/utils/url-utils";
 
 interface Props {
@@ -11,96 +16,455 @@ interface Props {
 }
 const { style } = Astro.props;
 const className = Astro.props.class;
+
+// 头像后方的渐隐背景图：优先用配置里的 banner；
+// 留空时由下面的脚本调用与「时间问候」同一个随机图接口，两张卡复用同一张图
+const customBanner = profileConfig.banner
+	? /^(https?:|data:|\/\/)/.test(profileConfig.banner)
+		? profileConfig.banner
+		: url(profileConfig.banner)
+	: "";
+
+// 卡片底部的「文章 / 标签 / 分类」三栏统计，数字与侧栏一致取自内容集合
+const [posts, categories, tags] = await Promise.all([
+	getSortedPosts(),
+	getCategoryList(),
+	getTagList(),
+]);
+
+const stats = [
+	{ label: "文章", value: posts.length, href: "/archive/" },
+	{ label: "标签", value: tags.length, href: "/tags/" },
+	{ label: "分类", value: categories.length, href: "/categories/" },
+];
+
+// 主按钮：优先用配置里的 GitHub 链接（参考卡的「Github主页」），没有就回落到关于页
+const githubLink = profileConfig.links.find(
+	(item) => /github/i.test(item.name) || /github\.com/i.test(item.url),
+);
+const cta = githubLink
+	? {
+			href: githubLink.url,
+			label: "Github主页",
+			icon: githubLink.icon,
+			external: true,
+		}
+	: {
+			href: "/about/",
+			label: "关于我",
+			icon: "fa7-regular:address-card",
+			external: false,
+		};
 ---
 
 <div class:list={["profile-glow", className]} style={style}>
   <span class="gc-glow" aria-hidden="true"></span>
   <div class="profile-glow-border" aria-hidden="true"></div>
 
-  <div class="card-base profile-glow-face p-3">
-    <a
-      aria-label="Go to About Page"
-      href={url("/about/")}
-      class="group block relative mx-auto mt-1 lg:mx-0 lg:mt-0 mb-3
-         max-w-48 lg:max-w-none overflow-hidden rounded-xl active:scale-95"
+  <div class="card-base profile-glow-face pf-card">
+    <!-- 头像后方的渐隐背景图：与「时间问候」共用同一个随机图接口；
+         配置了 profileConfig.banner 时直接用那张图，不再请求接口 -->
+    <div
+      class="pf-banner"
+      aria-hidden="true"
+      style={customBanner ? `--pf-banner: url("${customBanner}")` : undefined}
     >
-      <div
-        class="absolute transition pointer-events-none group-hover:bg-black/30 group-active:bg-black/50
-          w-full h-full z-50 flex items-center justify-center"
-      >
-        <Icon
-          name="fa7-regular:address-card"
-          class="transition opacity-0 scale-90 group-hover:scale-100 group-hover:opacity-100 text-white text-5xl"
-        />
-      </div>
+    </div>
+
+    <!-- 头像：圆形 + 渐变描边环，悬停时露出「关于我」图标 -->
+    <a aria-label="Go to About Page" href={url("/about/")} class="pf-avatar">
       <ImageWrapper
         src={profileConfig.avatar || ""}
         alt="Profile Image of the Author"
-        class="profile-avatar-image mx-auto lg:w-full h-full lg:mt-0"
+        class="profile-avatar-image"
         loading="eager"
         fetchpriority="high"
         widths={[350]}
         sizes="350px"
+        showOverlay={false}
       />
+      <span class="pf-avatar-overlay" aria-hidden="true">
+        <Icon name="fa7-regular:address-card" class="pf-avatar-icon" />
+      </span>
     </a>
-    <div class="px-2">
-      <div
-        class="gc-name font-bold text-xl text-center mb-1 transition"
-      >
-        {profileConfig.name}
-      </div>
-      <div
-        class="h-1 w-5 bg-(--primary) mx-auto rounded-full mb-2 transition"
-      >
-      </div>
-      <div class="gc-bio text-center text-neutral-400 mb-2.5 transition">
-        {profileConfig.bio}
-      </div>
-        <div class="flex flex-wrap gap-2 justify-center mb-1">
-            {profileConfig.links.length > 1 && profileConfig.links.map(item =>
-                    {
-                    const showName = item.showName;
-                    const className = showName
-                        ? "gc-link btn-regular rounded-lg h-10 gap-2 px-3 font-bold active:scale-95"
-                        : "gc-link btn-regular rounded-lg h-10 w-10 active:scale-90";
 
-                    if (item.url.startsWith("mailto:")) {
-                        const encodedEmail = encodeMailto(item.url);
-                        return <a rel="me" aria-label={item.name} href="#" data-encoded-email={encodedEmail} onclick={MAILTO_ONCLICK_SCRIPT},
-                                    class={className}>
-                            <Icon name={item.icon} class="text-[1.5rem]"></Icon>
-                            {showName && item.name}
-                        </a>
-                    } else {
-                        return <a rel="me" aria-label={item.name} href={item.url} target="_blank" class={className}>
-                            <Icon name={item.icon} class="text-[1.5rem]"></Icon>
-                            {showName && item.name}
-                        </a>
-                    }
-                    }
-            )}
-            {profileConfig.links.length == 1 && (function(item){
-                if (item.url.startsWith("mailto:")) {
-                        const encodedEmail = encodeMailto(item.url);
-                        return <a rel="me" aria-label={item.name} href="#" data-encoded-email={encodedEmail} onclick={MAILTO_ONCLICK_SCRIPT},
-                                    class="gc-link btn-regular rounded-lg h-10 gap-2 px-3 font-bold active:scale-95">
-                            <Icon name={item.icon} class="text-[1.5rem]"></Icon>
-                            {item.name}
-                        </a>
-                    } else {
-                        return <a rel="me" aria-label={item.name} href={item.url} target="_blank"
-                                            class="gc-link btn-regular rounded-lg h-10 gap-2 px-3 font-bold active:scale-95">
-                            <Icon name={item.icon} class="text-[1.5rem]"></Icon>
-                            {item.name}
-                        </a>
-                    }
-            })(profileConfig.links[0])}
-        </div>
+    <!-- 名字 / 签名 -->
+    <div class="gc-name pf-name" title={profileConfig.name}>
+      {profileConfig.name}
+    </div>
+    <div class="gc-bio pf-bio" title={profileConfig.bio}>
+      {profileConfig.bio}
+    </div>
+
+    <!-- 文章 / 标签 / 分类 -->
+    <div class="pf-stats">
+      {
+        stats.map((item) => (
+          <a class="pf-stat" href={url(item.href)}>
+            <span class="gc-bio pf-stat-label">{item.label}</span>
+            <span class="gc-name pf-stat-num">{item.value}</span>
+          </a>
+        ))
+      }
+    </div>
+
+    <!-- 主按钮：整宽胶囊 -->
+    <a
+      class="pf-btn"
+      href={cta.external ? cta.href : url(cta.href)}
+      target={cta.external ? "_blank" : undefined}
+      rel={cta.external ? "noopener" : undefined}
+    >
+      <Icon name={cta.icon} class="pf-btn-icon" />
+      <span>{cta.label}</span>
+    </a>
+
+    <!-- 社交链接：一行居中图标 -->
+    <div class="pf-socials">
+      {
+        profileConfig.links.map((item) => {
+          const linkClass = item.showName
+            ? "gc-link pf-social pf-social--named"
+            : "gc-link pf-social";
+          if (item.url.startsWith("mailto:")) {
+            const encodedEmail = encodeMailto(item.url);
+            return (
+              <a
+                rel="me"
+                aria-label={item.name}
+                href="#"
+                data-encoded-email={encodedEmail}
+                onclick={MAILTO_ONCLICK_SCRIPT}
+                class={linkClass}
+              >
+                <Icon name={item.icon} class="pf-social-icon" />
+                {item.showName && <span class="pf-social-text">{item.name}</span>}
+              </a>
+            );
+          }
+          return (
+            <a
+              rel="me"
+              aria-label={item.name}
+              href={item.url.startsWith("/") ? url(item.url) : item.url}
+              target="_blank"
+              class={linkClass}
+            >
+              <Icon name={item.icon} class="pf-social-icon" />
+              {item.showName && <span class="pf-social-text">{item.name}</span>}
+            </a>
+          );
+        })
+      }
+    </div>
   </div>
 </div>
-</div>
+
+<script is:inline>
+  (() => {
+    // 与「时间问候」同一个随机图接口，但各自独立取图（不共用同一张）
+    const applyBanner = () => {
+      document.querySelectorAll(".pf-banner").forEach((el) => {
+        if (el.dataset.imageSet === "true") return;
+        el.style.setProperty(
+          "--pf-banner",
+          `url("https://random-api.czl.net/pic/ecy?t=${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 8)}")`,
+        );
+        el.dataset.imageSet = "true";
+        el.classList.add("is-ready");
+      });
+    };
+    applyBanner();
+    document.addEventListener("swup:contentReplaced", applyBanner);
+  })();
+</script>
 
 <style>
+  /* ==========================================================================
+     布局：纵向居中的名片卡
+     头像 → 名字 → 签名 → 文章/标签/分类 → 整宽按钮 → 社交图标
+     这一层只管"排布与尺寸"，下面那段霓虹特效只管光/边框/染色，两者互不改写。
+     ========================================================================== */
+  .pf-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.4rem 1rem 1.15rem;
+    text-align: center;
+  }
+  /* 卡内除背景图以外的元素统一抬到它上面 */
+  .pf-card > :not(.pf-banner) {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── 头像后方的渐隐背景图 ───────────────────────────────── */
+  .pf-banner {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 0;
+    /* 高度到「头像下沿」为止：上边距 1.4rem + 头像 6.25rem，背景图尽量露全，只被头像压住中间那个圆 */
+    height: calc(1.4rem + 6.25rem + 0.3rem);
+    background-image: var(--pf-banner, none);
+    background-repeat: no-repeat;
+    background-position: center 16%;
+    background-size: cover;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      #000 0%,
+      #000 72%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      #000 0%,
+      #000 72%,
+      transparent 100%
+    );
+  }
+  .pf-banner.is-ready {
+    opacity: 0.75;
+  }
+  :global(html.dark) .pf-banner.is-ready {
+    opacity: 0.85;
+  }
+
+  /* ── 头像：圆形 + 渐变描边环 ─────────────────────────────── */
+  .pf-avatar {
+    position: relative;
+    display: block;
+    width: 6.25rem;
+    height: 6.25rem;
+    padding: 3px;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 210deg,
+      var(--primary),
+      color-mix(in oklab, var(--primary) 35%, #a78bfa),
+      color-mix(in oklab, var(--primary) 35%, #f472b6),
+      var(--primary)
+    );
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .pf-avatar:hover {
+    transform: translateY(-2px) scale(1.02);
+  }
+  .pf-avatar:active {
+    transform: scale(0.97);
+  }
+  .pf-avatar .profile-avatar-image {
+    width: 100%;
+    height: 100%;
+    border: 2px solid var(--card-bg);
+    border-radius: 50%;
+  }
+  /* 悬停遮罩：提示可点进关于页 */
+  .pf-avatar-overlay {
+    position: absolute;
+    inset: 3px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: #fff;
+    background: rgb(0 0 0 / 0.38);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .pf-avatar:hover .pf-avatar-overlay,
+  .pf-avatar:focus-visible .pf-avatar-overlay {
+    opacity: 1;
+  }
+  .pf-avatar-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    transform: scale(0.85);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .pf-avatar:hover .pf-avatar-icon {
+    transform: scale(1);
+  }
+
+  /* ── 名字 / 签名 ─────────────────────────────────────────── */
+  .pf-name {
+    max-width: 100%;
+    margin-top: 0.85rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pf-bio {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: color-mix(in oklab, var(--deep-text) 55%, transparent);
+  }
+
+  /* ── 文章 / 标签 / 分类 ─────────────────────────────────── */
+  .pf-stats {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    margin-top: 1.05rem;
+  }
+  .pf-stat {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    min-width: 0;
+    padding: 0.3rem 0;
+    border-radius: 0.5rem;
+    transition:
+      background 0.25s ease,
+      transform 0.25s ease;
+  }
+  .pf-stat + .pf-stat {
+    border-left: 1px solid var(--line-divider);
+  }
+  .pf-stat:hover {
+    background: color-mix(in oklab, var(--primary) 8%, transparent);
+    transform: translateY(-1px);
+  }
+  .pf-stat-label {
+    font-size: 0.6875rem;
+    line-height: 1.2;
+    color: color-mix(in oklab, var(--deep-text) 55%, transparent);
+  }
+  .pf-stat-num {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+    color: var(--deep-text);
+  }
+
+  /* ── 主按钮 ─────────────────────────────────────────────── */
+  .pf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    height: 2.45rem;
+    margin-top: 1rem;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    box-shadow: 0 8px 18px -10px color-mix(in oklab, var(--primary) 90%, transparent);
+    transition:
+      transform 0.2s ease,
+      filter 0.25s ease;
+  }
+  .pf-btn:hover {
+    filter: brightness(1.08);
+  }
+  .pf-btn:active {
+    transform: scale(0.97);
+  }
+  .pf-btn-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* ── 社交图标 ───────────────────────────────────────────── */
+  .pf-socials {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  .pf-social {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--deep-text) 6%, transparent);
+    color: color-mix(in oklab, var(--deep-text) 70%, transparent);
+    transition:
+      transform 0.2s ease,
+      background 0.25s ease,
+      color 0.25s ease;
+  }
+  .pf-social:hover {
+    transform: translateY(-2px);
+    background: color-mix(in oklab, var(--primary) 14%, transparent);
+    color: var(--primary);
+  }
+  .pf-social:active {
+    transform: scale(0.94);
+  }
+  .pf-social--named {
+    width: auto;
+    padding-inline: 0.7rem;
+  }
+  .pf-social-icon {
+    flex: none;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  .pf-social-text {
+    overflow: hidden;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* 深色模式下卡面被特效改成深色底：分割线、头像环内侧空隙要跟着变暗 */
+  :global(html.dark) .pf-stat + .pf-stat {
+    border-color: rgb(255 255 255 / 0.1);
+  }
+  :global(html.dark) .pf-avatar .profile-avatar-image {
+    border-color: var(--gc-card-color);
+  }
+  /* 深色下 --primary 是浅色，实心填充+白字对比不足，改成同色系半透明底 */
+  :global(html.dark) .pf-btn {
+    background: color-mix(in oklab, var(--primary) 20%, transparent);
+    color: var(--primary);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklab, var(--primary) 38%, transparent),
+      0 8px 18px -12px color-mix(in oklab, var(--primary) 90%, transparent);
+  }
+  /* 悬停时按钮文字/底色跟卡内其它文字一起被光晕染色（与 .gc-link 同参数） */
+  :global(html.dark) .profile-glow:hover .pf-btn {
+    background: hsl(
+      calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg),
+      30%,
+      15%
+    );
+    color: hsl(
+      calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg),
+      100%,
+      76%
+    );
+    box-shadow: inset 0 0 0 1px
+      hsl(calc(var(--gc-hue) * var(--gc-hue-speed) * 1deg) 100% 70% / 0.35);
+  }
+
   /* ==========================================================================
      个人资料卡片 · 深色霓虹发光特效
      移植自 CodePen @LukyVj《Sharp & Glowing dark card》(YzOXepM)。
@@ -169,7 +533,8 @@ const className = Astro.props.class;
 
   /* ── 深色模式：完整霓虹特效 ─────────────────────────────────────────── */
   :global(html.dark) .profile-glow {
-    --gc-card-color: hsl(260deg 100% 3%);
+    /* 卡面底色跟随站点卡片变量，和侧栏其它卡片保持一致 */
+    --gc-card-color: var(--card-bg);
     --gc-text-color: hsl(260deg 10% 78%);
     --gc-glow-rotate-unit: 1deg;
     --gc-border-width: 3px;
