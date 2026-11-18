@@ -1,14 +1,17 @@
 ---
-title: '用 GitHub Actions 每天给 TA 发一封情书邮件'
+title: "用 GitHub Actions 每天给 TA 发一封情书邮件"
 published: 2026-10-10
-updated: 2026-10-20
-description: '一个跑在 GitHub Actions 上的定时脚本：每天早八点生成一张马卡龙配色卡片长图，写着认识的第几天、两地天气、生活指数、当日黄历和一句土味情话，再通过 SMTP 发出去。用无头 Chrome 截图，零第三方渲染依赖，黄历由本地万年历算法推算不联网。'
-image: api
-tags: [Node.js, GitHub Actions, 自动化, 邮件]
-category: 自建服务
+updated: 2026-11-18
 draft: false
-slug: daily-love-mail
-pinned: true
+pinned: false
+description: "一个跑在 GitHub Actions 上的定时脚本：每天早八点生成一张马卡龙配色卡片长图，写着认识的第几天、两地天气、生活指数、当日黄历和一句土味情话，再通过 SMTP 发出去。用无头 Chrome 截图，零第三方渲染依赖，黄历由本地万年历算法推算不联网。"
+image: "api"
+tags:
+  - Node.js
+  - GitHub Actions
+  - 自动化
+  - 邮件
+category: "自建服务"
 ---
 
 异地恋最难的不是想念，是**没有共同的日常**。你不知道对方那边今天下没下雨、该不该提醒她多穿一件。这些东西微信里问一遍也能问，但问多了就变成打卡。
