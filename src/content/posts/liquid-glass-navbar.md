@@ -1,13 +1,16 @@
 ---
-title: '给博客导航栏复刻 Apple 液态玻璃（Liquid Glass）'
-slug: 'liquid-glass-navbar'
+title: "给博客导航栏复刻 Apple 液态玻璃（Liquid Glass）"
 published: 2026-11-08
-updated: 2026-11-09
-description: '从零复刻 Apple Liquid Glass：backdrop-filter 毛玻璃 + feTurbulence/feDisplacementMap 折射，逐行拆解 SVG 滤镜，做成三段岛式导航栏、下拉面板与首页图标，并把模糊度、折射强度、波纹密度接进设置面板滑块。含完整代码、调试手册与踩坑记录。'
-category: 页面改造
-tags: [CSS, SVG, 液态玻璃]
+updated: 2026-11-19
 draft: false
-pinned: false
+pinned: true
+description: "从零复刻 Apple Liquid Glass：backdrop-filter 毛玻璃 + feTurbulence/feDisplacementMap 折射，逐行拆解 SVG 滤镜，做成三段岛式导航栏、下拉面板与首页图标，并把模糊度、折射强度、波纹密度接进设置面板滑块。含完整代码、调试手册与踩坑记录。"
+image: "https://muyuimg.cc.cd/file/blog/posts/1795021555846_1000049223.png"
+tags:
+  - CSS
+  - SVG
+  - 液态玻璃
+category: "页面改造"
 ---
 
 苹果在 iOS 26 引入的 Liquid Glass（液态玻璃）那种"背景透过玻璃流动扭曲"的质感，其实用纯前端手段就能复刻得八九不离十。这篇文章把我移植到自己博客的全过程完整写下来：先给一个能直接保存运行的最小示例，再逐行拆解 SVG 滤镜，最后落地成三段岛式导航栏 + 下拉面板 + 首页图标，并把三个参数接进设置面板。
