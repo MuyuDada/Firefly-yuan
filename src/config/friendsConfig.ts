@@ -243,15 +243,6 @@ export const friendsConfig: FriendLink[] = [
 		enabled: true,
 	},
 	{
-		title: "拾光小筑",
-		imgurl: "https://www.925810.xyz/uploads/hetun.jpg",
-		desc: "这里是我整理和存放日常片段的地方：一些值得记下的瞬间，一些慢慢攒起来的想法，还有那些容易被忽略的小事。",
-		siteurl: "https://www.925810.xyz/",
-		tags: ["Blog"],
-		weight: 6,
-		enabled: true,
-	},
-	{
 		title: "昭鸢笺",
 		imgurl: "https://blog.mibase.top/img/miro.jpg",
 		desc: "昭有明朗向远之意，鸢乘风而上，笺以载笔墨见闻",
