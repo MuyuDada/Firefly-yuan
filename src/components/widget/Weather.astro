@@ -74,15 +74,6 @@ const COLLAPSED_HEIGHT = "9rem";
 				<span class="minutely-text" data-minutely-summary></span>
 			</div>
 
-			<!-- 未来 3 天（forecast=true 已有数据，直接渲染） -->
-			<div class="forecast-section weather-hidden" data-forecast-section>
-				<div class="section-title">
-					<Icon name="material-symbols:calendar-month" class="section-icon" />
-					<span>未来 3 天</span>
-				</div>
-				<div class="forecast-list" data-forecast-list></div>
-			</div>
-
 			<!-- 接下来 24 小时（hourly=true，横向滚动） -->
 			<div class="hourly-section weather-hidden" data-hourly-section>
 				<div class="section-title">
@@ -90,6 +81,15 @@ const COLLAPSED_HEIGHT = "9rem";
 					<span>接下来 24 小时</span>
 				</div>
 				<div class="hourly-strip" data-hourly-strip></div>
+			</div>
+
+			<!-- 未来 3 天（forecast=true 已有数据，直接渲染） -->
+			<div class="forecast-section weather-hidden" data-forecast-section>
+				<div class="section-title">
+					<Icon name="material-symbols:calendar-month" class="section-icon" />
+					<span>未来 3 天</span>
+				</div>
+				<div class="forecast-list" data-forecast-list></div>
 			</div>
 
 			<!-- 生活指数（indices=true） -->
