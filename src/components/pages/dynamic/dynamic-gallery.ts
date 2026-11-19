@@ -19,7 +19,10 @@ export function registerDynamicGallery(): void {
 				? document.getElementById(this.dataset.sourceId)
 				: null;
 			if (!source) return;
-			const elements = [...source.querySelectorAll<HTMLImageElement>("img")];
+			// 跳过实况照片的静图层，否则会被图片墙从 figure 里抽走
+			const elements = [
+				...source.querySelectorAll<HTMLImageElement>("img:not(.lp-poster)"),
+			];
 			if (elements.length === 0) return;
 			this.images = elements.map((element) => ({
 				alt: element.alt,

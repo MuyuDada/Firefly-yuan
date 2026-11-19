@@ -655,3 +655,96 @@ a.card-wiki-link
       min-width: 0
       aspect-ratio: 2 / 1
       align-self: stretch
+
+// ─── 实况照片（Live Photo） ─────────────────────────────────────────────────
+// 由 rehype-component-live-photo 生成结构，rehype-live-photo 按需注入交互脚本
+// 结构：figure.live-photo > img.lp-poster + video.lp-video + LIVE 角标
+
+.live-photo
+  position: relative
+  display: block
+  width: fit-content
+  max-width: 100%
+  margin: 1.5rem auto
+  overflow: hidden
+  border-radius: var(--radius-large)
+  background: var(--btn-regular-bg)
+  cursor: pointer
+  outline: none
+  -webkit-tap-highlight-color: transparent
+
+  &:focus-visible
+    outline: 2px solid var(--primary)
+    outline-offset: 3px
+
+  .lp-poster
+    display: block
+    width: auto
+    max-width: 100%
+    max-height: 70vh
+    height: auto
+    margin: 0
+
+  .lp-video
+    position: absolute
+    inset: 0
+    width: 100%
+    height: 100%
+    object-fit: cover
+    opacity: 0
+    background: #000
+    pointer-events: none
+    transition: opacity 0.18s ease
+
+  &.is-playing .lp-video
+    opacity: 1
+
+  .lp-badge
+    position: absolute
+    top: 10px
+    left: 10px
+    padding: 2px 8px
+    border-radius: 999px
+    font-size: 11px
+    font-weight: 700
+    letter-spacing: 0.08em
+    color: #fff
+    background: rgba(0, 0, 0, 0.45)
+    backdrop-filter: blur(6px)
+    -webkit-backdrop-filter: blur(6px)
+    pointer-events: none
+
+  .lp-hint
+    position: absolute
+    right: 10px
+    bottom: 10px
+    padding: 2px 8px
+    border-radius: 999px
+    font-size: 11px
+    color: #fff
+    background: rgba(0, 0, 0, 0.4)
+    backdrop-filter: blur(6px)
+    -webkit-backdrop-filter: blur(6px)
+    opacity: 0
+    pointer-events: none
+    transition: opacity 0.2s ease
+
+  &:hover .lp-hint
+    opacity: 1
+
+  &.is-playing .lp-hint
+    opacity: 0
+
+// 指定了宽高比时裁切为固定比例
+.live-photo[style*="--lp-ratio"]
+  width: min(100%, 46rem)
+
+  .lp-poster
+    width: 100%
+    aspect-ratio: var(--lp-ratio)
+    object-fit: cover
+
+// 触屏设备没有悬停，常驻显示提示
+@media (hover: none)
+  .live-photo .lp-hint
+    opacity: 1
