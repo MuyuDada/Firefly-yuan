@@ -68,6 +68,30 @@ const COLLAPSED_HEIGHT = "9rem";
 				<span class="temp-min">低温 <span data-temp-min>--</span>°C</span>
 			</div>
 
+			<!-- 分钟级降水提示（仅有降水时显示） -->
+			<div class="minutely-bar weather-hidden" data-minutely-bar>
+				<Icon name="material-symbols:rainy" class="minutely-icon" />
+				<span class="minutely-text" data-minutely-summary></span>
+			</div>
+
+			<!-- 未来 7 天（forecast=true 已有数据，直接渲染） -->
+			<div class="forecast-section weather-hidden" data-forecast-section>
+				<div class="section-title">
+					<Icon name="material-symbols:calendar-month" class="section-icon" />
+					<span>未来 7 天</span>
+				</div>
+				<div class="forecast-list" data-forecast-list></div>
+			</div>
+
+			<!-- 生活指数（indices=true） -->
+			<div class="indices-section weather-hidden" data-indices-section>
+				<div class="section-title">
+					<Icon name="material-symbols:checklist" class="section-icon" />
+					<span>生活指数</span>
+				</div>
+				<div class="indices-grid" data-indices-grid></div>
+			</div>
+
 			<!-- 扩展信息（当 extended=true 时显示） -->
 			<div class="weather-extended" data-weather-extended>
 				<!-- 第一行：风力和能见度 -->
@@ -512,6 +536,113 @@ const COLLAPSED_HEIGHT = "9rem";
 
 	:global(html.dark) .weather-icon { color: var(--primary); }
 	:global(html.dark) .temperature { color: #fff; }
+
+	/* 分钟级降水提示 */
+	.minutely-bar {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-top: 0.5rem;
+		padding: 0.45rem 0.6rem;
+		border-radius: calc(var(--radius-large) * 0.6);
+		background: color-mix(in srgb, var(--primary) 12%, transparent);
+		font-size: 0.75rem;
+		line-height: 1.4;
+	}
+
+	.minutely-icon {
+		flex: none;
+		font-size: 0.95rem;
+		color: var(--primary);
+	}
+
+	.minutely-text {
+		color: var(--primary);
+	}
+
+	/* 未来 7 天 */
+	.forecast-section,
+	.indices-section {
+		margin-top: 0.75rem;
+	}
+
+	.section-title {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		margin-bottom: 0.35rem;
+		font-size: 0.7rem;
+		letter-spacing: 0.02em;
+		color: var(--deep-text, rgb(107 114 128));
+		opacity: 0.85;
+	}
+
+	.section-icon {
+		font-size: 0.85rem;
+	}
+
+	.forecast-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+	}
+
+	.forecast-row {
+		display: grid;
+		grid-template-columns: 3.2rem 1fr auto;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.2rem 0;
+		font-size: 0.75rem;
+	}
+
+	.forecast-week {
+		color: var(--deep-text, rgb(107 114 128));
+	}
+
+	.forecast-desc {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		opacity: 0.9;
+	}
+
+	.forecast-temp {
+		font-variant-numeric: tabular-nums;
+		opacity: 0.85;
+	}
+
+	.forecast-temp b {
+		font-weight: 600;
+	}
+
+	/* 生活指数 */
+	.indices-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.3rem;
+	}
+
+	.index-chip {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.35rem;
+		padding: 0.28rem 0.45rem;
+		border-radius: calc(var(--radius-large) * 0.5);
+		background: var(--btn-regular-bg);
+		font-size: 0.7rem;
+	}
+
+	.index-label {
+		opacity: 0.7;
+	}
+
+	.index-level {
+		font-weight: 600;
+		white-space: nowrap;
+	}
+
 </style>
 
 <script>
@@ -523,9 +654,27 @@ const COLLAPSED_HEIGHT = "9rem";
 
 		// UAPI 天气接口的响应字段（只列出本组件用到的部分）
 		interface WeatherForecastDay {
+			date?: string | null;
+			week?: string | null;
+			temp_max?: number | string | null;
+			temp_min?: number | string | null;
+			weather_day?: string | null;
+			weather_night?: string | null;
 			pop?: number | string | null;
 			sunrise?: string | null;
 			sunset?: string | null;
+		}
+
+		interface LifeIndex {
+			level?: string | null;
+			brief?: string | null;
+			advice?: string | null;
+		}
+
+		interface MinutelyPrecip {
+			summary?: string | null;
+			update_time?: string | null;
+			data?: Array<{ time?: string; precip?: number; type?: string }>;
 		}
 
 		interface WeatherData {
@@ -551,6 +700,8 @@ const COLLAPSED_HEIGHT = "9rem";
 			aqi_level?: number | string | null;
 			air_pollutants?: Record<string, number | string | null | undefined>;
 			forecast?: WeatherForecastDay[];
+			minutely_precip?: MinutelyPrecip | null;
+			life_indices?: Record<string, LifeIndex> | null;
 		}
 
 		// Iconify 运行时只加载一次，加载中的 Promise 挂在 window 上供多处复用
@@ -638,6 +789,9 @@ const COLLAPSED_HEIGHT = "9rem";
 				params.set("extended", "true");
 			}
 			params.set("forecast", "true");
+			// 分钟级降水（仅国内城市有效）与生活指数：字段缺失时前端自动隐藏
+			params.set("minutely", "true");
+			params.set("indices", "true");
 
 			const controller = new AbortController();
 			const timer = setTimeout(() => controller.abort(), 8000);
@@ -927,7 +1081,87 @@ const COLLAPSED_HEIGHT = "9rem";
 				}
 			}
 
+			renderMinutely(container, data);
+			renderForecast(container, data);
+			renderIndices(container, data);
+
 			if (content) content.classList.remove("weather-hidden");
+		}
+
+		// 分钟级降水：只在真有降水时展示一句话
+		function renderMinutely(container: HTMLElement, data: WeatherData): void {
+			const bar = container.querySelector<HTMLElement>("[data-minutely-bar]");
+			const textEl = container.querySelector<HTMLElement>("[data-minutely-summary]");
+			if (!bar || !textEl) return;
+			const summary = String(data.minutely_precip?.summary || "").trim();
+			const noRain = !summary || /无降水|没有降水|暂无降水/.test(summary);
+			if (noRain) {
+				bar.classList.add("weather-hidden");
+				return;
+			}
+			textEl.textContent = summary;
+			bar.classList.remove("weather-hidden");
+		}
+
+		// 未来 7 天：数据来自已请求的 forecast，不再额外请求
+		function renderForecast(container: HTMLElement, data: WeatherData): void {
+			const section = container.querySelector<HTMLElement>("[data-forecast-section]");
+			const list = container.querySelector<HTMLElement>("[data-forecast-list]");
+			if (!section || !list) return;
+			const days = Array.isArray(data.forecast) ? data.forecast.slice(0, 7) : [];
+			if (!days.length) {
+				section.classList.add("weather-hidden");
+				return;
+			}
+			const esc = (v: unknown) =>
+				String(v ?? "").replace(/[&<>"]/g, (c) =>
+					({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] as string,
+				);
+			list.innerHTML = days
+				.map((d, i) => {
+					const week = i === 0 ? "今天" : esc(d.week || d.date || "");
+					const hi = d.temp_max === null || d.temp_max === undefined ? "--" : esc(d.temp_max);
+					const lo = d.temp_min === null || d.temp_min === undefined ? "--" : esc(d.temp_min);
+					const desc = esc(d.weather_day || "");
+					return `<div class="forecast-row">
+						<span class="forecast-week">${week}</span>
+						<span class="forecast-desc">${desc}</span>
+						<span class="forecast-temp"><b>${hi}°</b> / ${lo}°</span>
+					</div>`;
+				})
+				.join("");
+			section.classList.remove("weather-hidden");
+		}
+
+		// 生活指数：只挑 4 项最常看的
+		function renderIndices(container: HTMLElement, data: WeatherData): void {
+			const section = container.querySelector<HTMLElement>("[data-indices-section]");
+			const grid = container.querySelector<HTMLElement>("[data-indices-grid]");
+			if (!section || !grid) return;
+			const map: Array<[string, string]> = [
+				["clothing", "穿衣"],
+				["umbrella", "雨伞"],
+				["uv", "紫外线"],
+				["cold_risk", "感冒"],
+			];
+			const items = map
+				.map(([key, label]) => {
+					const item = data.life_indices?.[key];
+					const level = String(item?.level || "").trim();
+					if (!level) return "";
+					const brief = String(item?.brief || "").trim();
+					return `<div class="index-chip" title="${label}：${level}${brief ? " · " + brief : ""}">
+						<span class="index-label">${label}</span>
+						<span class="index-level">${level}</span>
+					</div>`;
+				})
+				.filter(Boolean);
+			if (!items.length) {
+				section.classList.add("weather-hidden");
+				return;
+			}
+			grid.innerHTML = items.join("");
+			section.classList.remove("weather-hidden");
 		}
 
 		function initWidget(container: HTMLElement): void {
