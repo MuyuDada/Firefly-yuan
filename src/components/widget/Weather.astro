@@ -645,7 +645,7 @@ const COLLAPSED_HEIGHT = "9rem";
 	}
 
 	.hourly-icon {
-		font-size: 0.95rem;
+		font-size: 1.05rem;
 		line-height: 1;
 	}
 
@@ -664,6 +664,15 @@ const COLLAPSED_HEIGHT = "9rem";
 	:global(html.dark) .hourly-pop {
 		color: #60a5fa;
 	}
+
+/* 天气图标色调（与 .icon-feels-like / .icon-visibility 等同色板） */
+	.tone-sunny { color: #fbbf24; }
+	.tone-partly { color: #94a3b8; }
+	.tone-cloud { color: #94a3b8; }
+	.tone-rain { color: #3b82f6; }
+	.tone-snow { color: #7dd3fc; }
+	.tone-thunder { color: #8b5cf6; }
+	.tone-fog { color: #94a3b8; }
 
 	/* 未来 3 天 */
 	.forecast-list {
@@ -693,10 +702,23 @@ const COLLAPSED_HEIGHT = "9rem";
 	}
 
 	.forecast-desc {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		min-width: 0;
+		opacity: 0.9;
+	}
+
+	.forecast-icon {
+		flex: none;
+		font-size: 0.9rem;
+		line-height: 1;
+	}
+
+	.forecast-text {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		opacity: 0.9;
 	}
 
 	.forecast-temp {
@@ -1217,23 +1239,24 @@ const COLLAPSED_HEIGHT = "9rem";
 		}
 
 		// 逐小时：横向滚动条，只挑关键信息（时间 / 图标 / 温度 / 降水概率）
-		const HOURLY_ICON_RULES: Array<[RegExp, string]> = [
-			[/雷/, "thunderstorm"],
-			[/雨夹雪/, "weather-snowy-rainy"],
-			[/雪/, "weather-snowy"],
-			[/雨/, "rainy"],
-			[/雾/, "foggy"],
-			[/霾|沙尘|浮尘/, "haze"],
-			[/阴/, "cloud"],
-			[/多云/, "partly-cloudy-day"],
-			[/晴/, "wb-sunny"],
+		// 天气文字 → 图标 + 色调（色调类名与组件既有的 .icon-* 配色体系一致）
+		const WEATHER_META_RULES: Array<[RegExp, string, string]> = [
+			[/雷/, "thunderstorm", "thunder"],
+			[/雨夹雪/, "weather-snowy-rainy", "snow"],
+			[/雪/, "weather-snowy", "snow"],
+			[/雨/, "rainy", "rain"],
+			[/雾/, "foggy", "fog"],
+			[/霾|沙尘|浮尘/, "haze", "fog"],
+			[/阴/, "cloud", "cloud"],
+			[/多云/, "partly-cloudy-day", "partly"],
+			[/晴/, "wb-sunny", "sunny"],
 		];
 
-		function hourlyIcon(weather: string): string {
-			for (const [re, icon] of HOURLY_ICON_RULES) {
-				if (re.test(weather)) return "material-symbols:" + icon;
+		function weatherMeta(weather: string): { icon: string; tone: string } {
+			for (const [re, icon, tone] of WEATHER_META_RULES) {
+				if (re.test(weather)) return { icon: "material-symbols:" + icon, tone };
 			}
-			return FALLBACK_WEATHER_ICON;
+			return { icon: FALLBACK_WEATHER_ICON, tone: "cloud" };
 		}
 
 		function renderHourly(container: HTMLElement, data: WeatherData): void {
@@ -1259,7 +1282,9 @@ const COLLAPSED_HEIGHT = "9rem";
 						h.temperature === null || h.temperature === undefined
 							? "--"
 							: esc(h.temperature);
-					const weather = esc(h.weather || "");
+					const rawWeather = String(h.weather || "");
+					const meta = weatherMeta(rawWeather);
+					const weather = esc(rawWeather);
 					const pop = Number(h.pop);
 					const popHtml =
 						Number.isFinite(pop) && pop > 0
@@ -1267,7 +1292,7 @@ const COLLAPSED_HEIGHT = "9rem";
 							: "";
 					return `<div class="hourly-item" title="${label} ${weather} ${temp}°">
 						<span class="hourly-time">${label}</span>
-						<iconify-icon class="hourly-icon" icon="${hourlyIcon(weather)}"></iconify-icon>
+						<iconify-icon class="hourly-icon tone-${meta.tone}" icon="${meta.icon}"></iconify-icon>
 						<span class="hourly-temp">${temp}°</span>
 						${popHtml}
 					</div>`;
@@ -1295,10 +1320,15 @@ const COLLAPSED_HEIGHT = "9rem";
 					const week = i === 0 ? "今天" : esc(d.week || d.date || "");
 					const hi = d.temp_max === null || d.temp_max === undefined ? "--" : esc(d.temp_max);
 					const lo = d.temp_min === null || d.temp_min === undefined ? "--" : esc(d.temp_min);
-					const desc = esc(d.weather_day || "");
+					const rawDay = String(d.weather_day || "");
+					const meta = weatherMeta(rawDay);
+					const desc = esc(rawDay);
 					return `<div class="forecast-row">
 						<span class="forecast-week">${week}</span>
-						<span class="forecast-desc">${desc}</span>
+						<span class="forecast-desc">
+							<iconify-icon class="forecast-icon tone-${meta.tone}" icon="${meta.icon}"></iconify-icon>
+							<span class="forecast-text">${desc}</span>
+						</span>
 						<span class="forecast-temp"><b>${hi}°</b> / ${lo}°</span>
 					</div>`;
 				})
