@@ -74,13 +74,22 @@ const COLLAPSED_HEIGHT = "9rem";
 				<span class="minutely-text" data-minutely-summary></span>
 			</div>
 
-			<!-- 未来 7 天（forecast=true 已有数据，直接渲染） -->
+			<!-- 未来 3 天（forecast=true 已有数据，直接渲染） -->
 			<div class="forecast-section weather-hidden" data-forecast-section>
 				<div class="section-title">
 					<Icon name="material-symbols:calendar-month" class="section-icon" />
-					<span>未来 7 天</span>
+					<span>未来 3 天</span>
 				</div>
 				<div class="forecast-list" data-forecast-list></div>
+			</div>
+
+			<!-- 接下来 24 小时（hourly=true，横向滚动） -->
+			<div class="hourly-section weather-hidden" data-hourly-section>
+				<div class="section-title">
+					<Icon name="material-symbols:schedule" class="section-icon" />
+					<span>接下来 24 小时</span>
+				</div>
+				<div class="hourly-strip" data-hourly-strip></div>
 			</div>
 
 			<!-- 生活指数（indices=true） -->
@@ -565,6 +574,7 @@ const COLLAPSED_HEIGHT = "9rem";
 
 	/* 分区标题与分隔线：与「扩展信息」区同一套语言 */
 	.forecast-section,
+	.hourly-section,
 	.indices-section {
 		padding-top: 0.85rem;
 		border-top: 1px dashed var(--primary);
@@ -586,7 +596,76 @@ const COLLAPSED_HEIGHT = "9rem";
 		color: var(--primary);
 	}
 
-	/* 未来 7 天 */
+/* 接下来 24 小时：横向滚动 */
+	.hourly-strip {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.15rem;
+		overflow-x: auto;
+		overflow-y: hidden;
+		padding-bottom: 0.25rem;
+		scroll-snap-type: x proximity;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.hourly-strip::-webkit-scrollbar {
+		height: 4px;
+	}
+
+	.hourly-strip::-webkit-scrollbar-thumb {
+		background: rgba(0, 0, 0, 0.14);
+		border-radius: 2px;
+	}
+
+	:global(html.dark) .hourly-strip::-webkit-scrollbar-thumb {
+		background: rgba(255, 255, 255, 0.2);
+	}
+
+	.hourly-item {
+		flex: 0 0 auto;
+		width: 2.6rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.1rem;
+		padding: 0.25rem 0.05rem;
+		border-radius: 0.4rem;
+		scroll-snap-align: start;
+		transition: background 0.2s ease;
+	}
+
+	.hourly-item:hover {
+		background: var(--btn-regular-bg);
+	}
+
+	.hourly-time {
+		font-size: 0.625rem;
+		opacity: 0.65;
+		white-space: nowrap;
+	}
+
+	.hourly-icon {
+		font-size: 0.95rem;
+		line-height: 1;
+	}
+
+	.hourly-temp {
+		font-size: 0.75rem;
+		font-weight: 500;
+		white-space: nowrap;
+	}
+
+	.hourly-pop {
+		font-size: 0.6rem;
+		color: #3b82f6;
+		line-height: 1;
+	}
+
+	:global(html.dark) .hourly-pop {
+		color: #60a5fa;
+	}
+
+	/* 未来 3 天 */
 	.forecast-list {
 		display: flex;
 		flex-direction: column;
@@ -695,6 +774,13 @@ const COLLAPSED_HEIGHT = "9rem";
 			advice?: string | null;
 		}
 
+		interface HourlyForecastItem {
+			time?: string | null;
+			temperature?: number | string | null;
+			weather?: string | null;
+			pop?: number | string | null;
+		}
+
 		interface MinutelyPrecip {
 			summary?: string | null;
 			update_time?: string | null;
@@ -724,6 +810,7 @@ const COLLAPSED_HEIGHT = "9rem";
 			aqi_level?: number | string | null;
 			air_pollutants?: Record<string, number | string | null | undefined>;
 			forecast?: WeatherForecastDay[];
+			hourly_forecast?: HourlyForecastItem[] | null;
 			minutely_precip?: MinutelyPrecip | null;
 			life_indices?: Record<string, LifeIndex> | null;
 		}
@@ -815,6 +902,7 @@ const COLLAPSED_HEIGHT = "9rem";
 			params.set("forecast", "true");
 			// 分钟级降水（仅国内城市有效）与生活指数：字段缺失时前端自动隐藏
 			params.set("minutely", "true");
+			params.set("hourly", "true");
 			params.set("indices", "true");
 
 			const controller = new AbortController();
@@ -1106,6 +1194,7 @@ const COLLAPSED_HEIGHT = "9rem";
 			}
 
 			renderMinutely(container, data);
+			renderHourly(container, data);
 			renderForecast(container, data);
 			renderIndices(container, data);
 
@@ -1127,12 +1216,72 @@ const COLLAPSED_HEIGHT = "9rem";
 			bar.classList.remove("weather-hidden");
 		}
 
-		// 未来 7 天：数据来自已请求的 forecast，不再额外请求
+		// 逐小时：横向滚动条，只挑关键信息（时间 / 图标 / 温度 / 降水概率）
+		const HOURLY_ICON_RULES: Array<[RegExp, string]> = [
+			[/雷/, "thunderstorm"],
+			[/雨夹雪/, "weather-snowy-rainy"],
+			[/雪/, "weather-snowy"],
+			[/雨/, "rainy"],
+			[/雾/, "foggy"],
+			[/霾|沙尘|浮尘/, "haze"],
+			[/阴/, "cloud"],
+			[/多云/, "partly-cloudy-day"],
+			[/晴/, "wb-sunny"],
+		];
+
+		function hourlyIcon(weather: string): string {
+			for (const [re, icon] of HOURLY_ICON_RULES) {
+				if (re.test(weather)) return "material-symbols:" + icon;
+			}
+			return FALLBACK_WEATHER_ICON;
+		}
+
+		function renderHourly(container: HTMLElement, data: WeatherData): void {
+			const section = container.querySelector<HTMLElement>("[data-hourly-section]");
+			const strip = container.querySelector<HTMLElement>("[data-hourly-strip]");
+			if (!section || !strip) return;
+			const hours = Array.isArray(data.hourly_forecast)
+				? data.hourly_forecast.slice(0, 24)
+				: [];
+			if (!hours.length) {
+				section.classList.add("weather-hidden");
+				return;
+			}
+			const esc = (v: unknown) =>
+				String(v ?? "").replace(/[&<>"]/g, (c) =>
+					({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] as string,
+				);
+			strip.innerHTML = hours
+				.map((h, index) => {
+					const m = String(h.time || "").match(/[T ](\d{2}):/);
+					const label = index === 0 ? "现在" : m ? `${m[1]}时` : "--";
+					const temp =
+						h.temperature === null || h.temperature === undefined
+							? "--"
+							: esc(h.temperature);
+					const weather = esc(h.weather || "");
+					const pop = Number(h.pop);
+					const popHtml =
+						Number.isFinite(pop) && pop > 0
+							? `<span class="hourly-pop">${Math.round(pop)}%</span>`
+							: "";
+					return `<div class="hourly-item" title="${label} ${weather} ${temp}°">
+						<span class="hourly-time">${label}</span>
+						<iconify-icon class="hourly-icon" icon="${hourlyIcon(weather)}"></iconify-icon>
+						<span class="hourly-temp">${temp}°</span>
+						${popHtml}
+					</div>`;
+				})
+				.join("");
+			section.classList.remove("weather-hidden");
+		}
+
+		// 未来 3 天：数据来自已请求的 forecast，不再额外请求
 		function renderForecast(container: HTMLElement, data: WeatherData): void {
 			const section = container.querySelector<HTMLElement>("[data-forecast-section]");
 			const list = container.querySelector<HTMLElement>("[data-forecast-list]");
 			if (!section || !list) return;
-			const days = Array.isArray(data.forecast) ? data.forecast.slice(0, 7) : [];
+			const days = Array.isArray(data.forecast) ? data.forecast.slice(0, 3) : [];
 			if (!days.length) {
 				section.classList.add("weather-hidden");
 				return;
