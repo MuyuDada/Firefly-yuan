@@ -235,21 +235,13 @@ const cta = githubLink
     opacity: 0.85;
   }
 
-  /* ── 头像：圆形 + 渐变描边环 ─────────────────────────────── */
+  /* ── 头像：干净的一个圆（不再带外层渐变描边环） ──────────── */
   .pf-avatar {
     position: relative;
     display: block;
     width: 6.25rem;
     height: 6.25rem;
-    padding: 3px;
     border-radius: 50%;
-    background: conic-gradient(
-      from 210deg,
-      var(--primary),
-      color-mix(in oklab, var(--primary) 35%, #a78bfa),
-      color-mix(in oklab, var(--primary) 35%, #f472b6),
-      var(--primary)
-    );
     transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .pf-avatar:hover {
@@ -261,13 +253,13 @@ const cta = githubLink
   .pf-avatar .profile-avatar-image {
     width: 100%;
     height: 100%;
-    border: 2px solid var(--card-bg);
+    border: 0;
     border-radius: 50%;
   }
   /* 悬停遮罩：提示可点进关于页 */
   .pf-avatar-overlay {
     position: absolute;
-    inset: 3px;
+    inset: 0;
     z-index: 1;
     display: grid;
     place-items: center;
@@ -434,12 +426,9 @@ const cta = githubLink
     text-overflow: ellipsis;
   }
 
-  /* 深色模式下卡面被特效改成深色底：分割线、头像环内侧空隙要跟着变暗 */
+  /* 深色模式下卡面被特效改成深色底：分割线跟着变暗 */
   :global(html.dark) .pf-stat + .pf-stat {
     border-color: rgb(255 255 255 / 0.1);
-  }
-  :global(html.dark) .pf-avatar .profile-avatar-image {
-    border-color: var(--gc-card-color);
   }
   /* 深色下 --primary 是浅色，实心填充+白字对比不足，改成同色系半透明底 */
   :global(html.dark) .pf-btn {
