@@ -5,7 +5,7 @@ updated: 2026-11-19
 draft: false
 pinned: true
 description: "从零复刻 Apple Liquid Glass：backdrop-filter 毛玻璃 + feTurbulence/feDisplacementMap 折射，逐行拆解 SVG 滤镜，做成三段岛式导航栏、下拉面板与首页图标，并把模糊度、折射强度、波纹密度接进设置面板滑块。含完整代码、调试手册与踩坑记录。"
-image: "https://muyuimg.cc.cd/file/blog/posts/1795021555846_1000049223.png"
+image: "https://muyuimg.cc.cd/file/blog/posts/1795068012103_Muyuの小窝_-_永远相信美好的事情即将发生!.webp"
 tags:
   - CSS
   - SVG
