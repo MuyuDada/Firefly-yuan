@@ -406,12 +406,24 @@ const COLLAPSED_HEIGHT = "9rem";
 		font-size: 0.875rem;
 	}
 
-	.temp-max {
+	.temp-max,
+	:global(.forecast-hi) {
 		color: #ef4444;
 	}
 
-	.temp-min {
+	.temp-min,
+	:global(.forecast-lo) {
 		color: #3b82f6;
+	}
+
+	:global(html.dark) .temp-max,
+	:global(html.dark .forecast-hi) {
+		color: #f87171;
+	}
+
+	:global(html.dark) .temp-min,
+	:global(html.dark .forecast-lo) {
+		color: #60a5fa;
 	}
 
 	.temp-divider {
@@ -635,8 +647,18 @@ const COLLAPSED_HEIGHT = "9rem";
 		transition: background 0.2s ease;
 	}
 
-	:global(.hourly-item:hover) {
+	:global(.hourly-item:hover),
+	:global(.hourly-item.is-now) {
 		background: var(--btn-regular-bg);
+	}
+
+	:global(.hourly-item.is-now .hourly-time) {
+		opacity: 1;
+		font-weight: 600;
+	}
+
+	:global(.hourly-item.is-now .hourly-temp) {
+		font-weight: 600;
 	}
 
 	:global(.hourly-time) {
@@ -651,7 +673,7 @@ const COLLAPSED_HEIGHT = "9rem";
 	}
 
 	:global(.hourly-temp) {
-		font-size: 0.75rem;
+		font-size: 0.78rem;
 		font-weight: 500;
 		white-space: nowrap;
 	}
@@ -676,8 +698,8 @@ const COLLAPSED_HEIGHT = "9rem";
 		grid-template-columns: 2.75rem minmax(0, 1fr) auto;
 		align-items: center;
 		gap: 0.5rem;
-		padding: 0.24rem 0;
-		font-size: 0.75rem;
+		padding: 0.32rem 0;
+		font-size: 0.78rem;
 	}
 
 	:global(.forecast-row + .forecast-row) {
@@ -685,7 +707,8 @@ const COLLAPSED_HEIGHT = "9rem";
 	}
 
 	:global(.forecast-week) {
-		opacity: 0.7;
+		font-weight: 600;
+		opacity: 0.9;
 	}
 
 	:global(.forecast-desc) {
@@ -709,12 +732,20 @@ const COLLAPSED_HEIGHT = "9rem";
 	}
 
 	:global(.forecast-temp) {
+		display: inline-flex;
+		align-items: baseline;
+		justify-content: flex-end;
+		gap: 0.4rem;
+		font-size: 0.875rem;
 		font-variant-numeric: tabular-nums;
-		opacity: 0.85;
 		white-space: nowrap;
 	}
 
-	:global(.forecast-temp b) {
+	:global(.forecast-hi) {
+		font-weight: 600;
+	}
+
+	:global(.forecast-lo) {
 		font-weight: 500;
 	}
 
@@ -1302,7 +1333,8 @@ const COLLAPSED_HEIGHT = "9rem";
 					const rawWeather = String(h.weather || "");
 					const meta = weatherMeta(rawWeather);
 					const weather = esc(rawWeather);
-					return `<div class="hourly-item" title="${label} ${weather} ${temp}°">
+					const nowClass = index === 0 ? " is-now" : "";
+					return `<div class="hourly-item${nowClass}" title="${label} ${weather} ${temp}°">
 						<span class="hourly-time">${label}</span>
 						<iconify-icon class="hourly-icon tone-${meta.tone}" icon="${meta.icon}"></iconify-icon>
 						<span class="hourly-temp">${temp}°</span>
@@ -1340,7 +1372,7 @@ const COLLAPSED_HEIGHT = "9rem";
 							<iconify-icon class="forecast-icon tone-${meta.tone}" icon="${meta.icon}"></iconify-icon>
 							<span class="forecast-text">${desc}</span>
 						</span>
-						<span class="forecast-temp"><b>${hi}°</b> / ${lo}°</span>
+						<span class="forecast-temp"><b class="forecast-hi">${hi}°</b><span class="forecast-lo">${lo}°</span></span>
 					</div>`;
 				})
 				.join("");
