@@ -178,8 +178,8 @@ const COLLAPSED_HEIGHT = "9rem";
 				<div class="extended-item">
 					<Icon name="material-symbols:water-drop" class="extended-icon icon-pop" />
 					<div class="extended-content">
-						<span class="extended-label dark:text-neutral-100">降水概率</span>
-						<span class="extended-value dark:text-neutral-100" data-pop>--%</span>
+						<span class="extended-label dark:text-neutral-100">2 小时降水</span>
+						<span class="extended-value dark:text-neutral-100" data-precip-2h>--mm</span>
 					</div>
 				</div>
 				<!-- 第六行：日出和日落 -->
@@ -435,12 +435,13 @@ const COLLAPSED_HEIGHT = "9rem";
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
 		gap: 0.5rem;
-		padding-top: 1rem;
-		border-top: 1px dashed var(--primary);
-		justify-items: center;
+		padding-top: 0.9rem;
+		border-top: 1px dashed color-mix(in srgb, var(--primary) 35%, transparent);
+		justify-items: stretch;
 	}
 
-	.extended-item {
+	/* 注意：生活指数由脚本注入，拿不到 Astro 的作用域属性，故用 :global() */
+	:global(.extended-item) {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
@@ -449,12 +450,12 @@ const COLLAPSED_HEIGHT = "9rem";
 		transition: transform 0.2s ease, box-shadow 0.2s ease;
 	}
 
-	.extended-item:hover {
+	:global(.extended-item:hover) {
 		transform: translateY(-2px);
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 	}
 
-	.extended-icon {
+	:global(.extended-icon) {
 		font-size: 1.25rem;
 		color: var(--primary);
 	}
@@ -471,18 +472,18 @@ const COLLAPSED_HEIGHT = "9rem";
 	.icon-sunset { color: #fb923c; }
 	.icon-pop { color: #0ea5e9; }
 
-	.extended-content {
+	:global(.extended-content) {
 		display: flex;
 		flex-direction: column;
 	}
 
-	.extended-label {
+	:global(.extended-label) {
 		font-size: 0.625rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 	}
 
-	.extended-value {
+	:global(.extended-value) {
 		font-size: 0.875rem;
 		font-weight: 500;
 	}
@@ -516,8 +517,8 @@ const COLLAPSED_HEIGHT = "9rem";
 	.pollutants-grid {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 0.25rem;
-		margin-top: 0.25rem;
+		gap: 0.3rem 0.5rem;
+		margin-top: 0.3rem;
 	}
 
 	.pollutant { font-size: 0.75rem; }
@@ -538,7 +539,7 @@ const COLLAPSED_HEIGHT = "9rem";
 		}
 	}
 
-	:global(html.dark) .extended-item:hover {
+	:global(html.dark .extended-item:hover) {
 		transform: translateY(-2px);
 		box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
 	}
@@ -546,7 +547,7 @@ const COLLAPSED_HEIGHT = "9rem";
 	:global(html.dark) .weather-icon { color: var(--primary); }
 	:global(html.dark) .temperature { color: #fff; }
 
-	/* 分钟级降水提示（仅有降水时显示） */
+	/* 分钟级降水提示（静态模板，保持作用域） */
 	.minutely-bar {
 		display: flex;
 		align-items: center;
@@ -564,43 +565,43 @@ const COLLAPSED_HEIGHT = "9rem";
 
 	.minutely-icon {
 		flex: none;
-		font-size: 1rem;
-		color: #3b82f6;
+		font-size: 1.1rem;
+		color: #0ea5e9;
 	}
 
 	.minutely-text {
 		opacity: 0.9;
 	}
 
-	/* 分区标题与分隔线：与「扩展信息」区同一套语言 */
+	/* 分区容器与标题 */
 	.forecast-section,
 	.hourly-section,
 	.indices-section {
-		padding-top: 0.85rem;
-		border-top: 1px dashed var(--primary);
+		padding-top: 0.9rem;
+		border-top: 1px dashed color-mix(in srgb, var(--primary) 35%, transparent);
 	}
 
 	.section-title {
 		display: flex;
 		align-items: center;
-		gap: 0.25rem;
-		margin-bottom: 0.4rem;
+		gap: 0.35rem;
+		margin-bottom: 0.5rem;
 		font-size: 0.625rem;
+		line-height: 1.4;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		opacity: 0.65;
 	}
 
 	.section-icon {
-		font-size: 0.875rem;
+		font-size: 0.95rem;
 		color: var(--primary);
 	}
 
-/* 接下来 24 小时：横向滚动 */
+	/* 接下来 24 小时：容器静态，条目由脚本注入 */
 	.hourly-strip {
 		display: flex;
 		align-items: flex-start;
-		gap: 0.15rem;
+		gap: 0.25rem;
 		overflow-x: auto;
 		overflow-y: hidden;
 		padding-bottom: 0.25rem;
@@ -621,9 +622,9 @@ const COLLAPSED_HEIGHT = "9rem";
 		background: rgba(255, 255, 255, 0.2);
 	}
 
-	.hourly-item {
+	:global(.hourly-item) {
 		flex: 0 0 auto;
-		width: 2.6rem;
+		width: 2.8rem;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -634,74 +635,60 @@ const COLLAPSED_HEIGHT = "9rem";
 		transition: background 0.2s ease;
 	}
 
-	.hourly-item:hover {
+	:global(.hourly-item:hover) {
 		background: var(--btn-regular-bg);
 	}
 
-	.hourly-time {
+	:global(.hourly-time) {
 		font-size: 0.625rem;
-		opacity: 0.65;
+		opacity: 0.7;
 		white-space: nowrap;
 	}
 
-	.hourly-icon {
-		font-size: 1.05rem;
+	:global(.hourly-icon) {
+		font-size: 1.25rem;
 		line-height: 1;
 	}
 
-	.hourly-temp {
+	:global(.hourly-temp) {
 		font-size: 0.75rem;
 		font-weight: 500;
 		white-space: nowrap;
 	}
 
-	.hourly-pop {
-		font-size: 0.6rem;
-		color: #3b82f6;
-		line-height: 1;
-	}
+	/* 天气图标色调：沿用扩展区 .icon-* 同一套色板 */
+	:global(.tone-sunny) { color: #eab308; }
+	:global(.tone-partly) { color: #64748b; }
+	:global(.tone-cloud) { color: #64748b; }
+	:global(.tone-rain) { color: #0ea5e9; }
+	:global(.tone-snow) { color: #06b6d4; }
+	:global(.tone-thunder) { color: #8b5cf6; }
+	:global(.tone-fog) { color: #64748b; }
 
-	:global(html.dark) .hourly-pop {
-		color: #60a5fa;
-	}
-
-/* 天气图标色调（与 .icon-feels-like / .icon-visibility 等同色板） */
-	.tone-sunny { color: #fbbf24; }
-	.tone-partly { color: #94a3b8; }
-	.tone-cloud { color: #94a3b8; }
-	.tone-rain { color: #3b82f6; }
-	.tone-snow { color: #7dd3fc; }
-	.tone-thunder { color: #8b5cf6; }
-	.tone-fog { color: #94a3b8; }
-
-	/* 未来 3 天 */
+	/* 未来 3 天：容器静态，行由脚本注入 */
 	.forecast-list {
 		display: flex;
 		flex-direction: column;
 	}
 
-	.forecast-row {
+	:global(.forecast-row) {
 		display: grid;
-		grid-template-columns: 3rem minmax(0, 1fr) auto;
+		grid-template-columns: 2.75rem minmax(0, 1fr) auto;
 		align-items: center;
-		gap: 0.35rem;
-		padding: 0.18rem 0;
+		gap: 0.5rem;
+		padding: 0.24rem 0;
 		font-size: 0.75rem;
 	}
 
-	.forecast-row + .forecast-row {
+	:global(.forecast-row + .forecast-row) {
 		border-top: 1px solid rgba(0, 0, 0, 0.05);
 	}
 
-	:global(html.dark) .forecast-row + .forecast-row {
-		border-top-color: rgba(255, 255, 255, 0.06);
-	}
-
-	.forecast-week {
+	:global(.forecast-week) {
 		opacity: 0.7;
 	}
 
-	.forecast-desc {
+	:global(.forecast-desc) {
 		display: flex;
 		align-items: center;
 		gap: 0.3rem;
@@ -709,57 +696,43 @@ const COLLAPSED_HEIGHT = "9rem";
 		opacity: 0.9;
 	}
 
-	.forecast-icon {
+	:global(.forecast-icon) {
 		flex: none;
-		font-size: 0.9rem;
+		font-size: 1.1rem;
 		line-height: 1;
 	}
 
-	.forecast-text {
+	:global(.forecast-text) {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.forecast-temp {
+	:global(.forecast-temp) {
 		font-variant-numeric: tabular-nums;
 		opacity: 0.85;
 		white-space: nowrap;
 	}
 
-	.forecast-temp b {
+	:global(.forecast-temp b) {
 		font-weight: 500;
 	}
 
-	/* 生活指数 */
+	/* 生活指数：与 .weather-extended 同构（两列、居中、复用 .extended-item） */
 	.indices-grid {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.45rem 1rem;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 0.45rem;
+		justify-items: stretch;
 	}
 
-	.index-chip {
-		display: flex;
-		align-items: baseline;
-		justify-content: flex-start;
-		gap: 0.35rem;
-		min-width: 0;
-		font-size: 0.75rem;
+	.indices-grid :global(.extended-item) {
+		padding: 0.35rem 0.5rem;
+		gap: 0.4rem;
 	}
 
-	.index-label {
-		font-size: 0.625rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		opacity: 0.6;
-		white-space: nowrap;
-	}
-
-	.index-level {
-		font-weight: 500;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+	.indices-grid :global(.extended-icon) {
+		font-size: 1.15rem;
 	}
 
 	@media (max-width: 320px) {
@@ -767,6 +740,41 @@ const COLLAPSED_HEIGHT = "9rem";
 			grid-template-columns: 1fr;
 		}
 	}
+
+	/* ---------- 深色模式：注入区块需一并使用全局选择器 ---------- */
+	:global(html.dark) .section-title,
+	:global(html.dark) .minutely-text {
+		color: rgb(245 245 245);
+	}
+
+	:global(html.dark .forecast-week),
+	:global(html.dark .forecast-desc),
+	:global(html.dark .forecast-temp),
+	:global(html.dark .hourly-time),
+	:global(html.dark .hourly-temp) {
+		color: rgb(245 245 245);
+	}
+
+	:global(html.dark .forecast-desc),
+	:global(html.dark .forecast-temp) {
+		opacity: 1;
+	}
+
+	:global(html.dark .forecast-row + .forecast-row) {
+		border-top-color: rgba(255, 255, 255, 0.06);
+	}
+
+	:global(html.dark .tone-sunny) { color: #facc15; }
+
+	:global(html.dark .tone-partly),
+	:global(html.dark .tone-cloud),
+	:global(html.dark .tone-fog) {
+		color: #94a3b8;
+	}
+
+	:global(html.dark .tone-rain) { color: #38bdf8; }
+	:global(html.dark .tone-snow) { color: #22d3ee; }
+	:global(html.dark .tone-thunder) { color: #a78bfa; }
 
 </style>
 
@@ -1189,10 +1197,19 @@ const COLLAPSED_HEIGHT = "9rem";
 					setData("[data-visibility]", fmt(data.visibility, "km", "--km"));
 					setData("[data-pressure]", fmt(data.pressure, "hPa", "--hPa"));
 					setData("[data-humidity]", fmt(data.humidity, "%", "--%"));
-					setData("[data-uv]", fmt(data.uv));
+					// 紫外线：官方顶层 uv 是 0-11 的强度数字，但接口目前不返回该字段；
+					// 缺失时回落到生活指数里的等级文字（如「高」「适宜」）
+					const uvLevel = String(data.life_indices?.uv?.level || "").trim();
+					setData("[data-uv]", fmt(data.uv, "", uvLevel || "--"));
 					setData("[data-precipitation]", fmt(data.precipitation, "mm", "--mm"));
 					setData("[data-cloud]", fmt(data.cloud, "%", "--%"));
-					setData("[data-pop]", fmt(todayForecast?.pop, "%", "--%"));
+					// 接口不提供降水概率；改用分钟级预报（24 条 × 5 分钟）累计未来 2 小时降水量
+					const minutely = Array.isArray(data.minutely_precip?.data) ? data.minutely_precip.data : [];
+					const precip2h = minutely.reduce((sum, item) => {
+						const v = Number(item?.precip);
+						return Number.isFinite(v) ? sum + v : sum;
+					}, 0);
+					setData("[data-precip-2h]", minutely.length ? `${precip2h.toFixed(1)}mm` : "--mm");
 					setData("[data-sunrise]", fmt(todayForecast?.sunrise, "", "--:--"));
 					setData("[data-sunset]", fmt(todayForecast?.sunset, "", "--:--"));
 
@@ -1285,16 +1302,10 @@ const COLLAPSED_HEIGHT = "9rem";
 					const rawWeather = String(h.weather || "");
 					const meta = weatherMeta(rawWeather);
 					const weather = esc(rawWeather);
-					const pop = Number(h.pop);
-					const popHtml =
-						Number.isFinite(pop) && pop > 0
-							? `<span class="hourly-pop">${Math.round(pop)}%</span>`
-							: "";
 					return `<div class="hourly-item" title="${label} ${weather} ${temp}°">
 						<span class="hourly-time">${label}</span>
 						<iconify-icon class="hourly-icon tone-${meta.tone}" icon="${meta.icon}"></iconify-icon>
 						<span class="hourly-temp">${temp}°</span>
-						${popHtml}
 					</div>`;
 				})
 				.join("");
@@ -1341,22 +1352,32 @@ const COLLAPSED_HEIGHT = "9rem";
 			const section = container.querySelector<HTMLElement>("[data-indices-section]");
 			const grid = container.querySelector<HTMLElement>("[data-indices-grid]");
 			if (!section || !grid) return;
-			const map: Array<[string, string]> = [
-				["clothing", "穿衣"],
-				["umbrella", "雨伞"],
-				["uv", "紫外线"],
-				["cold_risk", "感冒"],
+			// [键, 标签, 图标, 颜色]：配色沿用扩展区 .icon-* 色板
+			const map: Array<[string, string, string, string]> = [
+				["clothing", "穿衣", "apparel", "#f97316"],
+				["umbrella", "雨伞", "umbrella", "#0ea5e9"],
+				["exercise", "运动", "directions-run", "#22c55e"],
+				["cold_risk", "感冒", "sick", "#ef4444"],
 			];
+			const esc = (v: unknown) =>
+				String(v ?? "").replace(/[&<>"]/g, (c) =>
+					({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] as string,
+				);
 			const items = map
-				.map(([key, label]) => {
+				.map(([key, label, icon, color]) => {
 					const item = data.life_indices?.[key];
 					const level = String(item?.level || "").trim();
 					if (!level) return "";
 					const brief = String(item?.brief || "").trim();
-					return `<div class="index-chip" title="${label}：${level}${brief ? " · " + brief : ""}">
-						<span class="index-label">${label}</span>
-						<span class="index-level">${level}</span>
-					</div>`;
+					const tip = label + "：" + level + (brief ? " · " + brief : "");
+					return [
+						'<div class="extended-item" title="' + esc(tip) + '">',
+						'<iconify-icon class="extended-icon" style="color:' + color + '" icon="material-symbols:' + icon + '"></iconify-icon>',
+						'<div class="extended-content">',
+						'<span class="extended-label dark:text-neutral-100">' + esc(label) + "</span>",
+						'<span class="extended-value dark:text-neutral-100">' + esc(level) + "</span>",
+						"</div></div>",
+					].join("");
 				})
 				.filter(Boolean);
 			if (!items.length) {
