@@ -7,6 +7,7 @@ import { url } from "@/utils/url-utils";
 ---
 
 <MainGridLayout title={i18n(I18nKey.notFound)} description={i18n(I18nKey.notFoundDescription)}>
+    <div class="flex w-full flex-col gap-4">
     <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-96">
         <div class="card-base z-10 px-9 py-12 relative w-full flex flex-col items-center justify-center text-center">
             <!-- 404 大号数字 -->
@@ -47,7 +48,110 @@ import { url } from "@/utils/url-utils";
             </div>
         </div>
     </div>
+
+    <!-- 迷路彩蛋：小游戏（按需加载，不点不请求；游戏本体为第三方 WASM，界面文字无法汉化） -->
+    <div class="card-base px-6 py-6 md:px-8">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="min-w-0">
+                <div class="text-[0.7rem] font-semibold tracking-[0.18em] text-(--primary) opacity-70">
+                    404 · SIDE QUEST
+                </div>
+                <h2 class="text-xl md:text-2xl font-bold mt-1.5 text-90">
+                    既然走错了，先在这儿玩一局？
+                </h2>
+                <p class="text-sm text-75 mt-1.5">
+                    怒驾飞车 · 按 <kbd>A</kbd>/<kbd>Z</kbd> 后退、<kbd>D</kbd>/<kbd>X</kbd> 前进，翻车就得重来
+                </p>
+            </div>
+            <div class="flex shrink-0 items-center gap-2">
+                <button type="button" id="mini-game-start" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-(--radius-large) font-medium text-white bg-(--primary) hover:bg-(--btn-content) transition-colors duration-200">
+                    <Icon name="material-symbols:sports-esports" class="text-xl" />
+                    <span>开始游戏</span>
+                </button>
+                <button type="button" id="mini-game-stop" class="hidden items-center gap-2 px-5 py-2.5 rounded-(--radius-large) font-medium text-75 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 transition-colors duration-200">
+                    <Icon name="material-symbols:close" class="text-xl" />
+                    <span>收起</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="mini-game-stage" class="mini-game-stage">
+            <div class="mini-game-frame">
+                <div id="mini-game-mask" class="mini-game-mask">
+                    <span class="mini-game-spinner" aria-hidden="true"></span>
+                    <span class="mini-game-mask-text">小游戏加载中…</span>
+                </div>
+            </div>
+            <p class="text-xs text-50 mt-2.5">
+                先点一下游戏画面再用键盘，方向键会被游戏接管。游戏来自 CodePen，需要能访问 codepen.io；一直转圈就说明当前网络连不上，点「收起」即可。
+            </p>
+        </div>
+    </div>
+    </div>
 </MainGridLayout>
+
+<script>
+    // 点击后才注入 iframe：不点不发请求，避免 404 页白等第三方资源
+    const START_LABEL = "开始游戏";
+    const TIMEOUT_MS = 15000;
+    const GAME_SRC =
+        "https://codepen.io/jaxkingofpugs-1/embed/JoYagwr?default-tab=result&theme-id=dark";
+
+    const startBtn = document.getElementById("mini-game-start");
+    const stopBtn = document.getElementById("mini-game-stop");
+    const stage = document.getElementById("mini-game-stage");
+    const frame = stage?.querySelector<HTMLElement>(".mini-game-frame");
+    const mask = document.getElementById("mini-game-mask");
+    const maskText = mask?.querySelector(".mini-game-mask-text");
+
+    let timer: number | undefined;
+
+    function loadGame() {
+        if (!frame || !stage) return;
+        stage.classList.add("is-open");
+        if (startBtn) startBtn.style.display = "none";
+        if (stopBtn) stopBtn.style.display = "inline-flex";
+
+        if (frame.querySelector("iframe")) {
+            mask?.classList.add("is-hidden");
+            return;
+        }
+
+        mask?.classList.remove("is-hidden", "is-error");
+        if (maskText) maskText.textContent = "小游戏加载中…";
+
+        const iframe = document.createElement("iframe");
+        iframe.src = GAME_SRC;
+        iframe.title = "怒驾飞车小游戏";
+        iframe.loading = "lazy";
+        iframe.allow = "autoplay; fullscreen; gamepad";
+        iframe.setAttribute("frameborder", "0");
+        iframe.addEventListener("load", () => {
+            window.clearTimeout(timer);
+            mask?.classList.add("is-hidden");
+        });
+        frame.appendChild(iframe);
+
+        timer = window.setTimeout(() => {
+            mask?.classList.add("is-error");
+            if (maskText) maskText.textContent = "加载超时，可能是网络访问不到 codepen.io";
+        }, TIMEOUT_MS);
+    }
+
+    function unloadGame() {
+        window.clearTimeout(timer);
+        frame?.querySelector("iframe")?.remove();
+        stage?.classList.remove("is-open");
+        if (startBtn) startBtn.style.display = "";
+        if (stopBtn) stopBtn.style.display = "none";
+        mask?.classList.remove("is-hidden", "is-error");
+        if (maskText) maskText.textContent = "小游戏加载中…";
+        startBtn?.querySelector("span")?.replaceChildren(START_LABEL);
+    }
+
+    startBtn?.addEventListener("click", loadGame);
+    stopBtn?.addEventListener("click", unloadGame);
+</script>
 
 <style>
     /* 添加一些动画效果 */
@@ -70,5 +174,92 @@ import { url } from "@/utils/url-utils";
     a:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+    }
+
+    /* ── 迷路彩蛋：小游戏 ───────────────────────────────── */
+    .mini-game-stage {
+        display: none;
+        margin-top: 1.25rem;
+    }
+    .mini-game-stage.is-open {
+        display: block;
+        animation: fadeInUp 0.4s ease-out;
+    }
+    .mini-game-frame {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        min-height: 220px;
+        border-radius: var(--radius-large, 1rem);
+        overflow: hidden;
+        background: color-mix(in oklab, var(--primary) 7%, transparent);
+        box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06);
+    }
+    :global(html.dark) .mini-game-frame {
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+    }
+    /* iframe 由脚本动态插入，拿不到 Astro 的 scoped 属性，必须用 :global 命中 */
+    .mini-game-frame :global(iframe) {
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+    }
+    .mini-game-mask {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        padding: 1rem;
+        font-size: 0.875rem;
+        text-align: center;
+        color: color-mix(in oklab, var(--deep-text) 60%, transparent);
+        transition: opacity 0.3s ease;
+    }
+    .mini-game-mask.is-hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+    .mini-game-mask.is-error .mini-game-spinner {
+        display: none;
+    }
+    .mini-game-mask.is-error .mini-game-mask-text {
+        color: #ef4444;
+    }
+    .mini-game-spinner {
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 2px solid color-mix(in oklab, var(--primary) 25%, transparent);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: miniGameSpin 0.8s linear infinite;
+    }
+    @keyframes miniGameSpin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    kbd {
+        display: inline-block;
+        padding: 0.05rem 0.35rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.72rem;
+        line-height: 1.5;
+        border-radius: 0.35rem;
+        background: rgb(0 0 0 / 0.06);
+    }
+    :global(html.dark) kbd {
+        background: rgb(255 255 255 / 0.1);
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .mini-game-spinner {
+            animation-duration: 2s;
+        }
     }
 </style>
