@@ -82,6 +82,13 @@
 	display: none;
 }
 
+/* 同一标签页内已播过首屏动画：脚本接管前先压住遮罩，避免刷新时闪一帧。
+   加上 .page-loader--js 后本规则失效，显隐完全交给 JS 管理 */
+html[data-page-loader-seen] #page-loader:not(.page-loader--js) {
+	opacity: 0;
+	visibility: hidden;
+}
+
 @media (min-width: 768px) {
 	#page-loader[data-mobile="off"] {
 		display: flex;

@@ -33,6 +33,16 @@ const loadingText = text || i18n(I18nKey.pageLoaderLoading);
 const hintText = i18n(I18nKey.pageLoaderHint);
 ---
 
+<!-- 频率控制的前置条件：同一标签页内已经播过首屏动画时，先给 <html> 打标记，
+     让 CSS 在脚本接管之前就把服务端渲染的遮罩压住，避免刷新时闪一帧 -->
+<script is:inline>
+	try {
+		if (sessionStorage.getItem("firefly:page-loader:shown") === "1") {
+			document.documentElement.setAttribute("data-page-loader-seen", "");
+		}
+	} catch {}
+</script>
+
 {
 	enable && (
 		<div

@@ -1,13 +1,14 @@
 ---
 title: '为 Firefly 添加全屏页面加载动画：一只端着汉堡的像素小猫'
 published: 2026-10-12
-description: '参考 huchao 的 Firefly 页面加载器架构，用一张像素小猫 GIF 重做视觉：像素对话框 + 对话尾巴 + 汉堡进度条，配色直接取自 GIF 全局调色板。附带四个真实踩到的坑：同色导致小猫隐形、原图放大糊、暗色变量未覆盖、切页闪一下。'
+description: '参考 huchao 的 Firefly 页面加载器架构，用一张像素小猫 GIF 重做视觉：像素对话框 + 对话尾巴 + 汉堡进度条，配色直接取自 GIF 全局调色板。附带四个真实踩到的坑：同色导致小猫隐形、原图放大糊、暗色变量未覆盖、切页闪一下，以及上线一周后才发现的真正毛病——遮罩太频繁。'
 image: api
 category: 小组件
 tags: [交互, 特效, 像素风]
 draft: false
 slug: firefly-page-loader
 pinned: false
+series: "Firefly 魔改实录"
 ---
 
 Firefly 用 Swup 做无刷新切页，体感很快，但也带来一个小问题：**点击链接到新内容出现之间，只有顶部一根 3px 的进度条在动**。如果目标页面要等接口或图片，页面中段会有一段时间是「旧内容不动、新内容没来」的静止状态，看起来像是卡住了。
@@ -59,14 +60,23 @@ Firefly 用 Swup 做无刷新切页，体感很快，但也带来一个小问题
 export const pageLoaderConfig: PageLoaderConfig = {
 	enable: true,                          // 是否启用全屏加载动画
 	showOnInitial: true,                   // 首次进入站点时显示
-	showOnNavigate: true,                  // Swup 切页时显示
-	showOnMobile: true,                    // 移动端（<768px）显示
+	showOnNavigate: false,                 // Swup 切页时显示（打开后仍需超过 delayOnNavigate 才出现）
+	showOnMobile: false,                   // 移动端（<768px）显示
 	style: "cat",                          // 猫咪主题：图片 + 像素气泡 + 汉堡进度条
 	image: "/assets/images/loading-cat.gif", // 像素小猫（本地资源，避免 CDN 往返）
 	text: "",                              // 留空则使用 i18n 文案
-	minDuration: 900,                      // 最短显示时长（ms）
+
+	// 频率控制
+	oncePerSession: true,                  // 同一标签页只播一次首屏，刷新/前进后退跳过
+	minInterval: 2500,                     // 两次展示的最小间隔（ms）
+	delayOnNavigate: 400,                  // 切页延迟显示（ms），快于此值不出现遮罩
+
+	// 时长控制
+	minDuration: 700,                      // 首屏最短显示时长（ms）
+	initialGrace: 1200,                    // 首屏最长等待就绪时间（ms），0 = 死等 load
 	maxWait: 2600,                         // 最长等待时长（ms），超时强制隐藏
 	hideDelay: 120,                        // 就绪后延迟隐藏（ms）
+
 	backdrop: "blur",                      // 毛玻璃遮罩
 	zIndex: 10000,                         // 高于导航栏（20）与进度条（9999）
 };
@@ -77,6 +87,8 @@ export const pageLoaderConfig: PageLoaderConfig = {
 | 完全关掉 | `enable: false` |
 | 只在切页时出现 | `showOnInitial: false` |
 | 手机上不要 | `showOnMobile: false` |
+| 每次刷新都想看 | `oncePerSession: false` |
+| 切页也要出现 | `showOnNavigate: true` + 调大 `delayOnNavigate` |
 | 换成自己的图 | `image` 指向 `public/` 下的任意图片 |
 | 不要毛玻璃 | `backdrop: "solid"` 或 `"theme"` |
 | 想多停留一会 | 调大 `minDuration` |
@@ -124,7 +136,15 @@ export function initPageLoader(): void {
 const initiallyHidden = !showOnInitial;
 ```
 
-只有 `showOnInitial: false` 时才以隐藏态渲染。其余情况下，HTML 一到浏览器遮罩就已经在了，脚本等 `load` 完成后淡出。
+只有 `showOnInitial: false` 时才以隐藏态渲染。其余情况下，HTML 一到浏览器遮罩就已经在了，脚本等页面就绪后淡出。
+
+「就绪」不等于 `load`。`load` 要等壁纸、字体、全部图片都下完，首页很容易被它一路拖到 `maxWait`，观感上就是「明明内容早出来了，遮罩还赖着不动」。所以现在取 `load` 与 `initialGrace`（默认 1200ms）先到者：
+
+```typescript title="src/utils/page-loader.ts"
+// load 要等壁纸、字体、全部图片就绪，首屏常被拖到 maxWait 才有反应；
+// initialGrace 到点先松手，剩下的资源让页面自己补齐（0 = 关掉兜底，死等 load）
+this.graceTimer = window.setTimeout(done, pageLoaderConfig.initialGrace);
+```
 
 ### 进度条就是小猫手里的汉堡
 
@@ -203,9 +223,10 @@ box-shadow:
 
 | 配置 | 解决的问题 |
 | --- | --- |
-| `minDuration` | 加载太快时遮罩只闪一下，比不加还难看——用最短展示时长兜住 |
+| `minDuration` | 加载太快时遮罩只闪一下，比不加还难看——用最短展示时长兜住（只兜首屏） |
 | `maxWait` | 万一 `visit:end` 没触发（网络挂了、Swup 报错），遮罩会永久盖住页面——超时强制退场 |
 | `hideDelay` | 页面就绪与遮罩淡出同帧会显得突兀——延后一点点 |
+| `initialGrace` | 首屏别死等 `load`：壁纸和字体很容易把它拖到 `maxWait` |
 
 ```typescript title="src/utils/page-loader.ts"
 hide(options: { instant?: boolean } = {}): void {
@@ -235,6 +256,75 @@ private resetProgress(): void {
 	this.el.classList.remove("page-loader--reset");
 }
 ```
+
+### 频率策略：只在真正慢的时候出现
+
+第一版上线后自己用了一周，最大的问题不是难看，是**太频繁**：每次打开站点、每次刷新，都得先看一遍小猫；而它挡住的那 1–2 秒里，页面其实早就画好了。加载动画的价值在于「填充等待」，等待不存在的时候，它只是在收过路费。
+
+所以频率由三层把关，配置里的 `oncePerSession` / `delayOnNavigate` / `minInterval` 分别对应：
+
+**一、同一标签页只播一次首屏。** 用 `sessionStorage` 记一个标记（跨刷新保留、换新标签页重置）：
+
+```typescript title="src/utils/page-loader.ts"
+private seenThisSession(): boolean {
+	if (!pageLoaderConfig.oncePerSession) return false;
+	try {
+		return window.sessionStorage.getItem(SESSION_KEY) === "1";
+	} catch {
+		// 隐私模式 / 禁用存储：退化成「每次都播」，不影响功能
+		return false;
+	}
+}
+```
+
+麻烦的是**闪一帧**：遮罩是服务端渲染的可见态，JS 要等模块下载执行才知道「这一轮该跳过」，中间那一帧遮罩已经画出来了，刷新时会明显抖一下。
+
+解法是把判断提前到解析阶段——在遮罩 DOM 之前插一段 `is:inline` 脚本，直接给 `<html>` 打标记，CSS 在脚本接管前就把遮罩压住：
+
+```astro title="src/components/features/PageLoader.astro"
+<script is:inline>
+	try {
+		if (sessionStorage.getItem("firefly:page-loader:shown") === "1") {
+			document.documentElement.setAttribute("data-page-loader-seen", "");
+		}
+	} catch {}
+</script>
+```
+
+```css title="src/styles/components/page-loader.css"
+/* 加上 .page-loader--js 后本规则失效，显隐完全交给 JS 管理 */
+html[data-page-loader-seen] #page-loader:not(.page-loader--js) {
+	opacity: 0;
+	visibility: hidden;
+}
+```
+
+`is:inline` 保证脚本原地执行、按文档顺序排在遮罩前面，这一帧的窗口就没了。
+
+**二、切页延迟显示。** 与其等遮罩出现了再想办法让它多停一会，不如**先别出现**——`delayOnNavigate` 到点后才淡入，导航在这之前完成就什么都没发生：
+
+```typescript title="src/utils/page-loader.ts"
+this.pending = true;
+this.showTimer = window.setTimeout(() => {
+	this.showTimer = null;
+	this.pending = false;
+	this.reveal(source);
+}, pageLoaderConfig.delayOnNavigate);
+```
+
+配套地，`hide()` 发现还在等待期就直接取消，而不是去走「最短时长 + 延迟隐藏」那套：
+
+```typescript title="src/utils/page-loader.ts"
+// 还停在延迟等待里：说明这次加载够快，直接取消，遮罩从头到尾没出现过
+if (this.pending) {
+	this.cancelPending();
+	return;
+}
+```
+
+**三、冷却。** 两次展示之间至少隔 `minInterval`，连点几个链接也不会来回闪。
+
+顺带修掉一个真实竞态：`finish()` 里那个 400ms 后复位进度的定时器原先没进 `clearTimers()`。如果新一轮展示在它触发前开始，进度条会被上一轮从 100% **倒着拉回** 0，看起来像倒退。现在所有定时器统一登记、统一清理。
 
 ### 接入 Swup 钩子
 
@@ -362,7 +452,16 @@ this.floorMs = pageLoaderConfig.minDuration;
 3007ms  hidden    progress 0.000   ← 复位完成，可复用
 ```
 
-**教训**：预加载越激进，「加载动画」越容易退化成「闪一下」。凡是带最短时长的动画，都要确认它覆盖了所有触发来源，而不只是首屏。
+「不闪了」是解决了，但**代价是每次切页都要等 2.65 秒**——为了掩盖一个 100ms 的导航，硬加了两秒多的等待。这是典型的「用时长盖住频率问题」：症状消失，根因还在。
+
+最终的方向反过来了：切页默认不出现（`showOnNavigate: false`），即便打开也先等 `delayOnNavigate`，只有真正慢的导航才看得见；`minDuration` 只兜首屏，不再叠加到切页上：
+
+```typescript title="src/utils/page-loader.ts"
+// 切页已经为「慢导航」等过 delayOnNavigate，再叠最短时长就太久了
+this.floorMs = source === "navigate" ? 0 : pageLoaderConfig.minDuration;
+```
+
+**教训**：预加载越激进，「加载动画」越容易退化成「闪一下」。但「闪一下」的正确修法是让它**别出现**，而不是让它**多停一会**——凡是带最短时长的动画，先问一句「这次真的有人在等吗」。
 
 ## 六、相关文件
 

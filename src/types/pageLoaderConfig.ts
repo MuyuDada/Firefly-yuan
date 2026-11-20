@@ -16,7 +16,15 @@ export type PageLoaderConfig = {
 	style: PageLoaderStyle; // 动画样式
 	image: string; // 中心图片地址（像素小猫 GIF）
 	text: string; // 加载文案，留空则使用 i18n
-	minDuration: number; // 最短显示时长（ms），避免一闪而过
+
+	// 频率控制
+	oncePerSession: boolean; // 同一标签页是否只播一次首屏动画（刷新/前进后退跳过）
+	minInterval: number; // 两次展示的最小间隔（ms）
+	delayOnNavigate: number; // 切页延迟显示（ms），导航快于此值则不出现遮罩
+
+	// 时长控制
+	minDuration: number; // 首屏最短显示时长（ms），避免一闪而过
+	initialGrace: number; // 首屏最长等待就绪时间（ms），到点先收；0 = 死等 load
 	maxWait: number; // 最长等待时长（ms），超时强制隐藏
 	hideDelay: number; // 页面就绪后延迟隐藏（ms）
 	backdrop: PageLoaderBackdrop; // 遮罩样式
