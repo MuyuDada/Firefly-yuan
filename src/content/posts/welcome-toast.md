@@ -8,6 +8,7 @@ category: 小组件
 draft: false
 slug: welcome-toast
 pinned: false
+series: "Firefly 魔改实录"
 ---
 
 当访客第一次打开你的博客时，右下角弹出一个轻巧的欢迎提示，显示"你好，来自 XX 的朋友"，5 秒后自动消失——这种小细节能让博客更有人情味。

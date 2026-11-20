@@ -8,6 +8,7 @@ category: 小组件
 tags: [CSS, Astro, 动画]
 draft: false
 pinned: false
+series: "Firefly 魔改实录"
 ---
 
 十年前第一次见到 Nyan Cat，是在一个卡到掉帧的 GIF 网站上。十年后它又出现了，这次是在 B 站的进度条上——一只粉色像素猫，拖着一道彩虹，随着播放进度往前爬。

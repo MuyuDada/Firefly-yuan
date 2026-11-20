@@ -8,6 +8,7 @@ category: 自建服务
 tags: [Cloudflare, PowerShell, 小组件]
 draft: false
 pinned: false
+series: "Firefly 魔改实录"
 ---
 
 博客是纯静态的，构建完就是一堆 HTML，浏览器端看不到你电脑上开着什么程序。所以想在自己的站点上显示「此刻正在用什么」，链路只能是**反过来**的：本机主动把状态推上去，页面再去读。

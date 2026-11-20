@@ -9,6 +9,7 @@ category: 小组件
 tags: [时间, 动画]
 draft: false
 pinned: false
+series: "Firefly 魔改实录"
 ---
 
 一个带有温度感的侧边小组件——显示当前时间、日期、星期，并根据早中晚不同时段切换问候语和背景图片，让博客更有"人味"。

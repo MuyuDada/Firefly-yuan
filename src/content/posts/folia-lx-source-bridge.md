@@ -8,6 +8,7 @@ category: 开源项目
 tags: [Electron, JavaScript, Node.js, 音乐]
 draft: false
 pinned: false
+series: "Folia 与音源"
 ---
 
 我平时用 [Folia](https://github.com/chthollyphile/folia-major) 听歌，歌单、搜索都是内置音源（网易云/酷狗/QQ），但播放地址嘛……总有些歌它给不了高音质，或者干脆给不了。而洛雪音乐的[自定义源脚本](https://lxmusic.toside.cn/desktop/custom-source)生态里恰好有大量现成的解析脚本。

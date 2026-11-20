@@ -8,6 +8,7 @@ category: 页面改造
 tags: [ECharts, 可视化]
 draft: false
 pinned: false
+series: "Firefly 魔改实录"
 ---
 
 归档页在博客里有点尴尬 —— 它是最少被点开、却最容易被低估的一页。读者想找一篇文章时，翻归档往往比搜索更有效；而对自己来说，归档页是一张"发布节奏体检表"。

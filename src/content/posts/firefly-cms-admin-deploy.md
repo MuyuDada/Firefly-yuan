@@ -12,6 +12,7 @@ tags:
   - 博客后台
 category: "自建服务"
 aiSummary: "本文记录了给 Firefly（Astro）博客接入 firefly-cms 可视化管理后台的全过程。后台是 Cloudflare Pages + Pages Functions + GitHub Contents API 的组合，不需要数据库：写文章本质上是往仓库提交 Markdown。部署阶段踩了三个坑：Pages 的 secret 改完必须重新部署才生效、GitHub PAT 必须用 Fine-grained 且只给目标仓库 Contents 读写、fork 里的 wrangler.toml 还写着作者自己的仓库名。适配阶段把原作者按自己配置写死的表单，改成博客仓库真实的 31 个配置文件与 4 个表单 58 个字段，并重写了友链保存逻辑——原来整组重写会丢失 recommended、previewurl 等额外字段，改成按 siteurl 精确匹配后只替换改动项。"
+series: "Firefly 魔改实录"
 ---
 
 静态博客写久了都会遇到同一个问题：想发篇文章，得打开编辑器、找到 `src/content/posts`、复制一篇旧文章改 frontmatter、写内容、commit、push。偶尔在地铁上想记点东西，这套流程基本劝退。

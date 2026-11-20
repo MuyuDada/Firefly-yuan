@@ -12,6 +12,7 @@ tags:
   - 踩坑
 category: "前端开发"
 aiSummary: "Astro 的 <style> 默认是组件作用域的，编译后会变成 .class[data-astro-cid-xxxx] 这种属性选择器。模板里写的元素会自动带上该属性，但脚本用 innerHTML / insertAdjacentHTML 动态插入的元素没有，于是这些元素的样式整条失效——表现是图标没有尺寸和配色、深色模式下文字仍是深色。解决办法是把动态内容的选择器写成 :global()，要注意 :global(html.dark) .foo 仍然带作用域，正确写法是 :global(html.dark .foo)。文章同时记录了天气接口的三个「假 bug」：顶层不返回 uv（真实数据在 life_indices.uv.level）、任何位置都没有降水概率 pop、以及 feels_like / visibility / cloud / precipitation 只有带 minutely=true 才返回。"
+series: "Astro 前端笔记"
 ---
 
 上周给博客的天气组件加了几个区块：未来三天预报、24 小时横向滚动条、生活指数。数据都渲染出来了，但界面很难看——图标是浏览器默认大小，没有颜色，深色模式下文字黑得几乎看不见。

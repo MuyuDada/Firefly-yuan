@@ -8,6 +8,7 @@ category: 开源项目
 tags: [Vercel, Serverless, Node.js, 音乐]
 draft: false
 pinned: false
+series: "Folia 与音源"
 ---
 
 先给两个能点的东西：

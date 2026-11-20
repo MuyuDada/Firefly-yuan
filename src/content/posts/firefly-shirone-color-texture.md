@@ -8,6 +8,7 @@ tags: [主题, 美化, 前端开发, Material Design]
 draft: false
 slug: firefly-shirone-color-texture
 pinned: false
+series: "Firefly 魔改实录"
 ---
 
 我在逛 [Shirone](https://shirone.mysqil.com/) 这个主题时，被它主题设置里的三个选项吸引了：

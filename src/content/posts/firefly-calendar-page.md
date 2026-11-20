@@ -8,6 +8,7 @@ category: 页面改造
 tags: [日历, 农历, Astro]
 draft: false
 pinned: false
+series: "Firefly 魔改实录"
 ---
 
 在[毛の博客](https://blog.huchao.vip/posts/astro/firefly-calendar-page/)看到他的站点日历页，第一反应是「这不就是把侧栏那个小日历放大吗」——点进去才发现完全不是一回事：法定节假日、农历传统节日、二十四节气、生日纪念日、自定义安排、文章发布日，六类信息全部塞进同一张月历，而且左边还有一排实时倒计时。

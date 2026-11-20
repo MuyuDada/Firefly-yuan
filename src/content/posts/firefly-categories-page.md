@@ -8,6 +8,7 @@ category: 页面改造
 tags: [ECharts, 可视化]
 draft: false
 pinned: false
+series: "Firefly 魔改实录"
 ---
 
 分类页大概是博客里最"没存在感"的一页。文章少的时候，一个卡片列表就够了；但文章一多，"文章示例 11 篇、Firefly 9 篇"这种纯数字列表就很难一眼看出内容的分布。

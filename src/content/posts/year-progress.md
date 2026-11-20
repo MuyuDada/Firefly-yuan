@@ -7,6 +7,7 @@ image: api
 category: 小组件
 tags: [时间, 动画]
 draft: false
+series: "Firefly 魔改实录"
 ---
 
 在[毛の博客](https://blog.huchao.vip/)看到一个非常精致的年度进度小组件：当前年份的数字会随着一年过去慢慢被"填满"，下面十二个月份逐个点亮，再配上一段从左到右的揭幕动画，简单又直观。于是决定在 Firefly 上复刻一个，本文记录完整实现。
