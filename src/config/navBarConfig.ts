@@ -149,7 +149,7 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 			},
 			{
 				name: "个人网盘",
-				url: "https://muyupan.cc.cd",
+				url: "https://pan.muyudada.dpdns.org",
 				external: true,
 				icon: "material-symbols:cloud",
 			},
@@ -160,7 +160,7 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 				icon: "material-symbols:photo-library",
 			},
 			{
-				name: "Folia音乐播放器",
+				name: "Folia播放器",
 				url: "https://music.muyudada.dpdns.org",
 				external: true,
 				icon: "material-symbols:music-note-rounded",
@@ -251,7 +251,7 @@ export const LinkPresets: Record<string, NavBarLink> = {
 		pageKey: "music",
 	},
 	FoliaMusic: {
-		name: "Folia音乐播放器",
+		name: "Folia播放器",
 		url: "https://music.muyudada.dpdns.org",
 		icon: "material-symbols:music-note-rounded",
 		pageKey: "folia-music",
