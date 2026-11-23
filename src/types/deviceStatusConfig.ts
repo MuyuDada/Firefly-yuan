@@ -43,6 +43,12 @@ export interface DeviceStatusConfig {
 	staleAfterSeconds: number;
 	/** 从后台切回前台时，距上次成功超过这个秒数就立刻补一次 */
 	visibilityRefreshAfterSeconds: number;
+	/**
+	 * 主通道熔断时长（秒）。
+	 * 主通道连续失败 2 次后就进入冷却，冷却期内轮询只走备用通道，
+	 * 到点再试探一次主通道 —— 避免每一轮都让用户先等一个注定失败的超时。
+	 */
+	primaryCooldownSeconds?: number;
 	/** 进程名（小写）→ Iconify 图标名 */
 	iconMap: Record<string, string>;
 	/**

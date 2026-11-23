@@ -2,7 +2,7 @@ import type { DeviceStatusConfig } from "@/types/deviceStatusConfig";
 
 // 电脑状态组件配置
 //
-// 数据链路：本机 PowerShell 变化驱动上报 → Cloudflare Worker + KV → 访客浏览器只读。
+// 数据链路：本机 PowerShell 变化驱动上报 → Cloudflare Worker + D1 → 访客浏览器只读。
 // 纯静态博客读不到本机信息，所以只能由本机主动上报、页面被动读取。
 //
 // 想加新应用：只需要在本机上报脚本的映射表里加，这里不用动。
@@ -10,9 +10,13 @@ import type { DeviceStatusConfig } from "@/types/deviceStatusConfig";
 export const deviceStatusConfig: DeviceStatusConfig = {
 	enable: true,
 
-	// 只读接口。留空等于未启用：卡片会整块隐藏，页面上不会留一块空白。
-	// 注意：不要用 *.workers.dev 那个地址，部分网络下该域名不可达，已改为自有域名。
-	endpoint: "https://muyuhome.cc.cd/api/device/status",
+	// 主通道：Cloudflare Worker 的只读接口，和博客同域（省掉一个独立域名）。
+	// 留空 = 不启用主通道，只走下面的备用通道；两个都留空时整张卡片隐藏。
+	//
+	// 2026-11 起不再使用 muyuhome.cc.cd —— 那个自定义域名在本地链路上经常握手
+	// 失败、直连一次要 12 秒以上，每次都把卡片拖到超时。改到博客自己的域名后，
+	// 请求和页面同源，既不用多解析一个域名，也不会再多一次 TLS 握手。
+	endpoint: "https://muyudada.dpdns.org/api/device/status",
 
 	// 前端轮询间隔（秒）。
 	// 本机侧是「变化驱动 + 心跳」：前台应用一换就立刻上报，没换时在线 5 分钟才发
@@ -25,8 +29,12 @@ export const deviceStatusConfig: DeviceStatusConfig = {
 	staleAfterSeconds: 300,
 	// 后台标签页的定时器会被浏览器降频，切回前台时距上次成功超过这个值就立刻补一次
 	visibilityRefreshAfterSeconds: 20,
+	// 主通道连续失败 2 次后的熔断时长（秒）。
+	// 同域之后握手基本不再是问题，但 Worker 故障、路由被改动、字段被限流都会让接口
+	// 连续返回失败；熔断之后冷却期内只请求备用通道，省得每次轮询都白等一个超时。
+	primaryCooldownSeconds: 300,
 
-	// 备用通道：主通道取不到新鲜数据时的兜底来源。
+	// 备用通道：主通道取不到新鲜数据时的兜底来源；主通道留空时它就是唯一数据源。
 	// 本机上报脚本会把同一份记录再写一份到 GitHub Gist，这里指向它的 raw 地址。
 	//
 	// 为什么需要它：主通道整条链路都压在 Cloudflare 上（域名被污染、Worker 故障、
