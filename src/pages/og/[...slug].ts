@@ -169,7 +169,12 @@ const loadImageAsArrayBuffer = async (
 		let buffer: Buffer;
 
 		if (imagePath.startsWith("http")) {
-			const res = await fetch(imagePath);
+			// 远程图挂了不能把整个构建拖住：fetch 默认会一直等到系统连接超时，
+			// 实测一张图能卡 4 分钟，几十篇文章就是几小时。给 5 秒上限，
+			// 超时就走下面的兜底透明图，构建照常往下走。
+			const res = await fetch(imagePath, {
+				signal: AbortSignal.timeout(5000),
+			});
 			if (!res.ok) throw new Error(`Fetch failed with status ${res.status}`);
 			buffer = Buffer.from(await res.arrayBuffer());
 		} else {
