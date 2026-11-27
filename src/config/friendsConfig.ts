@@ -95,8 +95,6 @@ export const friendsConfig: FriendLink[] = [
 		tags: ["本站"],
 		weight: 99,
 		enabled: true,
-		recommended: true,
-		recommendedTheme: "purple",
 	},
 	{
 		title: "番茄主理人",
