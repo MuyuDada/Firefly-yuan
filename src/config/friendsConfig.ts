@@ -93,8 +93,10 @@ export const friendsConfig: FriendLink[] = [
 		desc: "永远相信美好的事情即将发生",
 		siteurl: "https://muyudada.dpdns.org",
 		tags: ["本站"],
-		weight: 99, // 权重，数字越大排序越靠前
-		enabled: true, // 是否启用
+		weight: 99,
+		enabled: true,
+		recommended: true,
+		recommendedTheme: "purple",
 	},
 	{
 		title: "番茄主理人",
