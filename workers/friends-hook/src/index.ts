@@ -16,6 +16,7 @@
  *   GET  /health        健康检查
  *   GET  /admin         审核页（需要 ADMIN_TOKEN）
  *   POST /admin/review  审核动作（approve / reject）
+ *   POST /admin/edit    手工修正一条申请的字段（站名 / 链接 / 描述 / 头像 / 邮箱）
  */
 
 import { checkBacklink, hostOf, isSafePublicUrl } from "./backlink";
@@ -36,7 +37,7 @@ import {
 	rejectApplication,
 	saveApplication,
 } from "./store";
-import type { Env, FriendApplication } from "./types";
+import type { Env, FriendApplication, ParsedApplication } from "./types";
 import { buildReplyRequest, replyViaWaline } from "./waline";
 
 /** 统一 JSON 响应。Waline 会对 webhook 响应调用 .json()，所以这里必须返回合法 JSON。 */
@@ -780,6 +781,227 @@ async function handleDelete(request: Request, env: Env): Promise<Response> {
 	return json({ ok: true, id, ignored: true });
 }
 
+/** 可编辑字段的中文名，报错时用 */
+const EDITABLE_LABELS: Record<keyof ParsedApplication, string> = {
+	name: "站点名称",
+	desc: "站点描述",
+	siteurl: "站点链接",
+	avatar: "头像链接",
+	email: "邮箱",
+};
+
+/** 编辑字段的长度上限：防止误粘一整段正文把审核页撑变形 */
+const EDIT_LIMITS: Record<keyof ParsedApplication, number> = {
+	name: 60,
+	desc: 200,
+	siteurl: 300,
+	avatar: 500,
+	email: 200,
+};
+
+/**
+ * 把「example.com」补成「https://example.com」。
+ *
+ * 申请人常常只写域名，解析出来的 siteurl 也就没有协议 —— 直接渲染成 `<a href>`
+ * 会变成相对链接，点开跳到审核页自己身上。审核时手工补全走这里统一处理。
+ */
+function normalizeUrlInput(raw: string): string {
+	const value = raw.trim();
+	if (!value) return "";
+	if (/^https?:\/\//i.test(value)) return value;
+	if (value.startsWith("//")) return `https:${value}`;
+	return `https://${value}`;
+}
+
+/** 邮箱的最低限度校验：够拦住「把站名填进邮箱框」这类误操作就行 */
+function looksLikeEmail(value: string): boolean {
+	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+/**
+ * 主机名得像回事：至少有一个点，且不是以点开头结尾。
+ *
+ * 只靠 `new URL()` 不够 —— 它会把「这不是网址」当成合法的国际化域名收下
+ * （hostname 变成一个没有点的 punycode 串），于是 `https://这不是网址` 能通过校验，
+ * 存进 KV 之后卡片上就是一个点不开的链接。
+ */
+function hasUsableHost(raw: string): boolean {
+	try {
+		const host = new URL(raw).hostname;
+		if (host.startsWith(".") || host.endsWith(".")) return false;
+		return host.includes(".");
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * POST /admin/edit —— 手工修正一条申请的字段。
+ *
+ * 解析器再聪明也会遇到「一个字段都没写对」的投稿：站点名识别成了描述、域名漏了协议、
+ * 对方换了域名。以前只能删掉重新让对方提交，现在可以直接在审核页改。
+ *
+ * 三条约束：
+ *   1. 已通过的条目改了字段，线上要重新构建才生效 —— 只返回 needDeploy，不自动触发，
+ *      免得改一个字就白跑一次构建；
+ *   2. 站点链接换成另一个已收录站点的地址会被拒（否则会覆盖别人的 link: 记录）；
+ *   3. 改站点链接时，link: / dup: / pend: 三个键要跟着迁移，不然查重和 /api/links 会对不上。
+ */
+async function handleEdit(request: Request, env: Env): Promise<Response> {
+	if (!isAdmin(request, env))
+		return json({ ok: false, error: "口令错误" }, 401);
+
+	let body: {
+		id?: string;
+		fields?: Partial<Record<keyof ParsedApplication, string>>;
+	};
+	try {
+		body = (await request.json()) as typeof body;
+	} catch {
+		return json({ ok: false, error: "请求体不是合法 JSON" }, 400);
+	}
+
+	const id = body.id ?? "";
+	if (!id) return json({ ok: false, error: "缺少 id" }, 400);
+
+	const app = await getApplication(env.FRIENDS_KV, id);
+	if (!app) return json({ ok: false, error: `找不到申请 ${id}` }, 404);
+
+	const patch = body.fields ?? {};
+	const next: ParsedApplication = { ...app.parsed };
+
+	for (const key of Object.keys(EDITABLE_LABELS) as (keyof ParsedApplication)[]) {
+		const raw = patch[key];
+		// 没传的字段保持原值；传空串是「清空」，要照做
+		if (raw === undefined) continue;
+		const value = String(raw).trim();
+		const limit = EDIT_LIMITS[key];
+		if (value.length > limit) {
+			return json(
+				{ ok: false, error: `${EDITABLE_LABELS[key]}最多 ${limit} 个字符` },
+				400,
+			);
+		}
+		next[key] =
+			key === "siteurl" || key === "avatar" ? normalizeUrlInput(value) : value;
+	}
+
+	for (const key of ["siteurl", "avatar"] as const) {
+		if (!next[key]) continue;
+		// 链接必须是能解析的公网地址：既防 SSRF，也防「随手写的中文」存进去
+		if (!isSafePublicUrl(next[key]) || !hasUsableHost(next[key])) {
+			return json(
+				{ ok: false, error: `${EDITABLE_LABELS[key]}不是可用的网址` },
+				400,
+			);
+		}
+	}
+	if (next.email && !looksLikeEmail(next.email)) {
+		return json({ ok: false, error: "邮箱格式不对" }, 400);
+	}
+
+	const oldHost = normalizeSiteUrl(app.parsed.siteurl);
+	const newHost = normalizeSiteUrl(next.siteurl);
+
+	// 已通过的友链没有站点链接就无从展示，也进不了 /api/links
+	if (app.status === "approved" && !newHost) {
+		return json({ ok: false, error: "已通过的友链必须有站点链接" }, 400);
+	}
+
+	// 改到别人已收录的地址上：会覆盖那条的 link:，让它从 /api/links 消失
+	if (newHost && newHost !== oldHost) {
+		const occupantRaw = await env.FRIENDS_KV.get(`link:${newHost}`);
+		if (occupantRaw) {
+			let ownerId = "";
+			try {
+				ownerId = (JSON.parse(occupantRaw) as { id?: string }).id ?? "";
+			} catch {
+				ownerId = "";
+			}
+			if (ownerId && ownerId !== id) {
+				return json(
+					{ ok: false, error: `${newHost} 已经在友链列表里了，换一个地址` },
+					409,
+				);
+			}
+		}
+	}
+
+	const missing = findMissing(next);
+	const updated: FriendApplication = {
+		...app,
+		parsed: next,
+		missing,
+		complete: missing.length === 0,
+	};
+
+	// saveApplication 会把 pend: 指向新 host（仅 pending 时）
+	await saveApplication(env.FRIENDS_KV, updated);
+
+	// 旧 host 的登记键要清掉，否则「同一站点重复投递」的判断会指向一条已经改了名的记录
+	if (oldHost && oldHost !== newHost) {
+		const pendOwner = await env.FRIENDS_KV.get(`pend:${oldHost}`);
+		if (pendOwner === id) await env.FRIENDS_KV.delete(`pend:${oldHost}`);
+	}
+
+	if (updated.status === "approved" && newHost) {
+		// 旧 host 的公开记录若属于自己，跟着搬走；不属于就原样留着
+		if (oldHost && oldHost !== newHost) {
+			const oldLinkRaw = await env.FRIENDS_KV.get(`link:${oldHost}`);
+			if (oldLinkRaw) {
+				let ownsOld = false;
+				try {
+					ownsOld = (JSON.parse(oldLinkRaw) as { id?: string }).id === id;
+				} catch {
+					ownsOld = false;
+				}
+				if (ownsOld) await env.FRIENDS_KV.delete(`link:${oldHost}`);
+			}
+			const oldDup = await env.FRIENDS_KV.get(`dup:${oldHost}`);
+			if (oldDup === id) await env.FRIENDS_KV.delete(`dup:${oldHost}`);
+		}
+
+		// 通过时间不能因为改个描述就重置 —— 友链列表按 approvedAt 排序
+		let approvedAt = updated.reviewedAt ?? updated.createdAt;
+		const existingRaw = await env.FRIENDS_KV.get(`link:${newHost}`);
+		if (existingRaw) {
+			try {
+				const existing = JSON.parse(existingRaw) as PublicLink;
+				if (existing.id === id && existing.approvedAt) {
+					approvedAt = existing.approvedAt;
+				}
+			} catch {
+				// 旧记录坏了就以申请时间为准
+			}
+		}
+
+		const publicLink: PublicLink = {
+			...updated.parsed,
+			id,
+			approvedAt,
+		};
+		await env.FRIENDS_KV.put(
+			`link:${newHost}`,
+			JSON.stringify(publicLink),
+		);
+		await env.FRIENDS_KV.put(`dup:${newHost}`, id);
+	}
+
+	console.log(
+		`[friends-hook] 已修改申请 ${id}（${updated.status}）：${
+			oldHost || "(无)"
+		} → ${newHost || "(无)"}`,
+	);
+
+	return json({
+		ok: true,
+		id,
+		app: updated,
+		// 已通过的改了内容，线上还是旧样子，得重建一次才生效
+		needDeploy: updated.status === "approved",
+	});
+}
+
 export default {
 	async fetch(
 		request: Request,
@@ -820,6 +1042,8 @@ export default {
 				return await handleBacklink(request, env);
 			if (pathname === "/admin/delete" && request.method === "POST")
 				return await handleDelete(request, env);
+			if (pathname === "/admin/edit" && request.method === "POST")
+				return await handleEdit(request, env);
 			if (pathname === "/admin/deploy" && request.method === "POST")
 				return await handleDeploy(request, env);
 			// 诊断：单独跑一次「回复通知」，把失败原因原样返回，便于排查
@@ -1187,6 +1411,27 @@ details pre{
 }
 .note-input::placeholder{color:var(--text-3)}
 .note-input:focus{outline:none;border-color:var(--seal);box-shadow:0 0 0 3px var(--seal-soft)}
+
+/* ── 就地编辑：还是这张纸，只是换了个写字的格子 ── */
+.edit-panel{
+  margin:12px 0 0;padding:14px 16px 12px;border-radius:10px;
+  border:1px solid var(--line);background:var(--raised);
+}
+.edit-panel[hidden]{display:none}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.edit-grid label{display:flex;flex-direction:column;gap:5px;min-width:0}
+.edit-grid label.wide{grid-column:1/-1}
+.edit-grid span{font-size:12px;color:var(--text-3)}
+.edit-grid input{
+  height:32px;padding:0 10px;border-radius:7px;min-width:0;
+  border:1px solid var(--line);background:var(--card);color:var(--text);
+  font-family:var(--sans);font-size:13px;
+  transition:border-color .14s var(--ease),box-shadow .14s var(--ease);
+}
+.edit-grid input::placeholder{color:var(--text-3)}
+.edit-grid input:focus{outline:none;border-color:var(--seal);box-shadow:0 0 0 3px var(--seal-soft)}
+.edit-hint{margin:10px 0 0;font-size:12px;color:var(--text-3);line-height:1.7}
+.edit-actions{display:flex;gap:8px;margin-top:12px}
 .review-note{margin:12px 0 0;font-size:13px;color:var(--text-3)}
 .hint-warn{
   margin:16px 0 0;padding:12px 16px;border-radius:8px;font-size:13px;line-height:1.7;
@@ -1264,6 +1509,8 @@ details pre{
   .badges{justify-content:flex-start;max-width:100%}
   .actions{gap:8px}
   .note-input{max-width:none;order:2;flex-basis:100%}
+  .edit-grid{grid-template-columns:1fr}
+  .edit-panel{padding:12px 14px 10px}
   .actions-end{flex-basis:100%}
   .actions-end .btn{flex:1;min-width:0}
   .actions-end .btn.del{border-color:var(--line-strong)}
@@ -1481,6 +1728,7 @@ function adminPage(
 		const avatar = parsed.avatar || "";
 		const email = parsed.email || "";
 		const name = parsed.name || "";
+		const desc = parsed.desc || "";
 		// 前端搜索用的索引：站名、域名、邮箱、简介、id、来源昵称
 		const searchIndex = [
 			name,
@@ -1549,6 +1797,7 @@ function adminPage(
 			: ""
 	}
   <div class="actions">
+    <button class="btn" data-action="edit" type="button">修改</button>
     ${
 			app.status === "approved"
 				? `<button class="btn" data-copy-entry type="button" data-snippet="${escapeHtml(snippetForCard)}">复制配置</button>`
@@ -1566,6 +1815,24 @@ function adminPage(
       <button class="btn del" data-action="delete" type="button">删除</button>
     </span>
   </div>
+  <form class="edit-panel" data-edit-panel hidden>
+    <div class="edit-grid">
+      <label><span>站点名称</span><input name="name" value="${escapeHtml(name)}" maxlength="60" autocomplete="off"></label>
+      <label><span>站点链接</span><input name="siteurl" value="${escapeHtml(siteurl)}" maxlength="300" autocomplete="off" spellcheck="false" placeholder="https://"></label>
+      <label class="wide"><span>站点描述</span><input name="desc" value="${escapeHtml(desc)}" maxlength="200" autocomplete="off"></label>
+      <label class="wide"><span>头像链接</span><input name="avatar" value="${escapeHtml(avatar)}" maxlength="500" autocomplete="off" spellcheck="false" placeholder="https://"></label>
+      <label><span>邮箱（可选）</span><input name="email" value="${escapeHtml(email)}" maxlength="200" autocomplete="off" spellcheck="false"></label>
+    </div>
+    <p class="edit-hint">${
+			app.status === "approved"
+				? "这条已经在友链列表里：保存后需要重建站点才会生效。"
+				: "补齐必填字段（名称 / 描述 / 链接 / 头像）之后就能审核通过了。"
+		}</p>
+    <div class="edit-actions">
+      <button class="btn primary" type="submit">保存</button>
+      <button class="btn" type="button" data-edit-cancel>取消</button>
+    </div>
+  </form>
   ${
 		app.status !== "pending" && app.reviewNote
 			? `<p class="review-note">审核备注：${escapeHtml(app.reviewNote)}</p>`
@@ -1851,6 +2118,34 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
+  // 修改：展开 / 收起就地编辑面板。必须在下面的审核动作分支之前拦掉，
+  // 否则「保存」会被当成 approve/reject 打到 /admin/review 上去
+  const editBtn = event.target.closest('button[data-action="edit"]');
+  if (editBtn) {
+    const item = editBtn.closest("[data-id]");
+    const panel = item && item.querySelector("[data-edit-panel]");
+    if (panel) {
+      panel.hidden = !panel.hidden;
+      editBtn.textContent = panel.hidden ? "修改" : "收起";
+      if (!panel.hidden) {
+        const first = panel.querySelector("input");
+        if (first) first.focus();
+      }
+    }
+    return;
+  }
+
+  const cancelEdit = event.target.closest("[data-edit-cancel]");
+  if (cancelEdit) {
+    const panel = cancelEdit.closest("[data-edit-panel]");
+    if (panel) {
+      panel.hidden = true;
+      const toggle = panel.parentElement && panel.parentElement.querySelector('button[data-action="edit"]');
+      if (toggle) toggle.textContent = "修改";
+    }
+    return;
+  }
+
   const btn = event.target.closest("button[data-action]");
   if (!btn) return;
   // 卡片和「待上线 / 已上线」里的行都带 data-id，删除按钮两种地方都有
@@ -1949,6 +2244,46 @@ document.addEventListener("click", async (event) => {
     btn.textContent = label0;
     if (error && error.message === "__cancel__") return;
     toast("操作失败：" + ((error && error.message) || "未知错误"));
+  }
+});
+
+// 编辑表单提交。保存后整页刷新：卡片标题、描述、「待上线」区块和搜索索引
+// 都是服务端渲染的，局部更新反而要写一堆同步逻辑
+document.addEventListener("submit", async (event) => {
+  const form = event.target.closest("[data-edit-panel]");
+  if (!form) return;
+  event.preventDefault();
+
+  const item = form.closest("[data-id]");
+  const id = item && item.dataset.id;
+  if (!id) return;
+
+  const fields = {};
+  for (const input of form.querySelectorAll("input[name]")) {
+    fields[input.name] = input.value;
+  }
+
+  const submit = form.querySelector('button[type="submit"]');
+  const label = submit.textContent;
+  submit.disabled = true;
+  submit.textContent = "保存中…";
+
+  try {
+    const resp = await fetch("/admin/edit", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-admin-token": TOKEN },
+      body: JSON.stringify({ id, fields }),
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || "保存失败");
+    toast(data.needDeploy ? "已保存 —— 记得点「触发重建」才会生效" : "已保存");
+    try { sessionStorage.setItem(SCROLL_KEY, String(window.scrollY)); } catch {}
+    // 需要重建的多留一会儿，那句话是要人读的
+    setTimeout(() => location.reload(), data.needDeploy ? 1600 : 600);
+  } catch (error) {
+    submit.disabled = false;
+    submit.textContent = label;
+    toast("保存失败：" + ((error && error.message) || "未知错误"));
   }
 });
 </script>
