@@ -63,7 +63,7 @@ export const sakuraConfig: SakuraConfig = {
 // 自定义光标（跟随鼠标的缓动圆点）
 export const cursorConfig: CursorConfig = {
 	// 是否启用自定义光标
-	enable: true,
+	enable: false,
 
 	// 光标直径（px）
 	size: 20,
@@ -100,7 +100,7 @@ export const cursorConfig: CursorConfig = {
 // 点击粒子特效（单击/长按迸发彩色小球）
 export const clickParticleConfig: ClickParticleConfig = {
 	// 是否启用点击粒子特效
-	enable: true,
+	enable: false,
 
 	// 粒子配色
 	colors: ["#F73859", "#14FFEC", "#00E0FF", "#FF99FE", "#FAF15D"],
@@ -186,7 +186,7 @@ export const fairyDustConfig: FairyDustConfig = {
 // 输入火焰特效（在输入框打字时从光标位置迸出粒子）
 export const inputFireConfig: InputFireConfig = {
 	// 是否启用输入火焰特效
-	enable: true,
+	enable: false,
 
 	// 是否使用随机彩色，false 时取输入框文字颜色
 	colorful: true,
