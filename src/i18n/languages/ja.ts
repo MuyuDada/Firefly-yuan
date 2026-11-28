@@ -96,6 +96,10 @@ export const ja: Translation = {
 	[Key.vizRainbowHint]: "色相が時間とともに循環します",
 	[Key.vizLyricMode]: "歌詞アニメーション",
 	[Key.vizLyricModeHint]: "一文字ずつの光り方を切り替えます",
+	[Key.vizFoliaLyrics]: "フルスクリーン歌詞",
+	[Key.vizFoliaMode]: "フルスクリーン歌詞テーマ",
+	[Key.vizFoliaModeHint]: "全画面歌詞アニメーションへ切り替えます。再度クリックまたは Esc で戻ります",
+	[Key.vizFoliaExit]: "フルスクリーン歌詞を終了",
 
 	// お知らせ
 	[Key.announcement]: "お知らせ",

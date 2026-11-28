@@ -95,6 +95,10 @@ export const zh_TW: Translation = {
 	[Key.vizRainbowHint]: "色相隨時間循環流動",
 	[Key.vizLyricMode]: "歌詞動畫",
 	[Key.vizLyricModeHint]: "切換逐字動效的表現方式",
+	[Key.vizFoliaLyrics]: "全螢幕歌詞",
+	[Key.vizFoliaMode]: "全螢幕歌詞主題",
+	[Key.vizFoliaModeHint]: "進入音樂頁全螢幕歌詞動畫，再次點擊或按 Esc 退出",
+	[Key.vizFoliaExit]: "退出全螢幕歌詞",
 
 	// 公告欄
 	[Key.announcement]: "公告",

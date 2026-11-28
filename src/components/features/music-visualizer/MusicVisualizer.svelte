@@ -15,6 +15,7 @@ import {
 import LyricsOverlay from "./LyricsOverlay.svelte";
 import ThreeScene from "./ThreeScene.svelte";
 import VisualizerControls from "./VisualizerControls.svelte";
+import FullscreenLyrics from "./FullscreenLyrics.svelte";
 import { vizPalette, vizSettings } from "./visualizerSettings.svelte";
 
 const audioAnalyzer = new AudioAnalyzer();
@@ -103,9 +104,7 @@ $effect(() => {
 	let cancelled = false;
 	void extractCoverColor(cover).then((hex) => {
 		if (cancelled) return;
-		applyPalette(
-			hex ? paletteFromBase(hex) : paletteFromHue(readGlobalHue()),
-		);
+		applyPalette(hex ? paletteFromBase(hex) : paletteFromHue(readGlobalHue()));
 	});
 	return () => {
 		cancelled = true;
@@ -139,6 +138,13 @@ function audioCtxState() {
 
 function resumeAudioContext() {
 	void audioAnalyzer.resume();
+}
+
+// folia 主题的音频频段（folia audioBands 等效）：update(0) 只读平滑值、不推进平滑，
+// ThreeScene 每帧已经调用 update(delta) 推进，这里避免重复步进。
+function readFoliaBands(): { bass: number; vocal: number } {
+	const data = audioAnalyzer.update(0);
+	return { bass: data.bass, vocal: data.mid };
 }
 
 onMount(() => {
@@ -209,13 +215,19 @@ onDestroy(() => {
 });
 </script>
 
-<div class="music-visualizer" bind:this={rootEl} style={`background: ${backgroundColor};`}>
+<div
+	class="music-visualizer"
+	bind:this={rootEl}
+	style={`background: ${backgroundColor};`}
+	data-folia-open={vizSettings.foliaOpen ? "true" : undefined}
+>
 	{#if sceneReady}
 		<div class="music-visualizer__desktop-layout">
 			<VisualizerControls />
 			<LyricsOverlay />
 		</div>
 	{/if}
+	<FullscreenLyrics getBands={readFoliaBands} />
 	<ThreeScene
 		{audioAnalyzer}
 		{backgroundColor}

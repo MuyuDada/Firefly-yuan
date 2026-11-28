@@ -97,6 +97,10 @@ export const ru: Translation = {
 	[Key.vizRainbowHint]: "Оттенок циклически меняется со временем",
 	[Key.vizLyricMode]: "Анимация текста",
 	[Key.vizLyricModeHint]: "Способ подсветки каждого символа",
+	[Key.vizFoliaLyrics]: "Полноэкранный текст",
+	[Key.vizFoliaMode]: "Тема полноэкранного текста",
+	[Key.vizFoliaModeHint]: "Полноэкранная анимация текста; повторное нажатие или Esc — выход",
+	[Key.vizFoliaExit]: "Выйти из полноэкранного текста",
 
 	// Объявление
 	[Key.announcement]: "Объявление",

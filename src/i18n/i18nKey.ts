@@ -128,6 +128,10 @@ enum I18nKey {
 	vizRainbowHint = "vizRainbowHint",
 	vizLyricMode = "vizLyricMode",
 	vizLyricModeHint = "vizLyricModeHint",
+	vizFoliaLyrics = "vizFoliaLyrics",
+	vizFoliaMode = "vizFoliaMode",
+	vizFoliaModeHint = "vizFoliaModeHint",
+	vizFoliaExit = "vizFoliaExit",
 
 	themeColor = "themeColor",
 

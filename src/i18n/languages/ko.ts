@@ -96,6 +96,10 @@ export const ko: Translation = {
 	[Key.vizRainbowHint]: "색상이 시간에 따라 순환합니다",
 	[Key.vizLyricMode]: "가사 애니메이션",
 	[Key.vizLyricModeHint]: "글자별로 빛나는 방식을 전환합니다",
+	[Key.vizFoliaLyrics]: "전체 화면 가사",
+	[Key.vizFoliaMode]: "전체 화면 가사 테마",
+	[Key.vizFoliaModeHint]: "전체 화면 가사 애니메이션으로 전환합니다. 다시 클릭하거나 Esc로 나갑니다",
+	[Key.vizFoliaExit]: "전체 화면 가사 종료",
 
 	// Announcement
 	[Key.announcement]: "공지사항",

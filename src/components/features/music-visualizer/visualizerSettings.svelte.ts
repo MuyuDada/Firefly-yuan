@@ -10,6 +10,7 @@
 // ThreeScene 只负责消费。
 
 import { FALLBACK_PALETTE, type VizPalette } from "./colorUtils";
+import { DEFAULT_FOLIA_MODE, resolveFoliaMode, type FoliaModeId } from "./folia/themes";
 
 export type ColorMode = "cover" | "theme" | "rainbow";
 
@@ -86,10 +87,15 @@ export const vizSettings: {
 	intensity: number;
 	colorMode: ColorMode;
 	lyricMode: LyricMode;
+	// folia 全屏歌词：主题 id 持久化；foliaOpen 是全屏层的瞬时开关（不持久化）。
+	foliaMode: FoliaModeId;
+	foliaOpen: boolean;
 } = $state({
 	intensity: clampIntensity(persisted?.intensity),
 	colorMode: normalizeColorMode(persisted?.colorMode, persisted),
 	lyricMode: normalizeLyricMode(persisted?.lyricMode),
+	foliaMode: resolveFoliaMode(persisted?.foliaMode) ?? DEFAULT_FOLIA_MODE,
+	foliaOpen: false,
 });
 
 // 当前生效的调色板。由 MusicVisualizer 的解析器写入，ThreeScene 读取。
@@ -107,6 +113,7 @@ export function persistVizSettings(): void {
 				intensity: vizSettings.intensity,
 				colorMode: vizSettings.colorMode,
 				lyricMode: vizSettings.lyricMode,
+				foliaMode: vizSettings.foliaMode,
 			}),
 		);
 	} catch {

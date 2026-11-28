@@ -11,6 +11,7 @@ import {
 	persistVizSettings,
 	vizSettings,
 } from "./visualizerSettings.svelte";
+import { FOLIA_THEMES, type FoliaModeId } from "./folia/themes";
 
 interface Track {
 	name: string;
@@ -259,6 +260,16 @@ function onIntensityInput(e: Event) {
 
 function selectLyricMode(id: LyricMode) {
 	vizSettings.lyricMode = id;
+	persistVizSettings();
+}
+
+// folia 全屏歌词：进入/退出全屏层（瞬时状态，不持久化）
+function toggleFoliaLyrics() {
+	vizSettings.foliaOpen = !vizSettings.foliaOpen;
+}
+
+function selectFoliaMode(id: FoliaModeId) {
+	vizSettings.foliaMode = id;
 	persistVizSettings();
 }
 
@@ -561,6 +572,19 @@ onDestroy(() => {
 						</div>
 					</div>
 
+					<!-- 全屏歌词（folia） -->
+					<button
+						type="button"
+						class="music-visualizer__bar-btn music-visualizer__bar-btn--sm"
+						class:is-active={vizSettings.foliaOpen}
+						onclick={toggleFoliaLyrics}
+						title={i18n(I18nKey.vizFoliaLyrics)}
+						aria-label={i18n(I18nKey.vizFoliaLyrics)}
+						aria-pressed={vizSettings.foliaOpen}
+					>
+						<Icon icon="material-symbols:lyrics-rounded" size="lg" />
+					</button>
+
 					<button
 						type="button"
 						class="music-visualizer__bar-btn music-visualizer__bar-btn--sm"
@@ -641,6 +665,18 @@ onDestroy(() => {
 					{:else}
 						<Icon icon="material-symbols:volume-up-rounded" size="md" />
 					{/if}
+				</button>
+
+				<button
+					type="button"
+					class="music-visualizer__btn"
+					class:music-visualizer__btn--active={vizSettings.foliaOpen}
+					onclick={toggleFoliaLyrics}
+					title={i18n(I18nKey.vizFoliaLyrics)}
+					aria-label={i18n(I18nKey.vizFoliaLyrics)}
+					aria-pressed={vizSettings.foliaOpen}
+				>
+					<Icon icon="material-symbols:lyrics-rounded" size="md" />
 				</button>
 
 				<button
@@ -792,6 +828,42 @@ onDestroy(() => {
 					</div>
 					<div class="music-visualizer__settings-hint">
 						{i18n(I18nKey.vizLyricModeHint)}
+					</div>
+				</section>
+
+				<!-- 全屏歌词（folia）：主题选择 -->
+				<section class="music-visualizer__settings-group">
+					<div class="music-visualizer__settings-row-head">
+						<span class="music-visualizer__settings-label">
+							{i18n(I18nKey.vizFoliaMode)}
+						</span>
+						<span class="music-visualizer__settings-value">
+							{FOLIA_THEMES.find((t) => t.id === vizSettings.foliaMode)?.label ??
+								FOLIA_THEMES[0]?.label}
+						</span>
+					</div>
+					<div
+						class="music-visualizer__settings-modes music-visualizer__folia-modes"
+						role="radiogroup"
+						aria-label={i18n(I18nKey.vizFoliaMode)}
+					>
+						{#each FOLIA_THEMES as theme (theme.id)}
+							<button
+								type="button"
+								class="music-visualizer__mode-option"
+								class:is-selected={vizSettings.foliaMode === theme.id}
+								onclick={() => selectFoliaMode(theme.id)}
+								role="radio"
+								aria-checked={vizSettings.foliaMode === theme.id}
+								aria-label={theme.label}
+								title={theme.label}
+							>
+								<span class="music-visualizer__mode-name">{theme.label}</span>
+							</button>
+						{/each}
+					</div>
+					<div class="music-visualizer__settings-hint">
+						{i18n(I18nKey.vizFoliaModeHint)}
 					</div>
 				</section>
 			</div>

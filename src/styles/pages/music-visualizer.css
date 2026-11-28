@@ -3557,3 +3557,1048 @@ html:has(.music-visualizer-page) .footer {
 		text-align: left;
 	}
 }
+
+/* ══════════════════════════════════════════════════════════════
+   folia 全屏歌词（移植自 folia-web，AGPL-3.0，见 src/utils/lyrics/NOTICE.md）
+   层级：Three 场景(0) < 歌词面板(35) < 控制区(50-60) < 全屏歌词(80)
+   ══════════════════════════════════════════════════════════════ */
+
+.music-visualizer__folia {
+	position: absolute;
+	inset: 0;
+	z-index: 80;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.music-visualizer__folia > * {
+	pointer-events: none;
+}
+
+.music-visualizer__folia-dim {
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(
+		ellipse 120% 90% at 50% 42%,
+		rgba(8, 8, 18, 0.55) 0%,
+		rgba(6, 6, 14, 0.82) 100%
+	);
+	backdrop-filter: blur(2px);
+	-webkit-backdrop-filter: blur(2px);
+}
+
+.music-visualizer__folia-status {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--mv-accent-dim, rgba(255, 255, 255, 0.6));
+	font-size: clamp(1.1rem, 2.4vw, 1.5rem);
+	letter-spacing: 0.04em;
+	text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+}
+
+.music-visualizer__folia-spinner {
+	width: 2.4rem;
+	height: 2.4rem;
+	border-radius: 50%;
+	border: 2px solid rgba(255, 255, 255, 0.18);
+	border-top-color: var(--mv-accent, #7dd3fc);
+	animation: folia-spin 0.9s linear infinite;
+}
+
+@keyframes folia-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.music-visualizer__folia-back {
+	position: absolute;
+	top: clamp(14px, 2.4vw, 28px);
+	right: clamp(14px, 2.4vw, 28px);
+	z-index: 3;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.6rem;
+	height: 2.6rem;
+	border-radius: 50%;
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	background: rgba(12, 12, 24, 0.45);
+	color: rgba(255, 255, 255, 0.85);
+	cursor: pointer;
+	pointer-events: auto;
+	transition:
+		background 0.2s ease,
+		border-color 0.2s ease,
+		transform 0.2s ease;
+}
+
+.music-visualizer__folia-back:hover {
+	background: rgba(30, 30, 50, 0.6);
+	border-color: var(--mv-accent-dim, rgba(255, 255, 255, 0.3));
+	transform: scale(1.06);
+}
+
+/* 打开全屏歌词时收起旧歌词面板与左侧唱片区（导航栏不动） */
+.music-visualizer[data-folia-open] .music-visualizer__lyrics {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.music-visualizer[data-folia-open] .music-visualizer__cover-area {
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.3s ease;
+}
+
+/* ── 主题通用 ──────────────────────────────────────────────── */
+
+.folia-theme {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+}
+
+.folia-empty {
+	position: absolute;
+	opacity: 0.5;
+	text-align: center;
+	user-select: none;
+}
+
+/* 整行呼吸浮动（classic / partita 共用，变量由组件内联提供） */
+@keyframes folia-breathe {
+	0%,
+	100% {
+		transform: translateY(0) scale(1);
+	}
+	25% {
+		transform: translateY(calc(-1 * var(--folia-float-dist, 14px)))
+			scale(calc(1 + var(--folia-float-scale, 0.01)));
+	}
+	50% {
+		transform: translateY(0) scale(1);
+	}
+	75% {
+		transform: translateY(calc(var(--folia-float-dist, 14px) * 0.45))
+			scale(calc(1 - var(--folia-float-scale, 0.01) * 0.5));
+	}
+}
+
+/* ── classic ─────────────────────────────────────────────── */
+
+.folia-classic-area {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: clamp(1.5rem, 4vw, 3rem);
+	will-change: transform;
+}
+
+.folia-classic-line {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-content: center;
+	max-width: 76rem;
+	margin: 0 auto;
+	padding: 0.5rem clamp(1rem, 3vw, 2.5rem);
+}
+
+/* GlowWord（三态样式全部来自组件内联 transition，这里只管盒子与发光层结构） */
+.folia-glow-word {
+	position: relative;
+	display: inline-block;
+	transform-origin: center center;
+	white-space: nowrap;
+	will-change: transform;
+}
+
+.folia-glow-word-rotate {
+	position: relative;
+	display: inline-block;
+	transform-origin: center center;
+}
+
+.folia-glow-word-glow {
+	position: absolute;
+	inset: 0;
+	display: block;
+	user-select: none;
+	pointer-events: none;
+}
+
+.folia-glow-char {
+	display: inline;
+}
+
+.folia-glow-word-body {
+	position: relative;
+	z-index: 10;
+	display: block;
+}
+
+/* 合唱涟漪 */
+.folia-chorus-ripple {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 150%;
+	aspect-ratio: 1;
+	border: 1px solid;
+	border-radius: 50%;
+	transform: translate(-50%, -50%);
+	filter: blur(1px);
+	pointer-events: none;
+	z-index: 0;
+	animation: folia-ripple 0.5s ease-out forwards;
+}
+
+@keyframes folia-ripple {
+	0% {
+		scale: 0.2;
+		opacity: 0.8;
+	}
+	100% {
+		scale: var(--folia-ripple-scale, 2.4);
+		opacity: 0;
+	}
+}
+
+/* ── partita（云阶） ─────────────────────────────────────── */
+
+.folia-partita-line {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: row-reverse;
+	align-items: stretch;
+	justify-content: center;
+	max-width: 64rem;
+	margin: 0 auto;
+}
+
+.folia-partita-column {
+	position: relative;
+	display: flex;
+	min-width: 3.8rem;
+	align-items: center;
+	justify-content: center;
+	padding-inline: 0.75rem;
+}
+
+.folia-partita-column-words {
+	position: relative;
+	z-index: 10;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-start;
+}
+
+.folia-partita-chunk {
+	position: relative;
+	display: inline-flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	white-space: nowrap;
+	transform-origin: center center;
+	line-height: 1;
+	min-width: auto;
+	min-height: auto;
+	padding: 0.2rem 0.5rem;
+	will-change: transform;
+}
+
+.folia-partita-guide {
+	position: absolute;
+	pointer-events: none;
+	opacity: 1;
+	transition:
+		scale 0.4s ease-out,
+		opacity 0.4s ease-out;
+}
+
+.folia-partita-guide--v {
+	width: 1px;
+	height: 32px;
+	bottom: -16px;
+	left: -8px;
+	transform-origin: bottom;
+	scale: 1 1;
+}
+
+.folia-partita-guide--h {
+	width: calc(100% + 36px);
+	height: 1px;
+	bottom: -8px;
+	left: -16px;
+	transform-origin: left;
+	scale: 1 1;
+}
+
+.folia-partita-guide--v.is-right {
+	left: auto;
+	right: -8px;
+}
+
+.folia-partita-guide--h.is-right {
+	left: auto;
+	right: -16px;
+	transform-origin: right;
+}
+
+.folia-partita-guide.is-hidden {
+	scale: 1 0;
+	opacity: 0;
+}
+
+/* ── still（静止） ───────────────────────────────────────── */
+
+.folia-still-vignette {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	background: radial-gradient(ellipse at center, transparent 0%, #000 100%);
+	opacity: 0.65;
+	pointer-events: none;
+}
+
+.folia-still-lines {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: clamp(1.5rem, 4vh, 2.5rem);
+	padding-inline: clamp(2rem, 6vw, 3rem);
+	padding-bottom: 4rem;
+	pointer-events: none;
+}
+
+.folia-still-line-group {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 100%;
+	max-width: 56rem;
+}
+
+.folia-still-text {
+	text-align: center;
+	letter-spacing: 0.02em;
+	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+	font-size: 2.5rem;
+	line-height: 1.25;
+	opacity: 0.28;
+	transition:
+		opacity 0.5s ease,
+		font-size 0.3s ease;
+}
+
+.folia-still-text.is-current {
+	opacity: 1;
+}
+
+.folia-still-translation {
+	text-align: center;
+	letter-spacing: 0.04em;
+	filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+	font-size: 1.25rem;
+	opacity: 0.28;
+	margin-top: 0.5rem;
+	transition:
+		opacity 0.5s ease,
+		margin-top 0.5s ease;
+}
+
+.folia-still-translation.is-current {
+	opacity: 0.8;
+	margin-top: 0.75rem;
+}
+
+.folia-still-spacer {
+	height: 5rem;
+}
+
+/* ── tilt（斜排） ────────────────────────────────────────── */
+
+.folia-tilt-lines {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: clamp(0.75rem, 2vh, 1rem);
+}
+
+.folia-tilt-line {
+	white-space: nowrap;
+	opacity: 0;
+	translate: 0 20px;
+	transition:
+		opacity 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+		translate 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.folia-tilt-line.is-visible {
+	opacity: 1;
+	translate: 0 0;
+}
+
+.folia-tilt-line--tilt {
+	font-style: italic;
+	translate: 0 24px;
+	scale: 0.92;
+	transition:
+		opacity 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+		translate 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+		scale 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.folia-tilt-line--tilt.is-visible {
+	translate: 0 0;
+	scale: 1;
+}
+
+.folia-tilt-char {
+	display: inline-block;
+	opacity: 0;
+	transition:
+		opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+		scale 0.06s ease-out;
+	will-change: scale;
+}
+
+.folia-tilt-char.is-visible {
+	opacity: 1;
+}
+
+.folia-tilt-char.is-space {
+	white-space: pre;
+}
+
+/* tilt 行：字符上下交替错落（--folia-dir 由 is-even 决定） */
+.folia-tilt-char--stagger.is-even {
+	--folia-dir: -1;
+}
+
+.folia-tilt-char--stagger:not(.is-even) {
+	--folia-dir: 1;
+}
+
+.folia-tilt-char--stagger {
+	translate: 0 calc(var(--folia-tilt-y, 0px) * var(--folia-dir, 1) * 2);
+	transition:
+		opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+		translate 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+		scale 0.06s ease-out;
+}
+
+.folia-tilt-char--stagger.is-visible {
+	translate: 0 calc(var(--folia-tilt-y, 0px) * var(--folia-dir, 1));
+}
+
+/* ── claddagh（克拉达：椭圆环） ─────────────────────────── */
+
+.folia-claddagh-stage {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	overflow: hidden;
+	user-select: none;
+}
+
+.folia-claddagh-axis {
+	position: absolute;
+	width: 300px;
+	height: 4px;
+	transform-origin: center center;
+	will-change: background, transform, filter;
+}
+
+.folia-claddagh-ringline {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.folia-claddagh-glyph {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	opacity: 0;
+	transform: translate3d(-50%, -50%, 0px) scale(0.2);
+	transform-origin: center center;
+	will-change: transform, opacity, filter, color, text-shadow;
+	white-space: nowrap;
+}
+
+/* ── cadenza（残响：重排版） ─────────────────────────────── */
+
+.folia-cadenza-layer {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	pointer-events: none;
+}
+
+.folia-cadenza-overlay {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	user-select: none;
+}
+
+.folia-cadenza-canvas {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+
+/* ── cappella（合唱：群聊气泡） ───────────────────────────── */
+
+@keyframes cappella-char-fade {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes cappella-bubble-glow-pan {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(-50%);
+	}
+}
+
+.folia-cappella-viewport {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	/* 顶部避开导航栏（约 4rem），底部避开播放控制条 */
+	padding: clamp(4.75rem, 9vh, 5.5rem) 1rem clamp(9rem, 22vh, 10rem);
+	pointer-events: none;
+}
+
+.folia-cappella-panel {
+	position: relative;
+	display: flex;
+	width: 100%;
+	max-width: 56rem;
+	flex-direction: column;
+	justify-content: flex-start;
+	gap: 0.75rem;
+}
+
+.folia-cappella-row {
+	display: flex;
+	width: 100%;
+	align-items: flex-end;
+	gap: 0.75rem;
+}
+
+.folia-cappella-row.is-right {
+	justify-content: flex-end;
+}
+
+.folia-cappella-row.is-emo {
+	padding-top: 3rem;
+}
+
+.folia-cappella-inner {
+	display: flex;
+	width: 100%;
+	max-width: 78%;
+	align-items: flex-end;
+	gap: 0.75rem;
+	transition:
+		opacity 0.25s ease,
+		scale 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.folia-cappella-inner.is-right {
+	flex-direction: row-reverse;
+}
+
+.folia-cappella-inner.is-passed {
+	opacity: var(--folia-passed-opacity, 0.82);
+	scale: var(--folia-passed-scale, 0.92);
+}
+
+.folia-cappella-inner.is-active {
+	scale: var(--folia-active-scale, 1.12);
+}
+
+.folia-cappella-avatar {
+	flex-shrink: 0;
+	width: 2.5rem;
+	height: 2.5rem;
+	overflow: hidden;
+	border-radius: 50%;
+	border: 1px solid rgba(255, 255, 255, 0.24);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.folia-cappella-bubble-wrap {
+	position: relative;
+	flex-shrink: 0;
+	transition:
+		width 0.2s ease-out,
+		height 0.2s ease-out;
+}
+
+.folia-cappella-bubble {
+	border-radius: 24px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+	transition:
+		min-height 0.2s ease-out,
+		box-shadow 0.2s ease-out,
+		background-color 0.2s ease-out;
+}
+
+.folia-cappella-bubble-glow-clip {
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.folia-cappella-bubble-glow {
+	position: absolute;
+	inset-block: 0;
+	left: 0;
+	will-change: transform;
+}
+
+.folia-cappella-text {
+	position: relative;
+	z-index: 10;
+}
+
+.folia-cappella-timestamp {
+	position: absolute;
+	pointer-events: none;
+	font-size: 11px;
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+	opacity: 0.62;
+	animation: cappella-char-fade 0.18s ease-out;
+}
+
+/* ── monet（莫奈：海报式歌词栏） ──────────────────────────── */
+
+.folia-monet-shell {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	user-select: none;
+}
+
+.folia-monet-row {
+	display: flex;
+	height: 100%;
+	width: 100%;
+	align-items: center;
+}
+
+.folia-monet-textcol {
+	display: flex;
+	min-width: 0;
+	min-height: 0;
+	flex: 1;
+	flex-direction: column;
+	justify-content: center;
+	padding: 1.25rem 2rem 1.25rem 3.5rem;
+}
+
+.folia-monet-header {
+	display: flex;
+	flex-direction: column;
+	gap: 0.375rem;
+	margin-bottom: 0.75rem;
+}
+
+.folia-monet-artist {
+	font-style: italic;
+	letter-spacing: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 100%;
+}
+
+.folia-monet-divider {
+	height: 3.5rem;
+	width: 1px;
+	border-radius: 999px;
+	transform-origin: top;
+	animation: monet-scale-y 1.5s cubic-bezier(0.25, 1, 0.5, 1) 0.5s both;
+}
+
+@keyframes monet-scale-y {
+	from {
+		scale: 1 0;
+	}
+	to {
+		scale: 1 1;
+	}
+}
+
+.folia-monet-titlewrap {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	margin-bottom: 1.5rem;
+	animation: monet-fade-x 1.3s cubic-bezier(0.25, 1, 0.5, 1) 0.3s both;
+}
+
+@keyframes monet-fade-x {
+	from {
+		opacity: 0;
+		translate: -40px 0;
+	}
+	to {
+		opacity: 1;
+		translate: 0 0;
+	}
+}
+
+.folia-monet-title {
+	font-weight: 600;
+	line-height: 1.06;
+	letter-spacing: 0;
+	overflow-wrap: anywhere;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	padding-block: 0.25em;
+	margin-top: -0.25em;
+	margin-bottom: -0.12em;
+}
+
+.folia-monet-album {
+	font-size: 0.875rem;
+	text-transform: uppercase;
+	letter-spacing: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.folia-monet-railwrap {
+	animation: monet-fade-y 1.2s cubic-bezier(0.25, 1, 0.5, 1) 0.65s both;
+}
+
+@keyframes monet-fade-y {
+	from {
+		opacity: 0;
+		translate: 0 20px;
+	}
+	to {
+		opacity: 1;
+		translate: 0 0;
+	}
+}
+
+.folia-monet-rail {
+	position: relative;
+	overflow: hidden;
+	touch-action: none;
+	user-select: none;
+	-webkit-user-select: none;
+	mask-image: linear-gradient(to bottom, transparent 0%, black 11%, black 88%, transparent 100%);
+	-webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 11%, black 88%, transparent 100%);
+}
+
+.folia-monet-line {
+	position: absolute;
+	top: 0;
+	min-width: 0;
+	will-change: transform, opacity, filter;
+}
+
+.folia-monet-chorus-glow {
+	position: absolute;
+	inset-inline: 0;
+	top: -3.5rem;
+	bottom: -3.5rem;
+	pointer-events: none;
+	z-index: -1;
+	transition: opacity 0.45s ease-out, scale 0.45s ease-out;
+	scale: 1.02;
+}
+
+.folia-monet-line-text {
+	min-width: 0;
+	overflow: hidden;
+	pointer-events: none;
+	box-sizing: border-box;
+}
+
+.folia-monet-tokens {
+	display: block;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+.folia-monet-word {
+	position: relative;
+	display: inline-block;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+.folia-monet-sizing {
+	visibility: hidden;
+}
+
+.folia-monet-glow,
+.folia-monet-text,
+.folia-monet-sweep {
+	position: absolute;
+	inset: 0;
+	display: block;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+	pointer-events: none;
+}
+
+
+
+.folia-monet-sweep {
+	position: absolute;
+	inset: 0;
+	display: block;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+	pointer-events: none;
+	text-shadow: none;
+	mask-repeat: no-repeat;
+	-webkit-mask-repeat: no-repeat;
+	mask-size: 100% 100%;
+	-webkit-mask-size: 100% 100%;
+}
+
+.folia-monet-fill {
+	display: block;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+.folia-monet-subtitle {
+	min-width: 0;
+	overflow: hidden;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+	mask-repeat: no-repeat;
+	-webkit-mask-repeat: no-repeat;
+	mask-size: 100% 100%;
+	-webkit-mask-size: 100% 100%;
+}
+
+.folia-monet-portraitcol {
+	display: none;
+	align-items: center;
+	justify-content: flex-end;
+	min-width: 0;
+	padding-right: 2.5rem;
+}
+
+@media (min-width: 768px) {
+	.folia-monet-portraitcol {
+		display: flex;
+	}
+}
+
+.folia-monet-portraitbox {
+	position: relative;
+	width: 100%;
+}
+
+.folia-monet-portrait {
+	width: 100%;
+	aspect-ratio: 3 / 4;
+	border-radius: 1.25rem;
+	background-size: cover;
+	background-position: center;
+	box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), 0 6px 24px rgba(0, 0, 0, 0.35);
+	transform: translateZ(0);
+}
+
+@media (min-width: 768px) {
+	.folia-monet-textcol {
+		padding: 1.5rem 2rem 1.5rem 3.5rem;
+	}
+}
+
+@media (min-width: 1024px) {
+	.folia-monet-textcol {
+		padding: 2rem 3.5rem;
+	}
+}
+
+/* ── fume（浮名：文章式 canvas） ──────────────────────────── */
+
+.folia-fume-canvas {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+
+/* ── pendolo / compact canvas 主题 ───────────────────────── */
+
+.folia-pendolo-canvas,
+.folia-compact-canvas {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.folia-compact {
+	position: absolute;
+	inset: 0;
+}
+
+/* ── 底部字幕浮层 ─────────────────────────────────────────── */
+
+.folia-subtitle {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: clamp(2.5rem, 7vh, 4.5rem);
+	z-index: 20;
+	text-align: center;
+	padding-inline: 1rem;
+	opacity: var(--folia-subtitle-opacity, 0.6);
+	pointer-events: none;
+	animation: folia-subtitle-in 0.24s ease-out;
+}
+
+@keyframes folia-subtitle-in {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: var(--folia-subtitle-opacity, 0.6);
+		transform: translateY(0);
+	}
+}
+
+.folia-subtitle-inner {
+	position: relative;
+	display: inline-block;
+	isolation: isolate;
+	padding-inline: 0.375rem;
+	padding-block: 0.125rem;
+}
+
+.folia-subtitle-backing {
+	position: absolute;
+	inset: -1.5rem -2.5rem;
+	z-index: 0;
+	filter: blur(24px);
+	pointer-events: none;
+}
+
+.folia-subtitle-rows {
+	position: relative;
+	z-index: 10;
+}
+
+.folia-subtitle-row {
+	max-width: 56rem;
+	margin-inline: auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	transition: all 0.5s ease;
+}
+
+.folia-subtitle-row--upcoming {
+	max-width: 42rem;
+	filter: blur(1px);
+}
+
+/* ── 设置面板：全屏歌词主题网格（可换行滚动） ─────────────── */
+
+.music-visualizer__folia-modes {
+	flex-wrap: wrap;
+	max-height: 10.5rem;
+	overflow-y: auto;
+}
+
+/* ── 移动端 ──────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+	.music-visualizer__folia-back {
+		/* 移动端导航栏占据顶部，下移避开 */
+		top: 4.6rem;
+		right: 0.9rem;
+	}
+
+	.folia-classic-line {
+		max-width: 100%;
+	}
+
+	.folia-partita-line {
+		max-width: 100%;
+	}
+
+	.folia-partita-guide--v {
+		display: none;
+	}
+
+	.folia-still-text {
+		font-size: 1.6rem;
+	}
+
+	.folia-subtitle {
+		bottom: clamp(4.5rem, 12vh, 6rem);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.folia-classic-area,
+	.folia-partita-line {
+		animation: none !important;
+	}
+
+	.folia-chorus-ripple,
+	.folia-subtitle {
+		animation: none !important;
+	}
+}

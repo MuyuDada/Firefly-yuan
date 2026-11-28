@@ -241,6 +241,7 @@ const managerConfigStr = JSON.stringify({
         isMuted: false,
         lyrics: [],
         currentLrcIndex: -1,
+        rawLyrics: null,
         initialized: false,
         initializing: false,
         error: null
@@ -327,12 +328,17 @@ const managerConfigStr = JSON.stringify({
     }
 
     // ── Lyrics ───────────────────────────────────────────────
+    // detail.raw 携带原始 LRC 文本，供音乐页全屏歌词（folia 移植）用自己的
+    // 逐词解析器独立解析；旧消费者只读 lyrics/status，不受影响。
+    // state.rawLyrics 让晚挂载的消费者（如全屏歌词）能补上错过的初始歌词。
     function loadLyrics(track) {
         state.lyrics = [];
         state.currentLrcIndex = -1;
+        state.rawLyrics = null;
 
         if (!track.lrc) {
-            emit('fm:lyrics', { lyrics: [], status: 'none' });
+            state.rawLyrics = null;
+            emit('fm:lyrics', { lyrics: [], status: 'none', raw: null });
             return;
         }
 
@@ -341,20 +347,23 @@ const managerConfigStr = JSON.stringify({
             || /\.(lrc|txt)(\?|#|$)/i.test(track.lrc);
 
         if (isLrcUrl) {
-            emit('fm:lyrics', { lyrics: [], status: 'loading' });
+            emit('fm:lyrics', { lyrics: [], status: 'loading', raw: null });
             fetch(track.lrc)
                 .then(function (r) { return r.text(); })
                 .then(function (text) {
                     state.lyrics = parseLRC(text);
-                    emit('fm:lyrics', { lyrics: state.lyrics, status: 'loaded' });
+                    state.rawLyrics = text;
+                    emit('fm:lyrics', { lyrics: state.lyrics, status: 'loaded', raw: text });
                 })
                 .catch(function () {
                     state.lyrics = [];
-                    emit('fm:lyrics', { lyrics: [], status: 'failed' });
+                    state.rawLyrics = null;
+                    emit('fm:lyrics', { lyrics: [], status: 'failed', raw: null });
                 });
         } else {
             state.lyrics = parseLRC(track.lrc);
-            emit('fm:lyrics', { lyrics: state.lyrics, status: state.lyrics.length > 0 ? 'loaded' : 'none' });
+            state.rawLyrics = track.lrc;
+            emit('fm:lyrics', { lyrics: state.lyrics, status: state.lyrics.length > 0 ? 'loaded' : 'none', raw: track.lrc });
         }
     }
 
@@ -670,6 +679,7 @@ const managerConfigStr = JSON.stringify({
                 durationStr: formatTime(audio.duration),
                 lyrics: state.lyrics,
                 currentLrcIndex: state.currentLrcIndex,
+                rawLyrics: state.rawLyrics,
                 initialized: state.initialized,
                 error: state.error,
                 config: config

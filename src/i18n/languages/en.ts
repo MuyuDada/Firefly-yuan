@@ -98,6 +98,10 @@ export const en: Translation = {
 	[Key.vizRainbowHint]: "Hue keeps cycling over time",
 	[Key.vizLyricMode]: "Lyric Animation",
 	[Key.vizLyricModeHint]: "How each character lights up",
+	[Key.vizFoliaLyrics]: "Fullscreen Lyrics",
+	[Key.vizFoliaMode]: "Fullscreen Theme",
+	[Key.vizFoliaModeHint]: "Immersive fullscreen lyric animation; click again or press Esc to exit",
+	[Key.vizFoliaExit]: "Exit fullscreen lyrics",
 
 	// Announcement
 	[Key.announcement]: "Announcement",

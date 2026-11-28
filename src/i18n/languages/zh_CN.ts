@@ -95,6 +95,10 @@ export const zh_CN: Translation = {
 	[Key.vizRainbowHint]: "色相随时间循环流动",
 	[Key.vizLyricMode]: "歌词动画",
 	[Key.vizLyricModeHint]: "切换逐字动效的表现方式",
+	[Key.vizFoliaLyrics]: "全屏歌词",
+	[Key.vizFoliaMode]: "全屏歌词主题",
+	[Key.vizFoliaModeHint]: "进入音乐页全屏歌词动画，再次点击或按 Esc 退出",
+	[Key.vizFoliaExit]: "退出全屏歌词",
 
 	// 公告栏
 	[Key.announcement]: "公告",
